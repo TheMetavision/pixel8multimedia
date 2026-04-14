@@ -5,7 +5,7 @@ import { schemaTypes } from './schemas';
 export default defineConfig({
   name: 'pixel8-multimedia',
   title: 'Pixel8 Multimedia',
-  projectId: 'bqb4w421',
+  projectId: 'YOUR_PROJECT_ID',
   dataset: 'production',
 
   plugins: [
@@ -21,6 +21,8 @@ export default defineConfig({
               .child(S.documentTypeList('product').title('Products')),
             S.listItem().title('Collections').icon(() => '📁')
               .child(S.documentTypeList('collection').title('Collections')),
+            S.listItem().title('Services').icon(() => '🛠️')
+              .child(S.documentTypeList('service').title('Services')),
             S.divider(),
             S.listItem().title('Blog Posts').icon(() => '📝')
               .child(S.documentTypeList('blogPost').title('Blog Posts')),
