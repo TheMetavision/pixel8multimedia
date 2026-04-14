@@ -4,10 +4,16 @@ import { sanityClient, urlFor } from '../../lib/sanity';
 import { allBlogPostsQuery, blogPostBySlugQuery } from '../../lib/queries';
 
 export async function getStaticPaths() {
-  const posts = await sanityClient.fetch(allBlogPostsQuery);
-  return posts.map((post: any) => ({
-    params: { slug: post.slug },
-  }));
+  try {
+    const posts = await sanityClient.fetch(allBlogPostsQuery);
+    if (!posts || posts.length === 0) return [];
+    return posts.map((post: any) => ({
+      params: { slug: post.slug },
+    }));
+  } catch (e) {
+    console.warn('Sanity fetch failed in getStaticPaths for blog/[slug] — returning empty paths');
+    return [];
+  }
 }
 
 const { slug } = Astro.params;

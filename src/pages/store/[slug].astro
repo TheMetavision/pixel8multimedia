@@ -7,10 +7,16 @@ import { PRICES, FORMAT_LABELS, SIZE_LABELS, FORMATS, SIZES, COLLECTION_LABELS }
 import type { ProductFormat, ProductSize } from '../../data/products';
 
 export async function getStaticPaths() {
-  const products = await sanityClient.fetch(allProductsQuery);
-  return products.map((product: any) => ({
-    params: { slug: product.slug },
-  }));
+  try {
+    const products = await sanityClient.fetch(allProductsQuery);
+    if (!products || products.length === 0) return [];
+    return products.map((product: any) => ({
+      params: { slug: product.slug },
+    }));
+  } catch (e) {
+    console.warn('Sanity fetch failed in getStaticPaths for store/[slug] — returning empty paths');
+    return [];
+  }
 }
 
 const { slug } = Astro.params;

@@ -1,0 +1,105 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="About Us — The Pixel8 Story"
+  description="Pixel8 Multimedia is a UK-based pop culture wall art studio. Part of The Metavision. In-house production, AI-enhanced artistry, worldwide delivery."
+>
+  <!-- Hero -->
+  <section class="bg-bg-secondary py-20 border-b border-edge-line">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center reveal">
+      <span class="font-mono text-xs text-pop-orange uppercase tracking-widest">Our Story</span>
+      <h1 class="section-heading mt-2 mb-4">The Pixel8 Story</h1>
+      <p class="font-dm text-mid-grey text-lg max-w-2xl mx-auto">
+        We celebrate pop culture in all its bold, brilliant forms. From legendary film scenes and music icons to sporting greats — every piece is crafted with precision, emotion, and imagination.
+      </p>
+    </div>
+  </section>
+
+  <!-- Mission -->
+  <section class="py-20 bg-bg-primary">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid lg:grid-cols-2 gap-16 items-center">
+        <div class="reveal">
+          <h2 class="font-montserrat text-3xl font-bold text-off-white mb-6">Bold Art for Bold Walls</h2>
+          <div class="space-y-4 font-dm text-mid-grey leading-relaxed">
+            <p>At Pixel8, we bring iconic moments to life as wall art. Our collections span 10+ distinctive styles — from electric neon glow and Warhol-inspired pop art to minimalist cool and raw street art energy.</p>
+            <p>Every piece is produced in-house at our UK studio. We don't outsource, we don't cut corners. Premium archival canvas, museum-quality poster paper, and professional framing — all made to order, just for you.</p>
+            <p>But we don't just stop at our collections. Our "Your Way" services put you in the creative seat — photo restoration to revive treasured memories, our signature "Stills to Reels" animation service, and fully bespoke commissions tailored to your vision.</p>
+          </div>
+        </div>
+        <div class="reveal stagger-2">
+          <div class="aspect-[4/3] bg-bg-secondary rounded-lg border border-edge-line flex items-center justify-center">
+            <span class="font-montserrat text-sm text-deep-grey uppercase tracking-widest">Studio Photo</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The Difference -->
+  <section class="colour-block-orange py-20">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="font-montserrat text-4xl font-bold mb-12 reveal">The Pixel8 Difference</h2>
+      <div class="grid md:grid-cols-3 gap-8 reveal">
+        <div class="bg-black/10 rounded-lg p-8">
+          <h3 class="font-montserrat text-xl font-bold mb-3">Made In-House</h3>
+          <p class="font-dm leading-relaxed">Every print is produced in our UK studio. No third-party fulfilment, no mass production. Each piece is crafted individually with care.</p>
+        </div>
+        <div class="bg-black/10 rounded-lg p-8">
+          <h3 class="font-montserrat text-xl font-bold mb-3">AI-Enhanced Artistry</h3>
+          <p class="font-dm leading-relaxed">We combine cutting-edge AI tools with human creativity. Technology handles the heavy lifting; artistry makes it extraordinary.</p>
+        </div>
+        <div class="bg-black/10 rounded-lg p-8">
+          <h3 class="font-montserrat text-xl font-bold mb-3">Premium Materials</h3>
+          <p class="font-dm leading-relaxed">Archival canvas, museum-quality paper, professional stretcher bars. Your art is built to last and designed to impress.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Process -->
+  <section class="py-20 bg-bg-secondary">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="section-heading mb-12 reveal">Our Process</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 reveal">
+        {[
+          { step: '01', title: 'Concept', desc: 'We research, reference, and design each piece from scratch.' },
+          { step: '02', title: 'Create', desc: 'AI-assisted creation refined by human artistry and judgement.' },
+          { step: '03', title: 'Craft', desc: 'Printed in-house on premium materials with precision colour.' },
+          { step: '04', title: 'Deliver', desc: 'Securely packaged and shipped to your door, worldwide.' },
+        ].map((item) => (
+          <div class="text-center">
+            <span class="font-mono text-3xl text-pop-orange font-bold">{item.step}</span>
+            <h3 class="font-montserrat text-lg font-bold text-off-white mt-2 mb-1">{item.title}</h3>
+            <p class="font-dm text-sm text-mid-grey">{item.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Part of The Metavision -->
+  <section class="py-20 bg-bg-primary">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center reveal">
+      <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">The Bigger Picture</span>
+      <h2 class="font-montserrat text-3xl font-bold text-off-white mt-2 mb-4">Part of The Metavision</h2>
+      <p class="font-dm text-mid-grey leading-relaxed max-w-2xl mx-auto mb-8">
+        Pixel8 Multimedia is part of The Metavision Multimedia Limited — a UK-based AI creative agency spanning brand development, content creation, and animated IP. Our sister brands include Wyrmfuel, Comic Strip Canvas, and four animated IP franchises.
+      </p>
+      <a href="https://themetavision.co.uk" target="_blank" rel="noopener noreferrer" class="btn-secondary">Visit The Metavision →</a>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-20 bg-bg-secondary">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center reveal">
+      <h2 class="font-montserrat text-3xl font-bold text-off-white mb-6">Ready to See Something Bold?</h2>
+      <div class="flex flex-wrap justify-center gap-4">
+        <a href="/store" class="btn-primary">Browse Collections</a>
+        <a href="/services" class="btn-secondary">Commission a Piece</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
