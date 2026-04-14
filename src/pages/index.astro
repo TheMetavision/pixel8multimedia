@@ -5,24 +5,24 @@ import FAQAccordion from '../components/FAQAccordion.astro';
 import TestimonialCarousel from '../components/TestimonialCarousel.astro';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
 import { sanityClient, urlFor } from '../lib/sanity';
-import { featuredProductsQuery, allCollectionsQuery, testimonialsQuery, faqsByPageQuery } from '../lib/queries';
-import { PRICES, COLLECTIONS } from '../data/products';
+import { featuredProductsQuery, allCategoriesQuery, testimonialsQuery, faqsByPageQuery } from '../lib/queries';
+import { PRICES, CATEGORIES, STYLES } from '../data/products';
 
 let featuredProducts: any[] = [];
-let collections: any[] = [];
+let categories: any[] = [];
 let testimonials: any[] = [];
 let faqs: any[] = [];
 
 try {
-  [featuredProducts, collections, testimonials, faqs] = await Promise.all([
+  [featuredProducts, categories, testimonials, faqs] = await Promise.all([
     sanityClient.fetch(featuredProductsQuery),
-    sanityClient.fetch(allCollectionsQuery),
+    sanityClient.fetch(allCategoriesQuery),
     sanityClient.fetch(testimonialsQuery),
     sanityClient.fetch(faqsByPageQuery, { page: 'store' }),
   ]);
 } catch (e) {
   console.warn('Sanity fetch failed, using fallback data');
-  collections = COLLECTIONS.map((c) => ({ ...c, productCount: 0 }));
+  categories = CATEGORIES.map((c) => ({ ...c, productCount: 0 }));
 }
 
 const jsonLd = [
@@ -66,7 +66,7 @@ const jsonLd = [
           Bold pop culture wall art and bespoke AI photo transformation. Shop canvas prints or commission personalised artwork. UK & worldwide delivery.
         </p>
         <div class="flex flex-wrap gap-4">
-          <a href="/store" class="btn-primary">Explore Collections</a>
+          <a href="/store" class="btn-primary">Shop Wall Art</a>
           <a href="/services" class="btn-secondary">Commission Yours</a>
         </div>
         <div class="flex items-center gap-6 mt-8 text-sm text-mid-grey font-dm">
@@ -101,8 +101,8 @@ const jsonLd = [
         </div>
         <div class="p-6">
           <h2 class="font-montserrat text-2xl font-bold text-off-white mb-2">Our Way</h2>
-          <p class="font-dm text-mid-grey text-sm leading-relaxed mb-4">Explore our curated pop culture collections across 10+ art styles. Canvas prints and posters ready to ship.</p>
-          <span class="font-montserrat text-sm font-bold text-pop-orange uppercase tracking-wider">Browse Collections →</span>
+          <p class="font-dm text-mid-grey text-sm leading-relaxed mb-4">Explore our pop culture wall art across 6 categories and 10 unique styles. Canvas prints and posters ready to ship.</p>
+          <span class="font-montserrat text-sm font-bold text-pop-orange uppercase tracking-wider">Browse the Shop →</span>
         </div>
       </a>
       <a href="/services" class="group bg-bg-secondary border border-edge-line rounded-lg overflow-hidden hover:border-pixel-cyan hover:shadow-glow-cyan transition-all duration-300 reveal stagger-1">
@@ -118,30 +118,31 @@ const jsonLd = [
     </div>
   </section>
 
-  <!-- ===== COLLECTIONS ===== -->
+  <!-- ===== CATEGORIES ===== -->
   <section class="py-20 bg-bg-secondary">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-end justify-between mb-12 reveal">
         <div>
-          <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">10+ Art Styles</span>
-          <h2 class="section-heading mt-2">Collections</h2>
+          <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">6 Categories · 10 Styles</span>
+          <h2 class="section-heading mt-2">Browse by Category</h2>
         </div>
         <a href="/store" class="font-montserrat text-sm font-bold text-pop-orange uppercase tracking-wider hover:underline hidden md:block">View All →</a>
       </div>
-      <div class="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory">
-        {(collections.length > 0 ? collections : COLLECTIONS).map((col: any, i: number) => (
-          <a href={`/store/${col.slug}`}
-             class={`flex-shrink-0 w-48 bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange transition-all duration-300 reveal stagger-${Math.min(i + 1, 4)} snap-start`}>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {(categories.length > 0 ? categories : CATEGORIES).map((cat: any, i: number) => (
+          <a href={`/store?category=${cat.slug}`}
+             class={`bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange transition-all duration-300 reveal stagger-${Math.min(i + 1, 4)}`}>
             <div class="aspect-[4/3] bg-bg-tertiary flex items-center justify-center">
-              {col.coverImage?.asset ? (
-                <img src={urlFor(col.coverImage).width(400).height(300).url()} alt={col.name} class="w-full h-full object-cover" loading="lazy" />
+              {cat.coverImage?.asset ? (
+                <img src={urlFor(cat.coverImage).width(400).height(300).url()} alt={cat.name} class="w-full h-full object-cover" loading="lazy" />
               ) : (
-                <span class="font-montserrat text-[0.6rem] text-deep-grey uppercase tracking-widest text-center px-2">{col.name}</span>
+                <span class="font-montserrat text-[0.6rem] text-deep-grey uppercase tracking-widest text-center px-2">{cat.name}</span>
               )}
             </div>
             <div class="p-3">
-              <h3 class="font-montserrat text-sm font-bold text-off-white">{col.name}</h3>
-              <p class="font-dm text-xs text-deep-grey mt-0.5">{col.tagline || col.description}</p>
+              <h3 class="font-montserrat text-sm font-bold text-off-white">{cat.name}</h3>
+              <p class="font-dm text-xs text-deep-grey mt-0.5">{cat.tagline || cat.description}</p>
+              {cat.productCount != null && <p class="font-mono text-xs text-pop-orange mt-1">{cat.productCount} designs</p>}
             </div>
           </a>
         ))}
@@ -193,11 +194,11 @@ const jsonLd = [
             </div>
             <div>
               <h3 class="font-montserrat font-bold text-lg mb-2">Canvas (Standard Frame)</h3>
-              <p class="font-mono text-sm">Small — £{PRICES['canvas-standard'].small.toFixed(2)} · Medium — £{PRICES['canvas-standard'].medium.toFixed(2)} · Large — £{PRICES['canvas-standard'].large.toFixed(2)}</p>
+              <p class="font-mono text-sm">Small — £{PRICES.canvasStandard.small.toFixed(2)} · Medium — £{PRICES.canvasStandard.medium.toFixed(2)} · Large — £{PRICES.canvasStandard.large.toFixed(2)}</p>
             </div>
             <div>
               <h3 class="font-montserrat font-bold text-lg mb-2">Canvas (Gallery Frame)</h3>
-              <p class="font-mono text-sm">Small — £{PRICES['canvas-gallery'].small.toFixed(2)} · Medium — £{PRICES['canvas-gallery'].medium.toFixed(2)} · Large — £{PRICES['canvas-gallery'].large.toFixed(2)}</p>
+              <p class="font-mono text-sm">Small — £{PRICES.canvasGallery.small.toFixed(2)} · Medium — £{PRICES.canvasGallery.medium.toFixed(2)} · Large — £{PRICES.canvasGallery.large.toFixed(2)}</p>
             </div>
           </div>
           <p class="font-dm text-sm mt-6 opacity-70">Free UK P&P on orders over £50. International shipping calculated at checkout.</p>

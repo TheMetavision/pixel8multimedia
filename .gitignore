@@ -7,3 +7,6 @@ dist/
 *.log
 studio/node_modules/
 studio/dist/
+
+# Local Netlify folder
+.netlify

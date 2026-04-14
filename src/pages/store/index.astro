@@ -2,55 +2,84 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
 import { sanityClient } from '../../lib/sanity';
-import { allProductsQuery, allCollectionsQuery } from '../../lib/queries';
-import { COLLECTIONS } from '../../data/products';
+import { allProductsQuery, allCategoriesQuery } from '../../lib/queries';
+import { CATEGORIES, STYLES } from '../../data/products';
 
 let products: any[] = [];
-let collections: any[] = [];
+let categories: any[] = [];
 
 try {
-  [products, collections] = await Promise.all([
+  [products, categories] = await Promise.all([
     sanityClient.fetch(allProductsQuery),
-    sanityClient.fetch(allCollectionsQuery),
+    sanityClient.fetch(allCategoriesQuery),
   ]);
 } catch (e) {
   console.warn('Sanity fetch failed for store page');
-  collections = COLLECTIONS;
+  categories = CATEGORIES.map((c) => ({ ...c, productCount: 0 }));
 }
 ---
 
 <BaseLayout
-  title="Shop — Our Way Collections"
-  description="Explore Pixel8 Multimedia's curated pop culture wall art collections. Canvas prints and poster prints across 10+ art styles. UK-made, worldwide delivery."
+  title="Shop Wall Art | Pixel8 Multimedia"
+  description="Browse 980+ pop culture wall art designs across 10 unique styles and 6 categories. Canvas prints and poster prints made to order in the UK."
 >
   <!-- Hero -->
   <section class="bg-bg-secondary py-16 border-b border-edge-line">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center reveal">
-      <span class="font-mono text-xs text-pop-orange uppercase tracking-widest">Curated Collections</span>
-      <h1 class="section-heading mt-2 mb-4">Our Way</h1>
+      <span class="font-mono text-xs text-pop-orange uppercase tracking-widest">Our Way</span>
+      <h1 class="section-heading mt-2 mb-4">Shop</h1>
       <p class="font-dm text-mid-grey text-lg max-w-2xl mx-auto">
-        Curated pop culture collections across 10+ art styles. Canvas prints and posters crafted in-house at our UK studio — ready to ship worldwide.
+        Pop culture wall art across 10 original styles. Every piece made to order — poster prints, standard canvas, and gallery canvas.
       </p>
       <div class="flex justify-center gap-4 mt-6 text-sm font-dm text-mid-grey">
-        <span><strong class="text-off-white">{products.length}+</strong> Designs</span>
+        <span><strong class="text-off-white">{products.length}</strong> Products</span>
         <span>·</span>
-        <span><strong class="text-off-white">{collections.length}</strong> Collections</span>
+        <span><strong class="text-off-white">{categories.length || 6}</strong> Categories</span>
+        <span>·</span>
+        <span><strong class="text-off-white">10</strong> Styles</span>
         <span>·</span>
         <span><strong class="text-off-white">3</strong> Formats</span>
-        <span>·</span>
-        <span><strong class="text-off-white">3</strong> Sizes</span>
       </div>
     </div>
   </section>
 
-  <!-- Collection Filter -->
+  <!-- Filters -->
   <section class="bg-bg-primary border-b border-edge-line sticky top-20 z-30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" id="collection-filters">
-        <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-off-white bg-pop-orange whitespace-nowrap transition-all" data-filter="all">All</button>
-        {(collections.length > 0 ? collections : COLLECTIONS).map((col: any) => (
-          <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:text-pop-orange hover:border-pop-orange whitespace-nowrap transition-all" data-filter={col.slug}>
-            {col.name}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-3">
+      <!-- Search + Sort -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <div class="relative flex-1 min-w-[200px] max-w-[360px]">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-deep-grey pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="shop-search" placeholder="Search designs..." autocomplete="off"
+            class="w-full pl-9 pr-3 py-2 bg-bg-secondary border border-edge-line rounded-lg text-off-white font-dm text-sm focus:outline-none focus:border-pop-orange transition-colors" />
+        </div>
+        <select id="shop-sort" class="bg-bg-secondary border border-edge-line rounded-lg text-mid-grey font-dm text-sm px-3 py-2 focus:outline-none focus:border-pop-orange cursor-pointer">
+          <option value="default">Sort by</option>
+          <option value="title-asc">Name A–Z</option>
+          <option value="price-asc">Price: Low → High</option>
+          <option value="price-desc">Price: High → Low</option>
+        </select>
+        <span class="text-xs text-deep-grey font-dm ml-auto" id="product-count">{products.length} products</span>
+      </div>
+
+      <!-- Category tabs -->
+      <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" id="category-filters">
+        <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-off-white bg-pop-orange whitespace-nowrap transition-all" data-type="category" data-value="all">All</button>
+        {(categories.length > 0 ? categories : CATEGORIES).map((cat: any) => (
+          <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:text-pop-orange hover:border-pop-orange whitespace-nowrap transition-all" data-type="category" data-value={cat.slug}>
+            {cat.name}
+            {cat.productCount != null && <span class="ml-1 opacity-60">({cat.productCount})</span>}
+          </button>
+        ))}
+      </div>
+
+      <!-- Style pills -->
+      <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" id="style-filters">
+        <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-off-white bg-pop-orange whitespace-nowrap transition-all" data-type="style" data-value="all">All Styles</button>
+        {STYLES.map((s) => (
+          <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:border-pop-orange whitespace-nowrap transition-all flex items-center gap-1.5" data-type="style" data-value={s.value}>
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style={`background:${s.color}`}></span>
+            {s.label}
           </button>
         ))}
       </div>
@@ -63,7 +92,7 @@ try {
       {products.length > 0 ? (
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="products-grid">
           {products.map((product: any) => (
-            <div class="product-grid-item" data-collection={product.collection}>
+            <div class="product-grid-item" data-category={product.category} data-style={product.style} data-title={product.title?.toLowerCase()} data-price={product.prices?.poster?.small || 9.99}>
               <ProductCard product={product} />
             </div>
           ))}
@@ -79,28 +108,81 @@ try {
 </BaseLayout>
 
 <script>
-  const filters = document.querySelectorAll('.filter-pill');
   const items = document.querySelectorAll('.product-grid-item');
+  const grid = document.getElementById('products-grid');
+  const countEl = document.getElementById('product-count');
 
-  filters.forEach((btn) => {
+  let activeCategory = 'all';
+  let activeStyle = 'all';
+
+  function applyFilters() {
+    const searchTerm = (document.getElementById('shop-search') as HTMLInputElement)?.value.toLowerCase() || '';
+    const sortBy = (document.getElementById('shop-sort') as HTMLSelectElement)?.value || 'default';
+
+    const visible: HTMLElement[] = [];
+
+    items.forEach((item) => {
+      const el = item as HTMLElement;
+      const cat = el.dataset.category || '';
+      const style = el.dataset.style || '';
+      const title = el.dataset.title || '';
+
+      const catMatch = activeCategory === 'all' || cat === activeCategory;
+      const styleMatch = activeStyle === 'all' || style === activeStyle;
+      const searchMatch = !searchTerm || title.includes(searchTerm);
+
+      if (catMatch && styleMatch && searchMatch) {
+        el.style.display = '';
+        visible.push(el);
+      } else {
+        el.style.display = 'none';
+      }
+    });
+
+    // Sort
+    if (sortBy === 'price-asc') {
+      visible.sort((a, b) => parseFloat(a.dataset.price || '0') - parseFloat(b.dataset.price || '0'));
+    } else if (sortBy === 'price-desc') {
+      visible.sort((a, b) => parseFloat(b.dataset.price || '0') - parseFloat(a.dataset.price || '0'));
+    } else if (sortBy === 'title-asc') {
+      visible.sort((a, b) => (a.dataset.title || '').localeCompare(b.dataset.title || ''));
+    }
+
+    if (sortBy !== 'default' && grid) {
+      visible.forEach((el) => grid.appendChild(el));
+    }
+
+    if (countEl) countEl.textContent = `${visible.length} product${visible.length !== 1 ? 's' : ''}`;
+  }
+
+  // Category filter clicks
+  document.querySelectorAll('[data-type="category"]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const filter = (btn as HTMLElement).dataset.filter;
-
-      filters.forEach((f) => {
-        f.classList.remove('active', 'bg-pop-orange', 'text-off-white');
-        f.classList.add('bg-transparent', 'text-mid-grey');
+      document.querySelectorAll('[data-type="category"]').forEach((b) => {
+        b.classList.remove('active', 'bg-pop-orange', 'text-off-white');
+        b.classList.add('bg-transparent', 'text-mid-grey');
       });
       btn.classList.add('active', 'bg-pop-orange', 'text-off-white');
       btn.classList.remove('bg-transparent', 'text-mid-grey');
-
-      items.forEach((item) => {
-        const collection = (item as HTMLElement).dataset.collection;
-        if (filter === 'all' || collection === filter) {
-          (item as HTMLElement).style.display = '';
-        } else {
-          (item as HTMLElement).style.display = 'none';
-        }
-      });
+      activeCategory = (btn as HTMLElement).dataset.value || 'all';
+      applyFilters();
     });
   });
+
+  // Style filter clicks
+  document.querySelectorAll('[data-type="style"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-type="style"]').forEach((b) => {
+        b.classList.remove('active', 'bg-pop-orange', 'text-off-white');
+        b.classList.add('bg-transparent', 'text-mid-grey');
+      });
+      btn.classList.add('active', 'bg-pop-orange', 'text-off-white');
+      btn.classList.remove('bg-transparent', 'text-mid-grey');
+      activeStyle = (btn as HTMLElement).dataset.value || 'all';
+      applyFilters();
+    });
+  });
+
+  document.getElementById('shop-search')?.addEventListener('input', applyFilters);
+  document.getElementById('shop-sort')?.addEventListener('change', applyFilters);
 </script>

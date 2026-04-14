@@ -38,17 +38,13 @@ const navLinks = [
     label: 'Shop',
     href: '/store',
     children: [
-      { label: 'All Collections', href: '/store' },
-      { label: 'Neon Glow', href: '/store/neon-glow' },
-      { label: 'Pop Art', href: '/store/pop-art' },
-      { label: 'Retro Vibes', href: '/store/retro-vibes' },
-      { label: 'Pixel Art', href: '/store/pixel-art' },
-      { label: 'Minimalist Cool', href: '/store/minimalist-cool' },
-      { label: 'Abstract Burst', href: '/store/abstract-burst' },
-      { label: 'Noir', href: '/store/noir' },
-      { label: 'Geometric', href: '/store/geometric' },
-      { label: 'Street Art', href: '/store/street-art' },
-      { label: 'Watercolour', href: '/store/watercolour' },
+      { label: 'All Products', href: '/store' },
+      { label: 'Animations', href: '/store?category=animations' },
+      { label: 'Music', href: '/store?category=music' },
+      { label: 'TV / Movies', href: '/store?category=tv-movies' },
+      { label: 'Sport', href: '/store?category=sport' },
+      { label: 'Miscellaneous', href: '/store?category=miscellaneous' },
+      { label: 'Personalised', href: '/store?category=personalised' },
     ],
   },
   { label: 'Blog', href: '/blog' },
@@ -79,10 +75,10 @@ const navLinks = [
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div class={`absolute top-full left-0 mt-1 bg-bg-secondary border border-edge-line border-t-2 border-t-pop-orange opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl ${link.label === 'Shop' ? 'w-[400px] grid grid-cols-2' : link.label === 'Services' ? 'w-[360px] grid grid-cols-2 max-h-[70vh] overflow-y-auto' : 'w-52'}`}>
+              <div class={`absolute top-full left-0 mt-1 bg-bg-secondary border border-edge-line border-t-2 border-t-pop-orange opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl ${link.label === 'Services' ? 'w-[360px] grid grid-cols-2 max-h-[70vh] overflow-y-auto' : 'w-52'}`}>
                 {link.children.map((child, i) => (
                   <a href={child.href}
-                     class={`block px-4 py-2.5 font-montserrat text-xs text-mid-grey hover:text-pop-orange hover:bg-bg-tertiary transition-colors uppercase tracking-wider font-semibold ${link.label === 'Shop' && i === 0 ? 'col-span-2 border-b border-edge-line' : ''}`}>
+                     class={`block px-4 py-2.5 font-montserrat text-xs text-mid-grey hover:text-pop-orange hover:bg-bg-tertiary transition-colors uppercase tracking-wider font-semibold ${i === 0 ? 'border-b border-edge-line' : ''}`}>
                     {child.label}
                   </a>
                 ))}

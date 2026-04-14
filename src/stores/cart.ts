@@ -7,7 +7,7 @@ export interface CartItem {
   productId: string;
   slug: string;
   title: string;
-  collection: string;
+  collection: string; // now stores category value
   format: ProductFormat;
   size: ProductSize;
   quantity: number;

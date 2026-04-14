@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
 import { sanityClient, urlFor } from '../../lib/sanity';
 import { allProductsQuery, productBySlugQuery } from '../../lib/queries';
-import { PRICES, FORMAT_LABELS, SIZE_LABELS, FORMATS, SIZES, COLLECTION_LABELS } from '../../data/products';
+import { PRICES, FORMAT_LABELS, SIZE_LABELS, FORMATS, SIZES, CATEGORY_LABELS, STYLE_LABELS } from '../../data/products';
 import type { ProductFormat, ProductSize } from '../../data/products';
 
 export async function getStaticPaths() {
@@ -14,7 +14,7 @@ export async function getStaticPaths() {
       params: { slug: product.slug },
     }));
   } catch (e) {
-    console.warn('Sanity fetch failed in getStaticPaths for store/[slug] — returning empty paths');
+    console.warn('Sanity fetch failed in getStaticPaths for store/[slug]');
     return [];
   }
 }
@@ -26,7 +26,9 @@ if (!product) {
   return Astro.redirect('/store');
 }
 
-const basePrice = PRICES.poster.small;
+// Use Sanity prices if available, otherwise fallback to static PRICES
+const productPrices = product.prices || PRICES;
+const basePrice = productPrices.poster?.small || PRICES.poster.small;
 const hasImages = product.images && product.images.length > 0;
 const mainImageUrl = hasImages && product.images[0]?.asset
   ? urlFor(product.images[0]).width(800).url()
@@ -34,22 +36,25 @@ const mainImageUrl = hasImages && product.images[0]?.asset
 
 const relatedProducts = product.relatedProducts || [];
 const seoTitle = product.seo?.metaTitle || product.title;
-const seoDesc = product.seo?.metaDescription || product.description;
-const collectionName = product.collectionName || COLLECTION_LABELS[product.collection] || 'Collection';
+const seoDesc = product.seo?.metaDescription || (typeof product.description === 'string' ? product.description : '');
+const categoryLabel = CATEGORY_LABELS[product.category] || product.category || 'Collection';
+const styleLabel = STYLE_LABELS[product.style] || product.style || '';
+const accent = product.accentColor || '#F07828';
+const sizes = product.sizes || { small: '12x8', medium: '16x12', large: '24x16' };
 
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Product",
   "name": product.title,
-  "description": product.description,
+  "description": seoDesc,
   "url": `https://pixel8multimedia.co.uk/store/${product.slug}`,
   ...(mainImageUrl && { "image": mainImageUrl }),
   "brand": { "@type": "Brand", "name": "Pixel8 Multimedia" },
-  "category": `Wall Art > ${collectionName}`,
+  "category": `Wall Art > ${categoryLabel}`,
   "offers": {
     "@type": "AggregateOffer",
-    "lowPrice": PRICES.poster.small.toFixed(2),
-    "highPrice": PRICES['canvas-gallery'].large.toFixed(2),
+    "lowPrice": (productPrices.poster?.small || 9.99).toFixed(2),
+    "highPrice": (productPrices.canvasGallery?.large || 47.99).toFixed(2),
     "priceCurrency": "GBP",
     "availability": "https://schema.org/InStock"
   }
@@ -65,9 +70,9 @@ const jsonLd = {
       <nav class="flex items-center gap-2 font-dm text-sm text-deep-grey mb-8">
         <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
         <span>/</span>
-        <a href="/store" class="hover:text-pop-orange transition-colors">Store</a>
+        <a href="/store" class="hover:text-pop-orange transition-colors">Shop</a>
         <span>/</span>
-        <a href={`/store?collection=${product.collection}`} class="hover:text-pop-orange transition-colors">{collectionName}</a>
+        <a href={`/store?category=${product.category}`} class="hover:text-pop-orange transition-colors">{categoryLabel}</a>
         <span>/</span>
         <span class="text-off-white">{product.title}</span>
       </nav>
@@ -104,9 +109,23 @@ const jsonLd = {
 
         <!-- Details -->
         <div>
-          <span class="style-badge mb-3">{collectionName}</span>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="style-badge">{categoryLabel}</span>
+            {styleLabel && <span class="font-montserrat text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full border border-edge-line" style={`color: ${accent}`}>{styleLabel}</span>}
+          </div>
           <h1 class="font-montserrat text-3xl md:text-4xl font-bold text-off-white mt-2 mb-4">{product.title}</h1>
-          <p class="font-dm text-mid-grey leading-relaxed mb-6">{product.description}</p>
+
+          {/* Render portable text description */}
+          {product.description && (
+            <div class="font-dm text-mid-grey leading-relaxed mb-6">
+              {Array.isArray(product.description)
+                ? product.description.map((block: any) => (
+                    <p>{block.children?.map((child: any) => child.text).join('') || ''}</p>
+                  ))
+                : <p>{product.description}</p>
+              }
+            </div>
+          )}
 
           <div class="price-tag text-2xl mb-8" id="display-price">From £{basePrice.toFixed(2)}</div>
 
@@ -135,11 +154,17 @@ const jsonLd = {
                   data-size={size}
                 >
                   {SIZE_LABELS[size].split(' (')[0]}
-                  <span class="block text-xs text-deep-grey mt-0.5">{SIZE_LABELS[size].match(/\((.+)\)/)?.[1]}</span>
+                  <span class="block text-xs text-deep-grey mt-0.5">{sizes[size] || SIZE_LABELS[size].match(/\((.+)\)/)?.[1]}</span>
                 </button>
               ))}
             </div>
           </div>
+
+          {product.category === 'personalised' && product.personalisationFee && (
+            <p class="text-sm font-semibold mb-4" style={`color: ${accent}`}>
+              + £{product.personalisationFee.toFixed(2)} personalisation fee
+            </p>
+          )}
 
           <!-- Quantity -->
           <div class="mb-8">
@@ -153,8 +178,6 @@ const jsonLd = {
 
           <!-- Add to Cart -->
           <button id="add-to-cart" class="btn-primary w-full text-center text-base py-4 mb-4">Add to Cart — <span id="cart-price">£{basePrice.toFixed(2)}</span></button>
-
-          <a href="/your-way/bespoke" class="block text-center font-dm text-sm text-pixel-cyan hover:underline mt-2">Want a custom version? Commission yours →</a>
 
           <!-- Delivery Info -->
           <div class="mt-8 border-t border-edge-line pt-6 space-y-3 font-dm text-sm text-mid-grey">
@@ -189,26 +212,40 @@ const jsonLd = {
   </section>
 </BaseLayout>
 
-<script define:vars={{ productId: product._id, productSlug: product.slug, productTitle: product.title, productCollection: product.collection, accentColor: product.accentColor || '#F07828', prices: PRICES }}>
+<script type="application/json" id="product-data" set:html={JSON.stringify({
+  productId: product._id,
+  productSlug: product.slug,
+  productTitle: product.title,
+  productCategory: product.category,
+  accentColor: accent,
+  prices: productPrices,
+})} />
+
+<script>
   import { addToCart } from '../../stores/cart';
+
+  const dataEl = document.getElementById('product-data');
+  const { productId, productSlug, productTitle, productCategory, accentColor, prices } = JSON.parse(dataEl?.textContent || '{}');
 
   let selectedFormat = 'poster';
   let selectedSize = 'small';
   let quantity = 1;
 
   function getPrice() {
-    return prices[selectedFormat]?.[selectedSize] || prices.poster.small;
+    return prices[selectedFormat]?.[selectedSize] || prices?.poster?.small || 9.99;
   }
 
   function updateUI() {
     const price = getPrice();
     const total = price * quantity;
-    document.getElementById('display-price').textContent = `£${price.toFixed(2)}`;
-    document.getElementById('cart-price').textContent = `£${total.toFixed(2)}`;
-    document.getElementById('qty-display').textContent = String(quantity);
+    const displayEl = document.getElementById('display-price');
+    const cartEl = document.getElementById('cart-price');
+    const qtyEl = document.getElementById('qty-display');
+    if (displayEl) displayEl.textContent = `£${price.toFixed(2)}`;
+    if (cartEl) cartEl.textContent = `£${total.toFixed(2)}`;
+    if (qtyEl) qtyEl.textContent = String(quantity);
   }
 
-  // Format buttons
   document.querySelectorAll('.format-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.format-btn').forEach((b) => {
@@ -217,12 +254,11 @@ const jsonLd = {
       });
       btn.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
       btn.classList.remove('border-edge-line', 'text-mid-grey');
-      selectedFormat = btn.dataset.format;
+      selectedFormat = (btn as HTMLElement).dataset.format || 'poster';
       updateUI();
     });
   });
 
-  // Size buttons
   document.querySelectorAll('.size-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.size-btn').forEach((b) => {
@@ -231,12 +267,11 @@ const jsonLd = {
       });
       btn.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
       btn.classList.remove('border-edge-line', 'text-mid-grey');
-      selectedSize = btn.dataset.size;
+      selectedSize = (btn as HTMLElement).dataset.size || 'small';
       updateUI();
     });
   });
 
-  // Quantity
   document.getElementById('qty-decrease')?.addEventListener('click', () => {
     if (quantity > 1) { quantity--; updateUI(); }
   });
@@ -244,12 +279,11 @@ const jsonLd = {
     if (quantity < 10) { quantity++; updateUI(); }
   });
 
-  // Thumbnails
   document.querySelectorAll('.thumb-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const url = btn.dataset.url;
+      const url = (btn as HTMLElement).dataset.url;
       const mainImg = document.getElementById('main-image');
-      if (mainImg && url) mainImg.src = url;
+      if (mainImg && url) (mainImg as HTMLImageElement).src = url;
       document.querySelectorAll('.thumb-btn').forEach((b) => {
         b.classList.remove('border-pop-orange');
         b.classList.add('border-edge-line');
@@ -259,18 +293,17 @@ const jsonLd = {
     });
   });
 
-  // Add to cart
   document.getElementById('add-to-cart')?.addEventListener('click', () => {
     addToCart({
-      productId: productId,
+      productId,
       slug: productSlug,
       title: productTitle,
-      collection: productCollection,
-      format: selectedFormat,
-      size: selectedSize,
-      quantity: quantity,
+      collection: productCategory,
+      format: selectedFormat as any,
+      size: selectedSize as any,
+      quantity,
       unitPrice: getPrice(),
-      accentColor: accentColor,
+      accentColor,
     });
   });
 </script>

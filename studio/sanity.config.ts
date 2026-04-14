@@ -5,40 +5,34 @@ import { schemaTypes } from './schemas';
 export default defineConfig({
   name: 'pixel8-multimedia',
   title: 'Pixel8 Multimedia',
-  projectId: 'YOUR_PROJECT_ID',
+  projectId: 'bqb4w421',
   dataset: 'production',
-
   plugins: [
     structureTool({
       structure: (S) =>
         S.list()
           .title('Pixel8 CMS')
           .items([
-            S.listItem().title('Site Settings').icon(() => '⚙️')
+            S.listItem().title('Site Settings')
               .child(S.document().schemaType('siteSettings').documentId('siteSettings')),
             S.divider(),
-            S.listItem().title('Products').icon(() => '🎨')
+            S.listItem().title('Products')
               .child(S.documentTypeList('product').title('Products')),
-            S.listItem().title('Collections').icon(() => '📁')
-              .child(S.documentTypeList('collection').title('Collections')),
-            S.listItem().title('Services').icon(() => '🛠️')
-              .child(S.documentTypeList('service').title('Services')),
+            S.listItem().title('Categories')
+              .child(S.documentTypeList('category').title('Categories')),
             S.divider(),
-            S.listItem().title('Blog Posts').icon(() => '📝')
+            S.listItem().title('Blog Posts')
               .child(S.documentTypeList('blogPost').title('Blog Posts')),
-            S.listItem().title('FAQs').icon(() => '❓')
+            S.listItem().title('FAQs')
               .child(S.documentTypeList('faq').title('FAQs')),
-            S.listItem().title('Testimonials').icon(() => '⭐')
+            S.listItem().title('Testimonials')
               .child(S.documentTypeList('testimonial').title('Testimonials')),
             S.divider(),
-            S.listItem().title('Orders').icon(() => '📦')
+            S.listItem().title('Orders')
               .child(S.documentTypeList('order').title('Orders')),
-            S.listItem().title('Commissions').icon(() => '✏️')
-              .child(S.documentTypeList('commission').title('Commissions')),
           ]),
     }),
   ],
-
   schema: {
     types: schemaTypes,
   },

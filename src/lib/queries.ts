@@ -1,9 +1,10 @@
 // GROQ queries for Pixel8 Multimedia
+// Rewired: collection (reference) → category + style (string fields)
 
-// ─── Collections ──────────────────────────────────────────
+// ─── Categories ───────────────────────────────────────────
 
-export const allCollectionsQuery = `
-  *[_type == "collection"] | order(displayOrder asc) {
+export const allCategoriesQuery = `
+  *[_type == "category"] | order(sortOrder asc) {
     _id,
     name,
     "slug": slug.current,
@@ -11,17 +12,16 @@ export const allCollectionsQuery = `
     tagline,
     coverImage {
       asset-> { _id, url },
-      alt,
-      "lqip": asset->metadata.lqip
+      hotspot
     },
     accentColor,
-    displayOrder,
-    "productCount": count(*[_type == "product" && references(^._id)])
+    sortOrder,
+    "productCount": count(*[_type == "product" && category == ^.slug.current])
   }
 `;
 
-export const collectionBySlugQuery = `
-  *[_type == "collection" && slug.current == $slug][0] {
+export const categoryBySlugQuery = `
+  *[_type == "category" && slug.current == $slug][0] {
     _id,
     name,
     "slug": slug.current,
@@ -29,30 +29,30 @@ export const collectionBySlugQuery = `
     tagline,
     coverImage {
       asset-> { _id, url },
-      alt
+      hotspot
     },
     accentColor,
-    "productCount": count(*[_type == "product" && references(^._id)])
+    seo
   }
 `;
 
 // ─── Products ─────────────────────────────────────────────
 
 export const allProductsQuery = `
-  *[_type == "product"] | order(sortOrder asc) {
+  *[_type == "product"] | order(sortOrder asc, title asc) {
     _id,
     title,
     "slug": slug.current,
-    "collection": collection->slug.current,
-    "collectionName": collection->name,
-    "accentColor": collection->accentColor,
+    category,
+    style,
+    prices,
+    accentColor,
     description,
     images[] {
       asset-> { _id, url },
       alt,
       "lqip": asset->metadata.lqip
     },
-    orientation,
     tags,
     featured,
     sortOrder,
@@ -60,21 +60,20 @@ export const allProductsQuery = `
   }
 `;
 
-export const productsByCollectionQuery = `
-  *[_type == "product" && collection->slug.current == $collection] | order(sortOrder asc) {
+export const productsByCategoryQuery = `
+  *[_type == "product" && category == $category] | order(sortOrder asc, title asc) {
     _id,
     title,
     "slug": slug.current,
-    "collection": collection->slug.current,
-    "collectionName": collection->name,
-    "accentColor": collection->accentColor,
-    description,
+    category,
+    style,
+    prices,
+    accentColor,
     images[] {
       asset-> { _id, url },
       alt,
       "lqip": asset->metadata.lqip
     },
-    orientation,
     tags,
     featured,
     sortOrder
@@ -86,9 +85,8 @@ export const productBySlugQuery = `
     _id,
     title,
     "slug": slug.current,
-    "collection": collection->slug.current,
-    "collectionName": collection->name,
-    "accentColor": collection->accentColor,
+    category,
+    style,
     description,
     images[] {
       asset-> { _id, url },
@@ -96,16 +94,22 @@ export const productBySlugQuery = `
       "lqip": asset->metadata.lqip
     },
     "printFileUrl": printFile.asset->url,
-    orientation,
+    prices,
+    sizes,
+    personalisationFee,
+    stripePriceIds,
+    accentColor,
     tags,
     featured,
     seo,
-    "relatedProducts": *[_type == "product" && collection->slug.current == ^.collection->slug.current && slug.current != $slug][0..3] {
+    "relatedProducts": *[_type == "product" && category == ^.category && slug.current != $slug][0..3] {
       _id,
       title,
       "slug": slug.current,
-      "collection": collection->slug.current,
-      "accentColor": collection->accentColor,
+      category,
+      style,
+      prices,
+      accentColor,
       "images": images[0..0] {
         asset-> { _id, url },
         alt
@@ -119,9 +123,10 @@ export const featuredProductsQuery = `
     _id,
     title,
     "slug": slug.current,
-    "collection": collection->slug.current,
-    "collectionName": collection->name,
-    "accentColor": collection->accentColor,
+    category,
+    style,
+    prices,
+    accentColor,
     images[0] {
       asset-> { _id, url },
       alt
@@ -268,19 +273,5 @@ export const serviceBySlugQuery = `
     hasDigitalDelivery,
     hasPrintOrder,
     hasFileUpload
-  }
-`;
-
-// ─── Commissions ──────────────────────────────────────────
-
-export const commissionsByStatusQuery = `
-  *[_type == "commission" && status == $status] | order(_createdAt desc) {
-    _id,
-    customerName,
-    customerEmail,
-    serviceType,
-    status,
-    brief,
-    _createdAt
   }
 `;

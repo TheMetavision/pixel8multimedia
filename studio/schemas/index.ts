@@ -1,5 +1,5 @@
 import product from './product';
-import collection from './collection';
+import category from './category';
 import blogPost from './blogPost';
 import faq from './faq';
 import testimonial from './testimonial';
@@ -10,7 +10,7 @@ import siteSettings from './siteSettings';
 
 export const schemaTypes = [
   product,
-  collection,
+  category,
   service,
   blogPost,
   faq,
