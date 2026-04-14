@@ -221,6 +221,56 @@ export const siteSettingsQuery = `
   }
 `;
 
+// ─── Services ─────────────────────────────────────────────
+
+export const allServicesQuery = `
+  *[_type == "service"] | order(sortOrder asc) {
+    _id,
+    title,
+    "slug": slug.current,
+    description,
+    sortOrder
+  }
+`;
+
+export const serviceBySlugQuery = `
+  *[_type == "service" && slug.current == $slug][0] {
+    _id,
+    title,
+    "slug": slug.current,
+    description,
+    extendedDescription,
+    examples[] {
+      label,
+      images[] {
+        image {
+          asset-> { _id, url },
+          "lqip": asset->metadata.lqip
+        },
+        tag
+      },
+      videos[] {
+        youtubeId,
+        tag,
+        title
+      },
+      audioTracks[] {
+        title,
+        coverImage {
+          asset-> { _id, url }
+        },
+        "audioUrl": audioFile.asset->url,
+        duration
+      }
+    },
+    steps[] { text },
+    importantNote,
+    hasDigitalDelivery,
+    hasPrintOrder,
+    hasFileUpload
+  }
+`;
+
 // ─── Commissions ──────────────────────────────────────────
 
 export const commissionsByStatusQuery = `

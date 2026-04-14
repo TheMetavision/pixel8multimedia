@@ -1,0 +1,173 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { sanityClient, urlFor } from '../../lib/sanity';
+import { allServicesQuery, serviceBySlugQuery } from '../../lib/queries';
+
+export async function getStaticPaths() {
+  try {
+    const services = await sanityClient.fetch(allServicesQuery);
+    if (!services || services.length === 0) return [];
+    return services.map((s: any) => ({
+      params: { slug: s.slug },
+    }));
+  } catch (e) {
+    console.warn('Sanity fetch failed for services getStaticPaths');
+    return [];
+  }
+}
+
+const { slug } = Astro.params;
+const service = await sanityClient.fetch(serviceBySlugQuery, { slug });
+
+if (!service) {
+  return Astro.redirect('/services');
+}
+---
+
+<BaseLayout
+  title={service.title}
+  description={service.description}
+>
+
+  <!-- Hero -->
+  <section class="colour-block-orange py-12">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h1 class="font-montserrat text-4xl md:text-5xl font-bold mb-4">{service.title}</h1>
+      <p class="font-dm text-lg leading-relaxed">{service.description}</p>
+      {service.extendedDescription && (
+        <p class="font-dm text-base leading-relaxed mt-4 opacity-90">{service.extendedDescription}</p>
+      )}
+    </div>
+  </section>
+
+  <!-- Gallery Examples -->
+  {service.examples && service.examples.length > 0 && (
+    <section class="py-12 bg-bg-primary">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {service.examples.map((example: any, exIdx: number) => (
+          <div class={`${exIdx > 0 ? 'mt-16 pt-16 border-t border-edge-line' : ''}`}>
+
+            {/* Images Grid */}
+            {example.images && example.images.length > 0 && (
+              <div class={`grid gap-4 mb-8 ${example.images.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                {example.images.map((img: any) => (
+                  <div class="relative">
+                    {img.tag && (
+                      <span class="absolute top-2 left-2 bg-pop-orange text-black font-montserrat text-xs font-bold px-2 py-1 rounded z-10">{img.tag}</span>
+                    )}
+                    {img.image?.asset ? (
+                      <img
+                        src={urlFor(img.image).width(600).url()}
+                        alt={img.tag || service.title}
+                        class="w-full aspect-square object-cover rounded-lg border border-edge-line"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div class="w-full aspect-square bg-bg-secondary rounded-lg border border-edge-line flex items-center justify-center">
+                        <span class="font-montserrat text-xs text-deep-grey uppercase">{img.tag || 'Image'}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* YouTube Videos Grid */}
+            {example.videos && example.videos.length > 0 && (
+              <div class={`grid gap-4 mb-8 ${example.videos.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                {example.videos.map((video: any) => (
+                  <div>
+                    {video.tag && (
+                      <p class="font-montserrat text-xs font-bold text-pop-orange uppercase tracking-wider mb-2">{video.tag}</p>
+                    )}
+                    <div class="aspect-video rounded-lg overflow-hidden border border-edge-line">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${video.youtubeId}`}
+                        title={video.title || video.tag || 'Video'}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                        class="w-full h-full"
+                        loading="lazy"
+                      ></iframe>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Audio Tracks (for Your Song Your Story) */}
+            {example.audioTracks && example.audioTracks.length > 0 && (
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                {example.audioTracks.map((track: any) => (
+                  <div class="bg-bg-secondary rounded-lg border border-edge-line overflow-hidden">
+                    {track.coverImage?.asset && (
+                      <img src={urlFor(track.coverImage).width(400).height(400).url()} alt={track.title} class="w-full aspect-square object-cover" loading="lazy" />
+                    )}
+                    <div class="p-3">
+                      <p class="font-dm text-sm text-off-white font-medium truncate">{track.title}</p>
+                      {track.duration && <p class="font-mono text-xs text-deep-grey">{track.duration}</p>}
+                      {track.audioUrl && (
+                        <audio controls class="w-full mt-2 h-8" preload="none">
+                          <source src={track.audioUrl} />
+                        </audio>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <!-- How It Works -->
+  {service.steps && service.steps.length > 0 && (
+    <section class="py-12 bg-bg-secondary">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="font-montserrat text-2xl font-bold text-off-white mb-6">How It Works:</h2>
+        <ol class="space-y-3">
+          {service.steps.map((step: any, i: number) => (
+            <li class="flex items-start gap-3">
+              <span class="flex-shrink-0 w-7 h-7 bg-pop-orange text-black font-montserrat font-bold text-sm rounded flex items-center justify-center">{i + 1}</span>
+              <span class="font-dm text-mid-grey leading-relaxed">{step.text}</span>
+            </li>
+          ))}
+        </ol>
+
+        {service.importantNote && (
+          <div class="mt-6 p-4 bg-bg-tertiary border-l-4 border-pop-orange rounded">
+            <p class="font-montserrat text-sm font-bold text-pop-orange mb-1">⚠️ Important Note</p>
+            <p class="font-dm text-sm text-mid-grey">{service.importantNote}</p>
+          </div>
+        )}
+      </div>
+    </section>
+  )}
+
+  <!-- Order CTAs -->
+  <section class="py-12 bg-bg-primary">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+      {service.hasDigitalDelivery && (
+        <a href="/contact" class="flex items-center gap-2 font-dm text-lg text-pixel-cyan hover:underline">
+          <span>👉</span> Place Your Digital Delivery Only Order Here
+        </a>
+      )}
+      {service.hasPrintOrder && (
+        <a href="/contact" class="flex items-center gap-2 font-dm text-lg text-pixel-cyan hover:underline">
+          <span>👉</span> Place Your Poster OR Canvas Order Here
+        </a>
+      )}
+      {service.hasFileUpload && (
+        <div class="pt-4">
+          <a href="/contact" class="inline-block bg-bg-primary border-2 border-off-white text-off-white font-montserrat font-bold text-sm uppercase tracking-wider px-8 py-3 hover:bg-off-white hover:text-bg-primary transition-all">
+            Upload Your Files Here
+          </a>
+        </div>
+      )}
+    </div>
+  </section>
+
+</BaseLayout>

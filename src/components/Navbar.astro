@@ -1,15 +1,38 @@
 ---
+import { sanityClient } from '../lib/sanity';
+import { allServicesQuery } from '../lib/queries';
+
+let sanityServices: any[] = [];
+try {
+  sanityServices = await sanityClient.fetch(allServicesQuery) || [];
+} catch (e) {
+  // Sanity unavailable — use fallback
+}
+
+const serviceChildren = sanityServices.length > 0
+  ? sanityServices.map((s: any) => ({ label: s.title, href: `/services/${s.slug}` }))
+  : [
+      { label: 'Cartoonify Me!', href: '/services/cartoonify-me' },
+      { label: 'Stills to Reels', href: '/services/stills-to-reels' },
+      { label: 'The Missing Moment', href: '/services/the-missing-moment' },
+      { label: 'Past Perfect', href: '/services/past-perfect' },
+      { label: 'Your Song Your Story', href: '/services/your-song-your-story' },
+      { label: 'Story Of Your Life', href: '/services/story-of-your-life' },
+      { label: 'Back in Time', href: '/services/back-in-time' },
+      { label: 'The Day I Met...', href: '/services/the-day-i-met' },
+      { label: 'Scene Stealer', href: '/services/scene-stealer' },
+      { label: 'Crayon To Creation', href: '/services/crayon-to-creation' },
+      { label: 'Star Power', href: '/services/star-power' },
+      { label: 'Prankz!', href: '/services/prankz' },
+    ];
+
 const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
   {
     label: 'Services',
-    href: '/your-way',
-    children: [
-      { label: 'Photo Restoration', href: '/your-way/photo-restoration' },
-      { label: 'Stills to Reels', href: '/your-way/stills-to-reels' },
-      { label: 'Bespoke Commission', href: '/your-way/bespoke' },
-    ],
+    href: '/services',
+    children: serviceChildren,
   },
   {
     label: 'Shop',
@@ -56,7 +79,7 @@ const navLinks = [
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div class={`absolute top-full left-0 mt-1 bg-bg-secondary border border-edge-line border-t-2 border-t-pop-orange opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl ${link.label === 'Shop' ? 'w-[400px] grid grid-cols-2' : 'w-52'}`}>
+              <div class={`absolute top-full left-0 mt-1 bg-bg-secondary border border-edge-line border-t-2 border-t-pop-orange opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl ${link.label === 'Shop' ? 'w-[400px] grid grid-cols-2' : link.label === 'Services' ? 'w-[360px] grid grid-cols-2 max-h-[70vh] overflow-y-auto' : 'w-52'}`}>
                 {link.children.map((child, i) => (
                   <a href={child.href}
                      class={`block px-4 py-2.5 font-montserrat text-xs text-mid-grey hover:text-pop-orange hover:bg-bg-tertiary transition-colors uppercase tracking-wider font-semibold ${link.label === 'Shop' && i === 0 ? 'col-span-2 border-b border-edge-line' : ''}`}>

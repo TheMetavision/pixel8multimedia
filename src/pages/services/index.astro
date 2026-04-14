@@ -1,0 +1,81 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { sanityClient } from '../lib/sanity';
+import { allServicesQuery } from '../lib/queries';
+
+let services: any[] = [];
+
+try {
+  services = await sanityClient.fetch(allServicesQuery);
+} catch (e) {
+  console.warn('Sanity fetch failed for services page');
+}
+
+// Fallback if Sanity is empty
+const fallbackServices = [
+  { title: 'Cartoonify Me!', slug: 'cartoonify-me', description: 'Turn your photo into a hand-crafted cartoon masterpiece in your favourite style.' },
+  { title: 'Stills to Reels', slug: 'stills-to-reels', description: 'Watch your favourite snapshot come alive! We animate your photo into a short cinematic scene.' },
+  { title: 'The Missing Moment', slug: 'the-missing-moment', description: 'Add someone special into an existing photo — a loved one who has passed, or a friend who missed your wedding.' },
+  { title: 'Past Perfect', slug: 'past-perfect', description: 'Restore treasured memories with professional photo repair and colourisation.' },
+  { title: 'Your Song Your Story', slug: 'your-song-your-story', description: 'Turn memories, milestones, or inside jokes into an original song.' },
+  { title: 'Story Of Your Life', slug: 'story-of-your-life', description: 'Transform a lifetime of photographs into one beautifully crafted cinematic story.' },
+  { title: 'Back in Time', slug: 'back-in-time', description: 'See yourself evolve across eras. From the 1950s through to the 2000s.' },
+  { title: 'The Day I Met...', slug: 'the-day-i-met', description: 'Creates a believable, cinematic image of you alongside your favourite celebrity.' },
+  { title: 'Scene Stealer', slug: 'scene-stealer', description: "Become the star of cinema's most iconic scenes." },
+  { title: 'Crayon To Creation', slug: 'crayon-to-creation', description: "Turn your child's imagination into something truly special." },
+  { title: 'Star Power', slug: 'star-power', description: 'Turn your child or pet into the star of their very own blockbuster.' },
+  { title: 'Prankz!', slug: 'prankz', description: 'Prank your friends with images that look way too real to ignore.' },
+];
+
+const displayServices = services.length > 0 ? services : fallbackServices;
+---
+
+<BaseLayout
+  title="Services — Your Way"
+  description="Pixel8 Multimedia creative services. Photo transformation, animation, restoration, custom songs, and more. UK-based, worldwide delivery."
+>
+  <!-- Hero -->
+  <section class="bg-bg-secondary py-16 border-b border-edge-line">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center reveal">
+      <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">Your Way</span>
+      <h1 class="section-heading mt-2 mb-4">Our Services</h1>
+      <p class="font-dm text-mid-grey text-lg max-w-2xl mx-auto">
+        Your vision, our craft. From cartoon transformations to cinematic animations, photo restoration to custom songs — every piece is uniquely yours.
+      </p>
+    </div>
+  </section>
+
+  <!-- Services Grid -->
+  <section class="py-16 bg-bg-primary">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {displayServices.map((service: any, i: number) => (
+          <a href={`/services/${service.slug}`}
+             class="bg-bg-secondary border border-edge-line rounded-lg p-6 hover:border-pop-orange hover:shadow-glow-orange transition-all duration-300 group reveal"
+             style={`transition-delay: ${Math.min(i * 50, 300)}ms`}>
+            <h3 class="font-montserrat text-lg font-bold text-off-white mb-2 group-hover:text-pop-orange transition-colors">{service.title}</h3>
+            <p class="font-dm text-sm text-mid-grey leading-relaxed line-clamp-3">{service.description}</p>
+            <span class="inline-block mt-4 font-montserrat text-xs font-bold text-pop-orange uppercase tracking-wider">View Service →</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- How Ordering Works -->
+  <section class="colour-block-orange py-16">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="font-montserrat text-3xl font-bold mb-8 reveal">How Ordering Works</h2>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div class="bg-black/10 rounded-lg p-6 reveal">
+          <h3 class="font-montserrat text-xl font-bold mb-3">Digital Delivery</h3>
+          <p class="font-dm leading-relaxed">Receive your finished creation as a high-resolution digital file — ready to download, share, or use however you like.</p>
+        </div>
+        <div class="bg-black/10 rounded-lg p-6 reveal stagger-1">
+          <h3 class="font-montserrat text-xl font-bold mb-3">Print / Canvas</h3>
+          <p class="font-dm leading-relaxed">Want it on your wall? We'll produce your artwork as a premium poster print or canvas — made in-house at our UK studio.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
