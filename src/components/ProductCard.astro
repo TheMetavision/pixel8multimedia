@@ -1,0 +1,51 @@
+---
+import { urlFor } from '../lib/sanity';
+import { PRICES } from '../data/products';
+
+interface Props {
+  product: {
+    title: string;
+    slug: string;
+    collection: string;
+    collectionName?: string;
+    accentColor?: string;
+    images?: any[];
+  };
+}
+
+const { product } = Astro.props;
+const imageUrl = product.images?.[0]?.asset ? urlFor(product.images[0]).width(600).height(800).url() : null;
+const lowestPrice = PRICES.poster.small;
+const accent = product.accentColor || '#F07828';
+---
+
+<a href={`/store/${product.slug}`} class="product-card group block">
+  <div class="aspect-[3/4] relative overflow-hidden">
+    {imageUrl ? (
+      <img src={imageUrl} alt={product.title} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+    ) : (
+      <div class="img-placeholder w-full h-full">
+        <span class="font-montserrat text-xs uppercase tracking-widest">{product.title}</span>
+      </div>
+    )}
+    <div class="absolute inset-0 bg-bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
+      <span class="font-montserrat text-xs font-bold uppercase tracking-widest text-off-white border border-off-white/50 px-4 py-2 rounded hover:bg-off-white hover:text-black transition-colors">Quick View</span>
+    </div>
+  </div>
+  <div class="p-3 flex items-start justify-between gap-2">
+    <div class="min-w-0">
+      <h3 class="font-dm text-sm text-off-white font-medium truncate">{product.title}</h3>
+      {product.collectionName && (
+        <span class="style-badge mt-1">{product.collectionName}</span>
+      )}
+    </div>
+    <span class="price-tag text-sm flex-shrink-0">From £{lowestPrice.toFixed(2)}</span>
+  </div>
+</a>
+
+<style define:vars={{ accent }}>
+  .product-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 30px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+</style>

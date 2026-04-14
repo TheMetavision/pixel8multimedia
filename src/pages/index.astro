@@ -1,0 +1,297 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProductCard from '../components/ProductCard.astro';
+import FAQAccordion from '../components/FAQAccordion.astro';
+import TestimonialCarousel from '../components/TestimonialCarousel.astro';
+import NewsletterSignup from '../components/NewsletterSignup.astro';
+import { sanityClient, urlFor } from '../lib/sanity';
+import { featuredProductsQuery, allCollectionsQuery, testimonialsQuery, faqsByPageQuery } from '../lib/queries';
+import { PRICES, COLLECTIONS } from '../data/products';
+
+let featuredProducts: any[] = [];
+let collections: any[] = [];
+let testimonials: any[] = [];
+let faqs: any[] = [];
+
+try {
+  [featuredProducts, collections, testimonials, faqs] = await Promise.all([
+    sanityClient.fetch(featuredProductsQuery),
+    sanityClient.fetch(allCollectionsQuery),
+    sanityClient.fetch(testimonialsQuery),
+    sanityClient.fetch(faqsByPageQuery, { page: 'store' }),
+  ]);
+} catch (e) {
+  console.warn('Sanity fetch failed, using fallback data');
+  collections = COLLECTIONS.map((c) => ({ ...c, productCount: 0 }));
+}
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": ["Organization", "LocalBusiness"],
+    "name": "Pixel8 Multimedia",
+    "url": "https://pixel8multimedia.co.uk",
+    "description": "UK-based pop culture wall art. Premium canvas prints, poster prints, photo restoration, and custom commissions.",
+    "address": { "@type": "PostalAddress", "addressLocality": "Southend-on-Sea", "addressRegion": "Essex", "addressCountry": "GB" },
+    "sameAs": ["https://facebook.com/pixel8multimedia", "https://instagram.com/pixel8multimedia", "https://x.com/pixel8multi", "https://tiktok.com/@pixel8multimedia"],
+    "parentOrganization": { "@type": "Organization", "name": "The Metavision Multimedia Limited", "url": "https://themetavision.co.uk" },
+    "priceRange": "£9.99 - £200+"
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Pixel8 Multimedia",
+    "url": "https://pixel8multimedia.co.uk"
+  }
+];
+---
+
+<BaseLayout
+  title="Pixel8 Multimedia — Premium Pop Culture Wall Art"
+  description="Premium pop culture wall art and bespoke photo transformations. Canvas prints, poster prints, and custom commissions across 10+ art styles. UK-made, worldwide delivery."
+  jsonLd={jsonLd}
+>
+
+  <!-- ===== HERO ===== -->
+  <section class="relative min-h-[90vh] flex items-center bg-bg-primary overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 grid lg:grid-cols-2 gap-12 items-center">
+      <div class="reveal">
+        <span class="font-mono text-xs text-pop-orange uppercase tracking-widest mb-4 block">UK Made · Worldwide Delivery</span>
+        <h1 class="font-montserrat text-5xl md:text-6xl lg:text-7xl font-bold text-off-white leading-tight mb-6">
+          Where Pop Culture Meets
+          <span class="logo-gradient block">Pixel-Perfect Art</span>
+        </h1>
+        <p class="font-dm text-lg text-mid-grey leading-relaxed mb-8 max-w-xl">
+          Bold pop culture wall art and bespoke AI photo transformation. Shop canvas prints or commission personalised artwork. UK & worldwide delivery.
+        </p>
+        <div class="flex flex-wrap gap-4">
+          <a href="/store" class="btn-primary">Explore Collections</a>
+          <a href="/services" class="btn-secondary">Commission Yours</a>
+        </div>
+        <div class="flex items-center gap-6 mt-8 text-sm text-mid-grey font-dm">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-pop-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            500+ Artworks
+          </span>
+          <span class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-pixel-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            10+ Styles
+          </span>
+          <span class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-hot-magenta" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Made In-House
+          </span>
+        </div>
+      </div>
+      <div class="hidden lg:block reveal stagger-2">
+        <div class="w-full aspect-[3/4] bg-bg-secondary rounded-lg border border-edge-line flex items-center justify-center">
+          <span class="font-montserrat text-sm text-deep-grey uppercase tracking-widest">Hero Artwork</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== OUR WAY / YOUR WAY ===== -->
+  <section class="py-20 bg-bg-primary">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8">
+      <a href="/store" class="group bg-bg-secondary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange hover:shadow-glow-orange transition-all duration-300 reveal">
+        <div class="aspect-[16/9] bg-bg-tertiary flex items-center justify-center">
+          <span class="font-montserrat text-sm text-deep-grey uppercase tracking-widest">Collection Preview</span>
+        </div>
+        <div class="p-6">
+          <h2 class="font-montserrat text-2xl font-bold text-off-white mb-2">Our Way</h2>
+          <p class="font-dm text-mid-grey text-sm leading-relaxed mb-4">Explore our curated pop culture collections across 10+ art styles. Canvas prints and posters ready to ship.</p>
+          <span class="font-montserrat text-sm font-bold text-pop-orange uppercase tracking-wider">Browse Collections →</span>
+        </div>
+      </a>
+      <a href="/services" class="group bg-bg-secondary border border-edge-line rounded-lg overflow-hidden hover:border-pixel-cyan hover:shadow-glow-cyan transition-all duration-300 reveal stagger-1">
+        <div class="aspect-[16/9] bg-bg-tertiary flex items-center justify-center">
+          <span class="font-montserrat text-sm text-deep-grey uppercase tracking-widest">Custom Work Preview</span>
+        </div>
+        <div class="p-6">
+          <h2 class="font-montserrat text-2xl font-bold text-off-white mb-2">Your Way</h2>
+          <p class="font-dm text-mid-grey text-sm leading-relaxed mb-4">Commission something uniquely yours. Photo restoration, Stills to Reels animation, and bespoke artwork.</p>
+          <span class="font-montserrat text-sm font-bold text-pixel-cyan uppercase tracking-wider">Start Your Project →</span>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ===== COLLECTIONS ===== -->
+  <section class="py-20 bg-bg-secondary">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-end justify-between mb-12 reveal">
+        <div>
+          <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">10+ Art Styles</span>
+          <h2 class="section-heading mt-2">Collections</h2>
+        </div>
+        <a href="/store" class="font-montserrat text-sm font-bold text-pop-orange uppercase tracking-wider hover:underline hidden md:block">View All →</a>
+      </div>
+      <div class="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory">
+        {(collections.length > 0 ? collections : COLLECTIONS).map((col: any, i: number) => (
+          <a href={`/store/${col.slug}`}
+             class={`flex-shrink-0 w-48 bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange transition-all duration-300 reveal stagger-${Math.min(i + 1, 4)} snap-start`}>
+            <div class="aspect-[4/3] bg-bg-tertiary flex items-center justify-center">
+              {col.coverImage?.asset ? (
+                <img src={urlFor(col.coverImage).width(400).height(300).url()} alt={col.name} class="w-full h-full object-cover" loading="lazy" />
+              ) : (
+                <span class="font-montserrat text-[0.6rem] text-deep-grey uppercase tracking-widest text-center px-2">{col.name}</span>
+              )}
+            </div>
+            <div class="p-3">
+              <h3 class="font-montserrat text-sm font-bold text-off-white">{col.name}</h3>
+              <p class="font-dm text-xs text-deep-grey mt-0.5">{col.tagline || col.description}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+      <a href="/store" class="font-montserrat text-sm font-bold text-pop-orange uppercase tracking-wider hover:underline mt-6 block md:hidden">View All →</a>
+    </div>
+  </section>
+
+  <!-- ===== MADE TO ORDER (Orange block) ===== -->
+  <section class="colour-block-orange py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div class="reveal">
+          <h2 class="font-montserrat text-4xl md:text-5xl font-bold mb-6">Made to Order</h2>
+          <p class="font-dm text-lg leading-relaxed mb-6">
+            Every piece is crafted to stand out — designed for those who want their walls to tell a story. Each artwork is produced individually for you.
+          </p>
+          <div class="space-y-3 font-dm">
+            <p><strong>Three sizes:</strong> Small (12×8" / 12×12") · Medium (16×12" / 16×16") · Large (24×16" / 20×20")</p>
+            <p><strong>Three finishes:</strong> Poster Print · Canvas (Standard Frame) · Canvas (Gallery Frame)</p>
+          </div>
+          <a href="/store" class="inline-block mt-8 bg-black text-pop-orange font-montserrat font-bold text-sm uppercase tracking-wider px-8 py-3 hover:bg-bg-secondary transition-colors">Shop Now</a>
+        </div>
+        <div class="grid grid-cols-2 gap-4 reveal stagger-2">
+          <div class="aspect-[3/4] bg-black/10 rounded-lg flex items-center justify-center"><span class="font-montserrat text-xs text-black/40 uppercase">Room Mockup</span></div>
+          <div class="aspect-[3/4] bg-black/10 rounded-lg flex items-center justify-center"><span class="font-montserrat text-xs text-black/40 uppercase">Room Mockup</span></div>
+          <div class="aspect-[3/4] bg-black/10 rounded-lg flex items-center justify-center"><span class="font-montserrat text-xs text-black/40 uppercase">Room Mockup</span></div>
+          <div class="aspect-[3/4] bg-black/10 rounded-lg flex items-center justify-center"><span class="font-montserrat text-xs text-black/40 uppercase">Room Mockup</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PRICING (Cyan block) ===== -->
+  <section class="colour-block-cyan py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div class="reveal">
+          <div class="aspect-[4/3] bg-black/10 rounded-lg flex items-center justify-center">
+            <span class="font-montserrat text-xs text-black/40 uppercase">Studio / Printer Photo</span>
+          </div>
+        </div>
+        <div class="reveal stagger-1">
+          <h2 class="font-montserrat text-4xl md:text-5xl font-bold mb-8">Pricing</h2>
+          <div class="space-y-6">
+            <div>
+              <h3 class="font-montserrat font-bold text-lg mb-2">Poster Prints</h3>
+              <p class="font-mono text-sm">Small — £{PRICES.poster.small.toFixed(2)} · Medium — £{PRICES.poster.medium.toFixed(2)} · Large — £{PRICES.poster.large.toFixed(2)}</p>
+            </div>
+            <div>
+              <h3 class="font-montserrat font-bold text-lg mb-2">Canvas (Standard Frame)</h3>
+              <p class="font-mono text-sm">Small — £{PRICES['canvas-standard'].small.toFixed(2)} · Medium — £{PRICES['canvas-standard'].medium.toFixed(2)} · Large — £{PRICES['canvas-standard'].large.toFixed(2)}</p>
+            </div>
+            <div>
+              <h3 class="font-montserrat font-bold text-lg mb-2">Canvas (Gallery Frame)</h3>
+              <p class="font-mono text-sm">Small — £{PRICES['canvas-gallery'].small.toFixed(2)} · Medium — £{PRICES['canvas-gallery'].medium.toFixed(2)} · Large — £{PRICES['canvas-gallery'].large.toFixed(2)}</p>
+            </div>
+          </div>
+          <p class="font-dm text-sm mt-6 opacity-70">Free UK P&P on orders over £50. International shipping calculated at checkout.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FEATURED PRODUCTS ===== -->
+  {featuredProducts.length > 0 && (
+    <section class="py-20 bg-bg-primary">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-end justify-between mb-12 reveal">
+          <div>
+            <span class="font-mono text-xs text-hot-magenta uppercase tracking-widest">Fresh From the Studio</span>
+            <h2 class="section-heading mt-2">Latest Drops</h2>
+          </div>
+          <a href="/store" class="font-montserrat text-sm font-bold text-pop-orange uppercase tracking-wider hover:underline hidden md:block">View All →</a>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {featuredProducts.map((product: any) => (
+            <div class="reveal">
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- ===== SERVICES ===== -->
+  <section class="py-20 bg-bg-secondary">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12 reveal">
+        <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">Your Way</span>
+        <h2 class="section-heading mt-2">Custom Services</h2>
+      </div>
+      <div class="grid md:grid-cols-3 gap-8">
+        <a href="/your-way/photo-restoration" class="bg-bg-primary border border-edge-line rounded-lg p-8 hover:border-pop-orange hover:shadow-glow-orange transition-all duration-300 reveal">
+          <div class="w-12 h-12 bg-pop-orange/10 rounded-lg flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-pop-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <h3 class="font-montserrat text-xl font-bold text-off-white mb-2">Photo Restoration</h3>
+          <p class="font-dm text-sm text-mid-grey leading-relaxed mb-4">Breathe new life into treasured memories. AI-enhanced restoration with human artistry.</p>
+          <span class="font-mono text-sm text-pop-orange">From £25</span>
+        </a>
+        <a href="/your-way/stills-to-reels" class="bg-bg-primary border border-edge-line rounded-lg p-8 hover:border-pixel-cyan hover:shadow-glow-cyan transition-all duration-300 reveal stagger-1">
+          <div class="w-12 h-12 bg-pixel-cyan/10 rounded-lg flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-pixel-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          </div>
+          <h3 class="font-montserrat text-xl font-bold text-off-white mb-2">Stills to Reels</h3>
+          <p class="font-dm text-sm text-mid-grey leading-relaxed mb-4">Transform static images into dynamic animations you can share, showcase, or keep forever.</p>
+          <span class="font-mono text-sm text-pixel-cyan">From £35</span>
+        </a>
+        <a href="/your-way/bespoke" class="bg-bg-primary border border-edge-line rounded-lg p-8 hover:border-hot-magenta hover:shadow-glow-magenta transition-all duration-300 reveal stagger-2">
+          <div class="w-12 h-12 bg-hot-magenta/10 rounded-lg flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-hot-magenta" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+          </div>
+          <h3 class="font-montserrat text-xl font-bold text-off-white mb-2">Bespoke Commission</h3>
+          <p class="font-dm text-sm text-mid-grey leading-relaxed mb-4">Your vision, our craft. Custom pop culture artwork made to your exact brief.</p>
+          <span class="font-mono text-sm text-hot-magenta">From £45</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FAQ (Magenta block) ===== -->
+  {faqs.length > 0 && (
+    <section class="colour-block-magenta py-20">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="font-montserrat text-4xl md:text-5xl font-bold mb-8 reveal">FAQs</h2>
+        <FAQAccordion faqs={faqs} dark={false} />
+        <a href="/contact" class="inline-block mt-8 bg-black text-hot-magenta font-montserrat font-bold text-sm uppercase tracking-wider px-8 py-3 hover:bg-bg-secondary transition-colors reveal">Got a Question? →</a>
+      </div>
+    </section>
+  )}
+
+  <!-- ===== TESTIMONIALS ===== -->
+  {testimonials.length > 0 && (
+    <section class="py-20 bg-bg-primary">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12 reveal">
+          <h2 class="section-heading">What Our Customers Say</h2>
+        </div>
+        <TestimonialCarousel testimonials={testimonials} />
+      </div>
+    </section>
+  )}
+
+  <!-- ===== NEWSLETTER ===== -->
+  <section class="py-20 bg-bg-secondary">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <NewsletterSignup />
+    </div>
+  </section>
+
+</BaseLayout>

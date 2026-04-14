@@ -1,0 +1,172 @@
+---
+---
+
+<div id="cart-overlay" class="fixed inset-0 bg-bg-primary bg-opacity-70 z-[60] hidden transition-opacity duration-300" aria-hidden="true"></div>
+
+<aside id="cart-panel"
+       class="fixed top-0 right-0 h-full w-full sm:w-96 bg-bg-secondary border-l border-edge-line z-[70] transform translate-x-full transition-transform duration-300 flex flex-col"
+       role="dialog" aria-label="Shopping cart">
+
+  <div class="flex items-center justify-between p-5 border-b border-edge-line">
+    <h2 class="font-montserrat text-xl font-bold text-off-white uppercase tracking-wider">Your Cart</h2>
+    <button id="cart-close" class="text-mid-grey hover:text-pop-orange transition-colors p-1">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <div id="cart-items-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div id="cart-empty" class="flex flex-col items-center justify-center h-full text-center py-16">
+      <svg class="w-16 h-16 text-edge-line mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+      <p class="font-montserrat text-lg text-mid-grey font-semibold">Your cart is empty</p>
+      <p class="font-dm text-sm text-deep-grey mt-1">Add some art to get started</p>
+    </div>
+    <div id="cart-list" class="hidden space-y-4"></div>
+  </div>
+
+  <div id="cart-footer" class="hidden border-t border-edge-line p-5 bg-bg-primary">
+    <div class="flex justify-between items-center mb-1">
+      <span class="font-montserrat text-sm text-mid-grey uppercase tracking-wider font-semibold">Subtotal</span>
+      <span id="cart-subtotal" class="font-mono text-xl text-pop-orange font-bold">£0.00</span>
+    </div>
+    <p class="font-dm text-deep-grey text-xs mb-4">Free UK P&P on orders over £50. Made to order.</p>
+    <button id="checkout-btn" class="btn-primary w-full text-center block mb-3">Checkout</button>
+    <p id="checkout-error" class="hidden font-dm text-red-500 text-xs text-center mb-2"></p>
+    <button id="continue-shopping" class="w-full text-center font-dm text-sm text-mid-grey hover:text-pixel-cyan transition-colors py-2">
+      Continue Shopping
+    </button>
+  </div>
+</aside>
+
+<script>
+  import { cartItems, cartOpen, cartTotal, removeFromCart, updateQuantity, clearCart } from '../stores/cart';
+  import { FORMAT_LABELS, SIZE_LABELS } from '../data/products';
+  import type { ProductFormat, ProductSize } from '../data/products';
+
+  const overlay = document.getElementById('cart-overlay');
+  const panel = document.getElementById('cart-panel');
+  const closeBtn = document.getElementById('cart-close');
+  const continueBtn = document.getElementById('continue-shopping');
+  const cartListEl = document.getElementById('cart-list');
+  const cartEmptyEl = document.getElementById('cart-empty');
+  const cartFooterEl = document.getElementById('cart-footer');
+  const cartSubtotalEl = document.getElementById('cart-subtotal');
+  const checkoutBtn = document.getElementById('checkout-btn');
+  const checkoutError = document.getElementById('checkout-error');
+
+  function openCart() {
+    panel?.classList.remove('translate-x-full');
+    overlay?.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeCart() {
+    panel?.classList.add('translate-x-full');
+    overlay?.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  cartOpen.subscribe((isOpen) => isOpen ? openCart() : closeCart());
+  closeBtn?.addEventListener('click', () => cartOpen.set(false));
+  overlay?.addEventListener('click', () => cartOpen.set(false));
+  continueBtn?.addEventListener('click', () => cartOpen.set(false));
+
+  function renderCart(items: typeof cartItems extends { get(): infer T } ? T : never) {
+    if (!cartListEl || !cartEmptyEl || !cartFooterEl) return;
+
+    if (items.length === 0) {
+      cartListEl.classList.add('hidden');
+      cartEmptyEl.classList.remove('hidden');
+      cartFooterEl.classList.add('hidden');
+      return;
+    }
+
+    cartListEl.classList.remove('hidden');
+    cartEmptyEl.classList.add('hidden');
+    cartFooterEl.classList.remove('hidden');
+
+    cartListEl.innerHTML = items.map((item) => `
+      <div class="bg-bg-tertiary rounded-lg p-3 flex gap-3" data-id="${item.id}">
+        <div class="w-16 h-16 bg-bg-primary rounded flex-shrink-0 flex items-center justify-center">
+          <span class="font-montserrat text-[0.5rem] text-deep-grey uppercase tracking-wider text-center leading-tight">${item.title}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h4 class="font-dm text-sm text-off-white font-medium truncate">${item.title}</h4>
+          <p class="font-dm text-xs text-deep-grey mt-0.5">${FORMAT_LABELS[item.format as ProductFormat]} — ${SIZE_LABELS[item.size as ProductSize]}</p>
+          <div class="flex items-center justify-between mt-2">
+            <div class="flex items-center gap-2">
+              <button class="qty-btn w-6 h-6 bg-bg-primary border border-edge-line rounded flex items-center justify-center text-off-white text-xs hover:border-pop-orange transition-colors" data-action="decrease" data-id="${item.id}">−</button>
+              <span class="font-mono text-xs text-off-white w-4 text-center">${item.quantity}</span>
+              <button class="qty-btn w-6 h-6 bg-bg-primary border border-edge-line rounded flex items-center justify-center text-off-white text-xs hover:border-pop-orange transition-colors" data-action="increase" data-id="${item.id}">+</button>
+            </div>
+            <span class="font-mono text-sm text-pop-orange font-bold">£${(item.unitPrice * item.quantity).toFixed(2)}</span>
+          </div>
+        </div>
+        <button class="remove-btn text-deep-grey hover:text-red-500 transition-colors flex-shrink-0" data-id="${item.id}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        </button>
+      </div>
+    `).join('');
+
+    // Wire up buttons
+    cartListEl.querySelectorAll('.qty-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const id = target.dataset.id!;
+        const action = target.dataset.action;
+        const item = cartItems.get().find((i) => i.id === id);
+        if (!item) return;
+        updateQuantity(id, action === 'increase' ? item.quantity + 1 : item.quantity - 1);
+      });
+    });
+
+    cartListEl.querySelectorAll('.remove-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        removeFromCart(target.dataset.id!);
+      });
+    });
+  }
+
+  cartItems.subscribe(renderCart);
+
+  cartTotal.subscribe((total) => {
+    if (cartSubtotalEl) cartSubtotalEl.textContent = `£${total.toFixed(2)}`;
+  });
+
+  checkoutBtn?.addEventListener('click', async () => {
+    const items = cartItems.get();
+    if (items.length === 0) return;
+
+    checkoutBtn.textContent = 'Processing...';
+    checkoutBtn.setAttribute('disabled', 'true');
+    checkoutError?.classList.add('hidden');
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        clearCart();
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Checkout failed');
+      }
+    } catch (err: any) {
+      if (checkoutError) {
+        checkoutError.textContent = err.message || 'Something went wrong. Please try again.';
+        checkoutError.classList.remove('hidden');
+      }
+      checkoutBtn.textContent = 'Checkout';
+      checkoutBtn.removeAttribute('disabled');
+    }
+  });
+</script>

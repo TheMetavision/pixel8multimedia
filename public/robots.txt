@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pixel8multimedia.co.uk/sitemap-index.xml

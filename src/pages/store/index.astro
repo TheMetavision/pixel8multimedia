@@ -1,0 +1,106 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { sanityClient } from '../../lib/sanity';
+import { allProductsQuery, allCollectionsQuery } from '../../lib/queries';
+import { COLLECTIONS } from '../../data/products';
+
+let products: any[] = [];
+let collections: any[] = [];
+
+try {
+  [products, collections] = await Promise.all([
+    sanityClient.fetch(allProductsQuery),
+    sanityClient.fetch(allCollectionsQuery),
+  ]);
+} catch (e) {
+  console.warn('Sanity fetch failed for store page');
+  collections = COLLECTIONS;
+}
+---
+
+<BaseLayout
+  title="Shop — Our Way Collections"
+  description="Explore Pixel8 Multimedia's curated pop culture wall art collections. Canvas prints and poster prints across 10+ art styles. UK-made, worldwide delivery."
+>
+  <!-- Hero -->
+  <section class="bg-bg-secondary py-16 border-b border-edge-line">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center reveal">
+      <span class="font-mono text-xs text-pop-orange uppercase tracking-widest">Curated Collections</span>
+      <h1 class="section-heading mt-2 mb-4">Our Way</h1>
+      <p class="font-dm text-mid-grey text-lg max-w-2xl mx-auto">
+        Curated pop culture collections across 10+ art styles. Canvas prints and posters crafted in-house at our UK studio — ready to ship worldwide.
+      </p>
+      <div class="flex justify-center gap-4 mt-6 text-sm font-dm text-mid-grey">
+        <span><strong class="text-off-white">{products.length}+</strong> Designs</span>
+        <span>·</span>
+        <span><strong class="text-off-white">{collections.length}</strong> Collections</span>
+        <span>·</span>
+        <span><strong class="text-off-white">3</strong> Formats</span>
+        <span>·</span>
+        <span><strong class="text-off-white">3</strong> Sizes</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Collection Filter -->
+  <section class="bg-bg-primary border-b border-edge-line sticky top-20 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" id="collection-filters">
+        <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-off-white bg-pop-orange whitespace-nowrap transition-all" data-filter="all">All</button>
+        {(collections.length > 0 ? collections : COLLECTIONS).map((col: any) => (
+          <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:text-pop-orange hover:border-pop-orange whitespace-nowrap transition-all" data-filter={col.slug}>
+            {col.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Products Grid -->
+  <section class="py-16 bg-bg-primary">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {products.length > 0 ? (
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="products-grid">
+          {products.map((product: any) => (
+            <div class="product-grid-item" data-collection={product.collection}>
+              <ProductCard product={product} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="text-center py-20">
+          <p class="font-montserrat text-xl text-mid-grey">Products coming soon</p>
+          <p class="font-dm text-sm text-deep-grey mt-2">We're adding artwork to our collections. Check back soon.</p>
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const filters = document.querySelectorAll('.filter-pill');
+  const items = document.querySelectorAll('.product-grid-item');
+
+  filters.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const filter = (btn as HTMLElement).dataset.filter;
+
+      filters.forEach((f) => {
+        f.classList.remove('active', 'bg-pop-orange', 'text-off-white');
+        f.classList.add('bg-transparent', 'text-mid-grey');
+      });
+      btn.classList.add('active', 'bg-pop-orange', 'text-off-white');
+      btn.classList.remove('bg-transparent', 'text-mid-grey');
+
+      items.forEach((item) => {
+        const collection = (item as HTMLElement).dataset.collection;
+        if (filter === 'all' || collection === filter) {
+          (item as HTMLElement).style.display = '';
+        } else {
+          (item as HTMLElement).style.display = 'none';
+        }
+      });
+    });
+  });
+</script>

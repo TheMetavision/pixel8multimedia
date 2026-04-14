@@ -1,0 +1,85 @@
+---
+import Navbar from '../components/Navbar.astro';
+import CartPanel from '../components/CartPanel.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  ogType?: string;
+  jsonLd?: Record<string, any> | Record<string, any>[];
+}
+
+const {
+  title = 'Pixel8 Multimedia — Premium Pop Culture Wall Art',
+  description = 'Premium pop culture wall art prints and bespoke photo transformations. UK-based studio delivering worldwide. Shop iconic pop art, photo restoration, and custom commissions.',
+  ogImage = '/og-image.jpg',
+  ogType = 'website',
+  jsonLd,
+} = Astro.props;
+
+const fullTitle = title.includes('Pixel8') ? title : `${title} | Pixel8 Multimedia`;
+const canonicalURL = Astro.url.href;
+---
+
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalURL} />
+
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:site_name" content="Pixel8 Multimedia" />
+    <meta property="og:locale" content="en_GB" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#0D0D0D" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="Pixel8 Multimedia" />
+    <meta name="geo.region" content="GB" />
+
+    {jsonLd && (
+      Array.isArray(jsonLd)
+        ? jsonLd.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} />)
+        : <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    )}
+  </head>
+  <body>
+    <Navbar />
+    <CartPanel />
+    <main class="pt-20">
+      <slot />
+    </main>
+    <Footer />
+
+    <script>
+      // Reveal-on-scroll
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+    </script>
+  </body>
+</html>

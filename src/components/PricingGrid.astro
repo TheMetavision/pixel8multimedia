@@ -1,0 +1,30 @@
+---
+import { PRICES, FORMAT_LABELS, SIZE_LABELS, FORMATS, SIZES } from '../data/products';
+import type { ProductFormat, ProductSize } from '../data/products';
+---
+
+<div class="overflow-x-auto">
+  <table class="w-full text-left">
+    <thead>
+      <tr class="border-b border-edge-line">
+        <th class="py-3 pr-4 font-montserrat text-xs uppercase tracking-wider text-mid-grey">Format</th>
+        {SIZES.map((size) => (
+          <th class="py-3 px-4 font-montserrat text-xs uppercase tracking-wider text-mid-grey text-center">{SIZE_LABELS[size].split(' (')[0]}</th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {FORMATS.map((format) => (
+        <tr class="border-b border-edge-line/50">
+          <td class="py-4 pr-4 font-dm text-sm text-off-white font-medium">{FORMAT_LABELS[format]}</td>
+          {SIZES.map((size) => (
+            <td class="py-4 px-4 text-center">
+              <span class="font-mono text-sm text-pop-orange font-bold">£{PRICES[format][size].toFixed(2)}</span>
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  <p class="font-dm text-xs text-deep-grey mt-4">Size depends on orientation. Free UK P&P on orders over £50.</p>
+</div>

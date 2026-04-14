@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Montserrat:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg-primary text-off-white font-dm;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 128px 128px;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-montserrat;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-pop-orange text-black font-montserrat font-bold text-sm tracking-wider px-8 py-3 transition-all duration-200 inline-block uppercase;
+  }
+
+  .btn-primary:hover {
+    @apply -translate-y-0.5 shadow-glow-orange;
+  }
+
+  .btn-secondary {
+    @apply border-2 border-pop-orange text-pop-orange font-montserrat font-bold text-sm tracking-wider px-8 py-3 transition-all duration-200 inline-block uppercase bg-transparent;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-pop-orange text-black -translate-y-0.5;
+  }
+
+  .btn-cyan {
+    @apply bg-pixel-cyan text-black font-montserrat font-bold text-sm tracking-wider px-8 py-3 transition-all duration-200 inline-block uppercase;
+  }
+
+  .btn-cyan:hover {
+    @apply -translate-y-0.5 shadow-glow-cyan;
+  }
+
+  .btn-magenta {
+    @apply bg-hot-magenta text-white font-montserrat font-bold text-sm tracking-wider px-8 py-3 transition-all duration-200 inline-block uppercase;
+  }
+
+  .btn-magenta:hover {
+    @apply -translate-y-0.5 shadow-glow-magenta;
+  }
+
+  .product-card {
+    @apply bg-bg-secondary border border-edge-line transition-all duration-300 cursor-pointer rounded-lg overflow-hidden;
+  }
+
+  .product-card:hover {
+    @apply -translate-y-1;
+  }
+
+  .section-heading {
+    @apply font-montserrat text-4xl md:text-5xl lg:text-6xl text-off-white font-bold tracking-tight;
+  }
+
+  .subheading {
+    @apply font-montserrat text-xl md:text-2xl font-semibold;
+  }
+
+  .price-tag {
+    @apply font-mono text-pop-orange font-bold;
+  }
+
+  .style-badge {
+    @apply font-mono text-xs uppercase tracking-wider text-hot-magenta border border-hot-magenta/30 bg-hot-magenta/10 rounded px-2 py-0.5 inline-block;
+  }
+
+  .nav-link {
+    @apply font-montserrat text-mid-grey hover:text-pop-orange transition-colors duration-200 uppercase tracking-widest text-xs font-semibold;
+  }
+
+  .colour-block-orange {
+    @apply bg-pop-orange text-black;
+  }
+
+  .colour-block-cyan {
+    @apply bg-pixel-cyan text-black;
+  }
+
+  .colour-block-magenta {
+    @apply bg-hot-magenta text-black;
+  }
+
+  .logo-gradient {
+    background: linear-gradient(135deg, #E91E7B, #6C63FF, #00BCD4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .stagger-1 { transition-delay: 0.1s; }
+  .stagger-2 { transition-delay: 0.2s; }
+  .stagger-3 { transition-delay: 0.3s; }
+  .stagger-4 { transition-delay: 0.4s; }
+
+  .img-placeholder {
+    @apply bg-bg-tertiary flex items-center justify-center text-deep-grey font-montserrat tracking-widest text-sm;
+    border: 1px dashed rgba(255,255,255,0.1);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0D0D0D;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2A2E;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #F07828;
+}

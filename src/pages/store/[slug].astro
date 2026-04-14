@@ -1,0 +1,270 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { sanityClient, urlFor } from '../../lib/sanity';
+import { allProductsQuery, productBySlugQuery } from '../../lib/queries';
+import { PRICES, FORMAT_LABELS, SIZE_LABELS, FORMATS, SIZES, COLLECTION_LABELS } from '../../data/products';
+import type { ProductFormat, ProductSize } from '../../data/products';
+
+export async function getStaticPaths() {
+  const products = await sanityClient.fetch(allProductsQuery);
+  return products.map((product: any) => ({
+    params: { slug: product.slug },
+  }));
+}
+
+const { slug } = Astro.params;
+const product = await sanityClient.fetch(productBySlugQuery, { slug });
+
+if (!product) {
+  return Astro.redirect('/store');
+}
+
+const basePrice = PRICES.poster.small;
+const hasImages = product.images && product.images.length > 0;
+const mainImageUrl = hasImages && product.images[0]?.asset
+  ? urlFor(product.images[0]).width(800).url()
+  : null;
+
+const relatedProducts = product.relatedProducts || [];
+const seoTitle = product.seo?.metaTitle || product.title;
+const seoDesc = product.seo?.metaDescription || product.description;
+const collectionName = product.collectionName || COLLECTION_LABELS[product.collection] || 'Collection';
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": product.title,
+  "description": product.description,
+  "url": `https://pixel8multimedia.co.uk/store/${product.slug}`,
+  ...(mainImageUrl && { "image": mainImageUrl }),
+  "brand": { "@type": "Brand", "name": "Pixel8 Multimedia" },
+  "category": `Wall Art > ${collectionName}`,
+  "offers": {
+    "@type": "AggregateOffer",
+    "lowPrice": PRICES.poster.small.toFixed(2),
+    "highPrice": PRICES['canvas-gallery'].large.toFixed(2),
+    "priceCurrency": "GBP",
+    "availability": "https://schema.org/InStock"
+  }
+};
+---
+
+<BaseLayout title={seoTitle} description={seoDesc} ogType="product" jsonLd={jsonLd}>
+
+  <section class="bg-bg-primary py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Breadcrumbs -->
+      <nav class="flex items-center gap-2 font-dm text-sm text-deep-grey mb-8">
+        <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
+        <span>/</span>
+        <a href="/store" class="hover:text-pop-orange transition-colors">Store</a>
+        <span>/</span>
+        <a href={`/store?collection=${product.collection}`} class="hover:text-pop-orange transition-colors">{collectionName}</a>
+        <span>/</span>
+        <span class="text-off-white">{product.title}</span>
+      </nav>
+
+      <!-- Product Layout -->
+      <div class="grid lg:grid-cols-2 gap-12">
+
+        <!-- Images -->
+        <div>
+          <div class="aspect-[3/4] bg-bg-secondary rounded-lg overflow-hidden border border-edge-line" id="main-image-container">
+            {mainImageUrl ? (
+              <img id="main-image" src={mainImageUrl} alt={product.title} class="w-full h-full object-cover" />
+            ) : (
+              <div class="img-placeholder w-full h-full">
+                <span class="font-montserrat text-sm uppercase tracking-widest">{product.title}</span>
+              </div>
+            )}
+          </div>
+          {hasImages && product.images.length > 1 && (
+            <div class="grid grid-cols-4 gap-3 mt-3">
+              {product.images.map((img: any, i: number) => (
+                <button class={`aspect-square bg-bg-secondary rounded border ${i === 0 ? 'border-pop-orange' : 'border-edge-line'} overflow-hidden thumb-btn hover:border-pop-orange transition-colors`}
+                        data-url={img.asset ? urlFor(img).width(800).url() : ''}>
+                  {img.asset ? (
+                    <img src={urlFor(img).width(200).height(200).url()} alt={img.alt || product.title} class="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <div class="w-full h-full bg-bg-tertiary"></div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <!-- Details -->
+        <div>
+          <span class="style-badge mb-3">{collectionName}</span>
+          <h1 class="font-montserrat text-3xl md:text-4xl font-bold text-off-white mt-2 mb-4">{product.title}</h1>
+          <p class="font-dm text-mid-grey leading-relaxed mb-6">{product.description}</p>
+
+          <div class="price-tag text-2xl mb-8" id="display-price">From £{basePrice.toFixed(2)}</div>
+
+          <!-- Format Selector -->
+          <div class="mb-6">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Format</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="format-selector">
+              {FORMATS.map((format, i) => (
+                <button
+                  class={`format-btn font-dm text-sm py-3 px-4 rounded border transition-all text-center ${i === 0 ? 'border-pop-orange bg-pop-orange/10 text-pop-orange' : 'border-edge-line text-mid-grey hover:border-pop-orange hover:text-pop-orange'}`}
+                  data-format={format}
+                >
+                  {FORMAT_LABELS[format]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <!-- Size Selector -->
+          <div class="mb-6">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Size</label>
+            <div class="grid grid-cols-3 gap-2" id="size-selector">
+              {SIZES.map((size, i) => (
+                <button
+                  class={`size-btn font-dm text-sm py-3 px-4 rounded border transition-all text-center ${i === 0 ? 'border-pop-orange bg-pop-orange/10 text-pop-orange' : 'border-edge-line text-mid-grey hover:border-pop-orange hover:text-pop-orange'}`}
+                  data-size={size}
+                >
+                  {SIZE_LABELS[size].split(' (')[0]}
+                  <span class="block text-xs text-deep-grey mt-0.5">{SIZE_LABELS[size].match(/\((.+)\)/)?.[1]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <!-- Quantity -->
+          <div class="mb-8">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Quantity</label>
+            <div class="flex items-center gap-3">
+              <button id="qty-decrease" class="w-10 h-10 bg-bg-secondary border border-edge-line rounded flex items-center justify-center text-off-white hover:border-pop-orange transition-colors">−</button>
+              <span id="qty-display" class="font-mono text-lg text-off-white w-8 text-center">1</span>
+              <button id="qty-increase" class="w-10 h-10 bg-bg-secondary border border-edge-line rounded flex items-center justify-center text-off-white hover:border-pop-orange transition-colors">+</button>
+            </div>
+          </div>
+
+          <!-- Add to Cart -->
+          <button id="add-to-cart" class="btn-primary w-full text-center text-base py-4 mb-4">Add to Cart — <span id="cart-price">£{basePrice.toFixed(2)}</span></button>
+
+          <a href="/your-way/bespoke" class="block text-center font-dm text-sm text-pixel-cyan hover:underline mt-2">Want a custom version? Commission yours →</a>
+
+          <!-- Delivery Info -->
+          <div class="mt-8 border-t border-edge-line pt-6 space-y-3 font-dm text-sm text-mid-grey">
+            <div class="flex items-start gap-2">
+              <svg class="w-4 h-4 text-pop-orange flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8"/></svg>
+              <span>Made to order — dispatched within 3-6 working days</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <svg class="w-4 h-4 text-pixel-cyan flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+              <span>Free UK P&P on orders over £50</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <svg class="w-4 h-4 text-hot-magenta flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>14-day returns on standard products</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Related Products -->
+      {relatedProducts.length > 0 && (
+        <div class="mt-20 border-t border-edge-line pt-16">
+          <h2 class="font-montserrat text-2xl font-bold text-off-white mb-8">You Might Also Like</h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {relatedProducts.map((rp: any) => (
+              <ProductCard product={rp} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<script define:vars={{ productId: product._id, productSlug: product.slug, productTitle: product.title, productCollection: product.collection, accentColor: product.accentColor || '#F07828', prices: PRICES }}>
+  import { addToCart } from '../../stores/cart';
+
+  let selectedFormat = 'poster';
+  let selectedSize = 'small';
+  let quantity = 1;
+
+  function getPrice() {
+    return prices[selectedFormat]?.[selectedSize] || prices.poster.small;
+  }
+
+  function updateUI() {
+    const price = getPrice();
+    const total = price * quantity;
+    document.getElementById('display-price').textContent = `£${price.toFixed(2)}`;
+    document.getElementById('cart-price').textContent = `£${total.toFixed(2)}`;
+    document.getElementById('qty-display').textContent = String(quantity);
+  }
+
+  // Format buttons
+  document.querySelectorAll('.format-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.format-btn').forEach((b) => {
+        b.classList.remove('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+        b.classList.add('border-edge-line', 'text-mid-grey');
+      });
+      btn.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+      btn.classList.remove('border-edge-line', 'text-mid-grey');
+      selectedFormat = btn.dataset.format;
+      updateUI();
+    });
+  });
+
+  // Size buttons
+  document.querySelectorAll('.size-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.size-btn').forEach((b) => {
+        b.classList.remove('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+        b.classList.add('border-edge-line', 'text-mid-grey');
+      });
+      btn.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+      btn.classList.remove('border-edge-line', 'text-mid-grey');
+      selectedSize = btn.dataset.size;
+      updateUI();
+    });
+  });
+
+  // Quantity
+  document.getElementById('qty-decrease')?.addEventListener('click', () => {
+    if (quantity > 1) { quantity--; updateUI(); }
+  });
+  document.getElementById('qty-increase')?.addEventListener('click', () => {
+    if (quantity < 10) { quantity++; updateUI(); }
+  });
+
+  // Thumbnails
+  document.querySelectorAll('.thumb-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const url = btn.dataset.url;
+      const mainImg = document.getElementById('main-image');
+      if (mainImg && url) mainImg.src = url;
+      document.querySelectorAll('.thumb-btn').forEach((b) => {
+        b.classList.remove('border-pop-orange');
+        b.classList.add('border-edge-line');
+      });
+      btn.classList.add('border-pop-orange');
+      btn.classList.remove('border-edge-line');
+    });
+  });
+
+  // Add to cart
+  document.getElementById('add-to-cart')?.addEventListener('click', () => {
+    addToCart({
+      productId: productId,
+      slug: productSlug,
+      title: productTitle,
+      collection: productCollection,
+      format: selectedFormat,
+      size: selectedSize,
+      quantity: quantity,
+      unitPrice: getPrice(),
+      accentColor: accentColor,
+    });
+  });
+</script>
