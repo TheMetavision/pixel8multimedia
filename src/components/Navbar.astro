@@ -52,9 +52,9 @@ const navLinks = [
 ];
 ---
 
-<nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-bg-primary/90 backdrop-blur-md border-b border-transparent">
+<nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-black border-b border-transparent">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between h-20">
+    <div class="flex items-center justify-between h-40">
       <!-- Logo -->
       <a href="/" class="flex-shrink-0">
         <img src="/Pixel8_Logo.png" alt="Pixel8 Multimedia — Pop. Art. Motion." class="h-36 w-auto" />
@@ -127,7 +127,7 @@ const navLinks = [
   </div>
 
   <!-- Mobile Menu -->
-  <div id="mobile-menu" class="hidden lg:hidden bg-bg-primary border-t border-edge-line">
+  <div id="mobile-menu" class="hidden lg:hidden bg-black border-t border-edge-line">
     <div class="px-4 py-4 space-y-1">
       {navLinks.map((link) => (
         link.children ? (
@@ -162,11 +162,11 @@ const navLinks = [
 
   function updateNavState(scrolled: boolean) {
     if (scrolled) {
-      navbar?.classList.add('bg-bg-primary', 'border-b-edge-line');
-      navbar?.classList.remove('bg-bg-primary/90', 'border-transparent');
+      navbar?.classList.add('bg-black', 'border-b-edge-line', 'shadow-lg');
+      navbar?.classList.remove('border-transparent');
     } else {
-      navbar?.classList.remove('bg-bg-primary', 'border-b-edge-line');
-      navbar?.classList.add('bg-bg-primary/90', 'border-transparent');
+      navbar?.classList.remove('border-b-edge-line', 'shadow-lg');
+      navbar?.classList.add('bg-black', 'border-transparent');
     }
   }
 
