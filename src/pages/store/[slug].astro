@@ -219,13 +219,14 @@ const jsonLd = {
   productCategory: product.category,
   accentColor: accent,
   prices: productPrices,
+  imageUrl: mainImageUrl || '',
 })} />
 
 <script>
   import { addToCart } from '../../stores/cart';
 
   const dataEl = document.getElementById('product-data');
-  const { productId, productSlug, productTitle, productCategory, accentColor, prices } = JSON.parse(dataEl?.textContent || '{}');
+  const { productId, productSlug, productTitle, productCategory, accentColor, prices, imageUrl } = JSON.parse(dataEl?.textContent || '{}');
 
   let selectedFormat = 'poster';
   let selectedSize = 'small';
@@ -304,6 +305,7 @@ const jsonLd = {
       quantity,
       unitPrice: getPrice(),
       accentColor,
+      imageUrl,
     });
   });
 </script>

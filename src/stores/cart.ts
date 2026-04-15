@@ -13,6 +13,7 @@ export interface CartItem {
   quantity: number;
   unitPrice: number;
   accentColor: string;
+  imageUrl?: string;
 }
 
 export const cartItems = atom<CartItem[]>([]);
