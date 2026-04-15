@@ -4,7 +4,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <BaseLayout
   title="About Us — The Pixel8 Story"
-  description="Pixel8 Multimedia is a UK-based pop culture wall art studio. Part of The Metavision. In-house production, AI-enhanced artistry, worldwide delivery."
+  description="Pixel8 Multimedia is a UK-based pop culture wall art studio. In-house production, AI-enhanced artistry, worldwide delivery."
 >
   <!-- Hero -->
   <section class="bg-bg-secondary py-20 border-b border-edge-line">
@@ -30,8 +30,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           </div>
         </div>
         <div class="reveal stagger-2">
-          <div class="aspect-[4/3] bg-bg-secondary rounded-lg border border-edge-line flex items-center justify-center">
-            <span class="font-montserrat text-sm text-deep-grey uppercase tracking-widest">Studio Photo</span>
+          <div class="aspect-[4/3] rounded-lg overflow-hidden border border-edge-line">
+            <img src="/mockups/about-hero.jpg" alt="Winnie the Pooh street art canvas in a children's bedroom" class="w-full h-full object-cover" />
           </div>
         </div>
       </div>
@@ -63,12 +63,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <section class="py-20 bg-bg-secondary">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <h2 class="section-heading mb-12 reveal">Our Process</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 reveal">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-8 reveal">
         {[
           { step: '01', title: 'Concept', desc: 'We research, reference, and design each piece from scratch.' },
           { step: '02', title: 'Create', desc: 'AI-assisted creation refined by human artistry and judgement.' },
-          { step: '03', title: 'Craft', desc: 'Printed in-house on premium materials with precision colour.' },
-          { step: '04', title: 'Deliver', desc: 'Securely packaged and shipped to your door, worldwide.' },
+          { step: '03', title: 'Animate', desc: 'Static artwork brought to life with our signature Stills to Reels animation.' },
+          { step: '04', title: 'Craft', desc: 'Printed in-house on premium materials with precision colour.' },
+          { step: '05', title: 'Deliver', desc: 'Securely packaged and shipped to your door, worldwide.' },
         ].map((item) => (
           <div class="text-center">
             <span class="font-mono text-3xl text-pop-orange font-bold">{item.step}</span>
@@ -80,15 +81,29 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </div>
   </section>
 
-  <!-- Part of The Metavision -->
+  <!-- From Our Place to Yours -->
   <section class="py-20 bg-bg-primary">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center reveal">
-      <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">The Bigger Picture</span>
-      <h2 class="font-montserrat text-3xl font-bold text-off-white mt-2 mb-4">Part of The Metavision</h2>
-      <p class="font-dm text-mid-grey leading-relaxed max-w-2xl mx-auto mb-8">
-        Pixel8 Multimedia is part of The Metavision Multimedia Limited — a UK-based AI creative agency spanning brand development, content creation, and animated IP. Our sister brands include Wyrmfuel, Comic Strip Canvas, and four animated IP franchises.
-      </p>
-      <a href="https://themetavision.co.uk" target="_blank" rel="noopener noreferrer" class="btn-secondary">Visit The Metavision →</a>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12 reveal">
+        <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">The Journey</span>
+        <h2 class="font-montserrat text-3xl font-bold text-off-white mt-2">From Our Place to Yours</h2>
+      </div>
+      <div class="grid md:grid-cols-2 gap-8 items-center reveal">
+        <div class="rounded-lg overflow-hidden border border-edge-line">
+          <img src="/mockups/packaging.jpg" alt="Canvas being carefully packaged at Pixel8 studio" class="w-full h-full object-cover" loading="lazy" />
+          <div class="p-4 bg-bg-secondary">
+            <p class="font-montserrat text-sm font-bold text-pop-orange uppercase tracking-wider">Carefully Crafted & Packed</p>
+            <p class="font-dm text-xs text-mid-grey mt-1">Every piece is hand-inspected, bubble-wrapped, and securely boxed at our UK studio.</p>
+          </div>
+        </div>
+        <div class="rounded-lg overflow-hidden border border-edge-line">
+          <img src="/mockups/unboxing.jpg" alt="Customer unboxing their Pixel8 canvas art" class="w-full h-full object-cover" loading="lazy" />
+          <div class="p-4 bg-bg-secondary">
+            <p class="font-montserrat text-sm font-bold text-pixel-cyan uppercase tracking-wider">Delivered to Your Door</p>
+            <p class="font-dm text-xs text-mid-grey mt-1">That moment when you unwrap something made just for you. Priceless.</p>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
