@@ -74,7 +74,7 @@ const navLinks = [
               <div class={`absolute top-full left-0 mt-1 bg-bg-secondary border border-edge-line border-t-2 border-t-pop-orange opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl ${link.label === 'Services' ? 'w-[360px] grid grid-cols-2 max-h-[70vh] overflow-y-auto' : 'w-52'}`}>
                 {link.children.map((child, i) => (
                   <a href={child.href}
-                     class={`block px-4 py-2.5 font-montserrat text-xs text-mid-grey hover:text-pop-orange hover:bg-bg-tertiary transition-colors uppercase tracking-wider font-semibold ${i === 0 ? 'border-b border-edge-line' : ''}`}>
+                     class={`block px-4 py-2.5 font-montserrat text-xs text-pop-orange hover:text-pixel-cyan hover:bg-bg-tertiary transition-colors uppercase tracking-wider font-semibold ${i === 0 ? 'border-b border-edge-line' : ''}`}>
                     {child.label}
                   </a>
                 ))}
@@ -137,14 +137,14 @@ const navLinks = [
             </div>
             {link.children.map((child) => (
               <a href={child.href}
-                 class="block pl-4 py-2 font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">
+                 class="block pl-4 py-2 font-dm text-sm text-pop-orange hover:text-pixel-cyan transition-colors">
                 {child.label}
               </a>
             ))}
           </div>
         ) : (
           <a href={link.href}
-             class="block py-2 font-montserrat text-off-white uppercase tracking-wider text-sm hover:text-pop-orange transition-colors font-semibold">
+             class="block py-2 font-montserrat text-pop-orange uppercase tracking-wider text-sm hover:text-pixel-cyan transition-colors font-semibold">
             {link.label}
           </a>
         )

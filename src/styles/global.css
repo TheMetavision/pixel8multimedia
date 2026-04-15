@@ -89,7 +89,7 @@
   }
 
   .nav-link {
-    @apply font-montserrat text-mid-grey hover:text-pop-orange transition-colors duration-200 uppercase tracking-widest text-xs font-semibold;
+    @apply font-montserrat text-pop-orange hover:text-pixel-cyan transition-colors duration-200 uppercase tracking-widest text-xs font-semibold;
   }
 
   .colour-block-orange {
