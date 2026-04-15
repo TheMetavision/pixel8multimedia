@@ -115,6 +115,32 @@ try {
   let activeCategory = 'all';
   let activeStyle = 'all';
 
+  function activateCategoryTab(value: string) {
+    document.querySelectorAll('[data-type="category"]').forEach((b) => {
+      b.classList.remove('active', 'bg-pop-orange', 'text-off-white');
+      b.classList.add('bg-transparent', 'text-mid-grey');
+    });
+    const target = document.querySelector(`[data-type="category"][data-value="${value}"]`);
+    if (target) {
+      target.classList.add('active', 'bg-pop-orange', 'text-off-white');
+      target.classList.remove('bg-transparent', 'text-mid-grey');
+    }
+    activeCategory = value;
+  }
+
+  function activateStyleTab(value: string) {
+    document.querySelectorAll('[data-type="style"]').forEach((b) => {
+      b.classList.remove('active', 'bg-pop-orange', 'text-off-white');
+      b.classList.add('bg-transparent', 'text-mid-grey');
+    });
+    const target = document.querySelector(`[data-type="style"][data-value="${value}"]`);
+    if (target) {
+      target.classList.add('active', 'bg-pop-orange', 'text-off-white');
+      target.classList.remove('bg-transparent', 'text-mid-grey');
+    }
+    activeStyle = value;
+  }
+
   function applyFilters() {
     const searchTerm = (document.getElementById('shop-search') as HTMLInputElement)?.value.toLowerCase() || '';
     const sortBy = (document.getElementById('shop-sort') as HTMLSelectElement)?.value || 'default';
@@ -155,31 +181,39 @@ try {
     if (countEl) countEl.textContent = `${visible.length} product${visible.length !== 1 ? 's' : ''}`;
   }
 
+  // Read URL params on page load
+  const params = new URLSearchParams(window.location.search);
+  const urlCategory = params.get('category');
+  const urlStyle = params.get('style');
+
+  if (urlCategory) activateCategoryTab(urlCategory);
+  if (urlStyle) activateStyleTab(urlStyle);
+
+  // Apply filters on load (handles URL params + shows count)
+  applyFilters();
+
   // Category filter clicks
   document.querySelectorAll('[data-type="category"]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-type="category"]').forEach((b) => {
-        b.classList.remove('active', 'bg-pop-orange', 'text-off-white');
-        b.classList.add('bg-transparent', 'text-mid-grey');
-      });
-      btn.classList.add('active', 'bg-pop-orange', 'text-off-white');
-      btn.classList.remove('bg-transparent', 'text-mid-grey');
-      activeCategory = (btn as HTMLElement).dataset.value || 'all';
+      const value = (btn as HTMLElement).dataset.value || 'all';
+      activateCategoryTab(value);
       applyFilters();
+      // Update URL without reload
+      const url = new URL(window.location.href);
+      if (value === 'all') { url.searchParams.delete('category'); } else { url.searchParams.set('category', value); }
+      history.replaceState(null, '', url.toString());
     });
   });
 
   // Style filter clicks
   document.querySelectorAll('[data-type="style"]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('[data-type="style"]').forEach((b) => {
-        b.classList.remove('active', 'bg-pop-orange', 'text-off-white');
-        b.classList.add('bg-transparent', 'text-mid-grey');
-      });
-      btn.classList.add('active', 'bg-pop-orange', 'text-off-white');
-      btn.classList.remove('bg-transparent', 'text-mid-grey');
-      activeStyle = (btn as HTMLElement).dataset.value || 'all';
+      const value = (btn as HTMLElement).dataset.value || 'all';
+      activateStyleTab(value);
       applyFilters();
+      const url = new URL(window.location.href);
+      if (value === 'all') { url.searchParams.delete('style'); } else { url.searchParams.set('style', value); }
+      history.replaceState(null, '', url.toString());
     });
   });
 
