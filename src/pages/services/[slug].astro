@@ -56,6 +56,18 @@ const seoDesc = service.description?.substring(0, 155);
 const extParagraphs = service.extendedDescription
   ? service.extendedDescription.split(/\n\n+/).filter(Boolean)
   : [];
+
+// Helper: split images into original (first with tag "Original") and the rest
+function splitOriginal(images = []) {
+  const valid = images.filter((img) => img.url);
+  if (!valid.length) return { original: null, rest: [] };
+  const first = valid[0];
+  const isOriginal = first.tag && first.tag.toLowerCase().includes('original');
+  if (isOriginal && valid.length > 1) {
+    return { original: first, rest: valid.slice(1) };
+  }
+  return { original: null, rest: valid };
+}
 ---
 
 <BaseLayout title={seoTitle} description={seoDesc}>
@@ -90,80 +102,101 @@ const extParagraphs = service.extendedDescription
     {service.examples?.length > 0 && (
       <section class="service-page__gallery">
         <h2 class="service-page__section-title">Examples</h2>
-        {service.examples.map((example) => (
-          <div class="example-block">
-            {example.label && (
-              <h3 class="example-block__label">{example.label}</h3>
-            )}
+        {service.examples.map((example) => {
+          const { original, rest } = splitOriginal(example.images || []);
+          return (
+            <div class="example-block">
+              {example.label && (
+                <h3 class="example-block__label">{example.label}</h3>
+              )}
 
-            {example.images?.length > 0 && (
-              <div class="example-block__images">
-                {example.images.filter(img => img.url).map((img) => (
+              {/* Centred Original above the rest */}
+              {original && (
+                <div class="example-block__original">
                   <figure class="example-block__figure">
                     <img
-                      src={img.url}
-                      alt={`${example.label || service.title} — ${img.tag || ''}`}
+                      src={original.url}
+                      alt={`${example.label || service.title} — ${original.tag || ''}`}
                       loading="lazy"
                       class="example-block__image"
                     />
-                    {img.tag && (
-                      <figcaption class="example-block__tag">{img.tag}</figcaption>
+                    {original.tag && (
+                      <figcaption class="example-block__tag">{original.tag}</figcaption>
                     )}
                   </figure>
-                ))}
-              </div>
-            )}
+                </div>
+              )}
 
-            {example.videos?.length > 0 && (
-              <div class="example-block__videos">
-                {example.videos.map((vid) => (
-                  <div class="example-block__video-wrap">
-                    <div class="example-block__video-container">
-                      <iframe
-                        src={`https://www.youtube.com/embed/${vid.youtubeId}`}
-                        title={vid.title || `${example.label} video`}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen
-                        loading="lazy"
-                      ></iframe>
-                    </div>
-                    {vid.tag && (
-                      <p class="example-block__video-tag">{vid.tag}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {example.audioTracks?.length > 0 && (
-              <div class="example-block__audio-list">
-                {example.audioTracks.map((track) => (
-                  <div class="example-block__audio-item">
-                    {track.coverUrl && (
+              {/* Remaining images in responsive grid */}
+              {rest.length > 0 && (
+                <div class="example-block__images">
+                  {rest.map((img) => (
+                    <figure class="example-block__figure">
                       <img
-                        src={track.coverUrl}
-                        alt={track.title}
-                        class="example-block__audio-cover"
+                        src={img.url}
+                        alt={`${example.label || service.title} — ${img.tag || ''}`}
                         loading="lazy"
+                        class="example-block__image"
                       />
-                    )}
-                    <div class="example-block__audio-info">
-                      <p class="example-block__audio-title">{track.title}</p>
-                      {track.duration && (
-                        <span class="example-block__audio-duration">{track.duration}</span>
+                      {img.tag && (
+                        <figcaption class="example-block__tag">{img.tag}</figcaption>
+                      )}
+                    </figure>
+                  ))}
+                </div>
+              )}
+
+              {example.videos?.length > 0 && (
+                <div class="example-block__videos">
+                  {example.videos.map((vid) => (
+                    <div class="example-block__video-wrap">
+                      <div class="example-block__video-container">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${vid.youtubeId}`}
+                          title={vid.title || `${example.label} video`}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowfullscreen
+                          loading="lazy"
+                        ></iframe>
+                      </div>
+                      {vid.tag && (
+                        <p class="example-block__video-tag">{vid.tag}</p>
                       )}
                     </div>
-                    {track.audioUrl && (
-                      <audio controls preload="none" class="example-block__audio-player">
-                        <source src={track.audioUrl} />
-                      </audio>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+                  ))}
+                </div>
+              )}
+
+              {example.audioTracks?.length > 0 && (
+                <div class="example-block__audio-list">
+                  {example.audioTracks.map((track) => (
+                    <div class="example-block__audio-item">
+                      {track.coverUrl && (
+                        <img
+                          src={track.coverUrl}
+                          alt={track.title}
+                          class="example-block__audio-cover"
+                          loading="lazy"
+                        />
+                      )}
+                      <div class="example-block__audio-info">
+                        <p class="example-block__audio-title">{track.title}</p>
+                        {track.duration && (
+                          <span class="example-block__audio-duration">{track.duration}</span>
+                        )}
+                      </div>
+                      {track.audioUrl && (
+                        <audio controls preload="none" class="example-block__audio-player">
+                          <source src={track.audioUrl} />
+                        </audio>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </section>
     )}
 
@@ -298,7 +331,19 @@ const extParagraphs = service.extendedDescription
     color: var(--text, #fafafa);
   }
 
-  /* Images grid — centre each image within its cell */
+  /* Centred Original image */
+  .example-block__original {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .example-block__original .example-block__figure {
+    max-width: 340px;
+    width: 100%;
+  }
+
+  /* Images grid */
   .example-block__images {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
