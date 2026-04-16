@@ -4,7 +4,7 @@
 export const prerender = false;
 
 import { sanityClient } from '../../lib/sanity';
-import Layout from '../../layouts/Layout.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const services = await sanityClient.fetch(`
   *[_type == "service"] | order(sortOrder asc) {
@@ -17,12 +17,13 @@ const services = await sanityClient.fetch(`
 `);
 ---
 
-<Layout
+<BaseLayout
   title="Services — Pixel8 Multimedia"
   description="Bespoke photo transformations, AI art commissions, and creative services from Pixel8 Multimedia."
 >
-  <main class="services-index">
+  <div class="services-index">
     <header class="services-index__header">
+      <span class="services-index__eyebrow">Your Way</span>
       <h1 class="services-index__title">Our Services</h1>
       <p class="services-index__subtitle">
         Every creation is bespoke. Choose a service, upload your photos, and let us bring your vision to life.
@@ -47,21 +48,19 @@ const services = await sanityClient.fetch(`
           <div class="service-card__body">
             <h2 class="service-card__title">{svc.title}</h2>
             <p class="service-card__desc">{svc.description}</p>
-            <span class="service-card__cta">
-              Start Commission →
-            </span>
+            <span class="service-card__cta">Start Commission →</span>
           </div>
         </a>
       ))}
     </div>
-  </main>
-</Layout>
+  </div>
+</BaseLayout>
 
 <style>
   .services-index {
-    max-width: 1120px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 3rem 1.5rem 5rem;
+    padding: 2rem 1.5rem 5rem;
   }
 
   .services-index__header {
@@ -69,17 +68,31 @@ const services = await sanityClient.fetch(`
     margin-bottom: 3rem;
   }
 
+  .services-index__eyebrow {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: #00BCD4;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 0.75rem;
+  }
+
   .services-index__title {
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-family: 'Montserrat', sans-serif;
+    font-size: clamp(2.25rem, 5vw, 3.5rem);
     font-weight: 800;
     letter-spacing: -0.03em;
-    margin: 0 0 0.75rem;
+    margin: 0 0 1rem;
+    color: #F0EDE6;
+    text-transform: uppercase;
   }
 
   .services-index__subtitle {
+    font-family: 'DM Sans', sans-serif;
     font-size: 1.125rem;
-    color: var(--text-muted, #6b7280);
-    max-width: 560px;
+    color: #8A8A8E;
+    max-width: 620px;
     margin: 0 auto;
     line-height: 1.6;
   }
@@ -94,18 +107,22 @@ const services = await sanityClient.fetch(`
   .service-card {
     display: flex;
     flex-direction: column;
-    background: var(--surface, #fff);
-    border: 1px solid var(--border, #e2e5ea);
-    border-radius: 14px;
+    background: #141418;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
     overflow: hidden;
     text-decoration: none;
     color: inherit;
-    transition: transform 200ms ease, box-shadow 200ms ease;
+    transition:
+      transform 200ms ease,
+      border-color 200ms ease,
+      box-shadow 200ms ease;
   }
 
   .service-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border-color: #F07828;
+    box-shadow: 0 8px 24px rgba(240, 120, 40, 0.15);
   }
 
   .service-card__image {
@@ -120,7 +137,7 @@ const services = await sanityClient.fetch(`
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    background: linear-gradient(135deg, #F07828 0%, #E91E7B 100%);
     font-size: 3rem;
   }
 
@@ -132,15 +149,19 @@ const services = await sanityClient.fetch(`
   }
 
   .service-card__title {
-    font-size: 1.25rem;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.125rem;
     font-weight: 700;
     margin: 0 0 0.5rem;
     letter-spacing: -0.01em;
+    color: #F0EDE6;
+    text-transform: uppercase;
   }
 
   .service-card__desc {
+    font-family: 'DM Sans', sans-serif;
     font-size: 0.875rem;
-    color: var(--text-muted, #6b7280);
+    color: #8A8A8E;
     line-height: 1.55;
     margin: 0 0 1rem;
     flex: 1;
@@ -151,19 +172,11 @@ const services = await sanityClient.fetch(`
   }
 
   .service-card__cta {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--accent, #7c3aed);
-    letter-spacing: 0.01em;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .service-card {
-      background: #1e1e24;
-      border-color: #2e2e38;
-    }
-    .service-card:hover {
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    }
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #F07828;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 </style>
