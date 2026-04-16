@@ -16,6 +16,9 @@ export default defineConfig({
             S.listItem().title('Site Settings')
               .child(S.document().schemaType('siteSettings').documentId('siteSettings')),
             S.divider(),
+            S.listItem().title('Services')
+              .child(S.documentTypeList('service').title('Services')),
+            S.divider(),
             S.listItem().title('Products')
               .child(S.documentTypeList('product').title('Products')),
             S.listItem().title('Categories')
@@ -28,6 +31,8 @@ export default defineConfig({
             S.listItem().title('Testimonials')
               .child(S.documentTypeList('testimonial').title('Testimonials')),
             S.divider(),
+            S.listItem().title('Commissions')
+              .child(S.documentTypeList('commission').title('Commissions')),
             S.listItem().title('Orders')
               .child(S.documentTypeList('order').title('Orders')),
           ]),

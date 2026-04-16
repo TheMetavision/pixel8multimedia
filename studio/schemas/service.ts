@@ -10,6 +10,21 @@ export default defineType({
     defineField({ name: 'description', title: 'Description', type: 'text', rows: 4, description: 'Main intro paragraph shown below the title' }),
     defineField({ name: 'extendedDescription', title: 'Extended Description', type: 'text', rows: 4, description: 'Optional additional paragraphs (e.g. for The Day I Met... disclaimer)' }),
 
+    // Hero Image + Price (used by service pages and commission checkout)
+    defineField({
+      name: 'heroImage',
+      title: 'Hero Image',
+      type: 'image',
+      options: { hotspot: true },
+      description: 'Main banner image shown at the top of the service page',
+    }),
+    defineField({
+      name: 'price',
+      title: 'Base Price (£)',
+      type: 'number',
+      description: 'Base commission price. Leave blank to use the site default (£29.99)',
+    }),
+
     // Gallery Examples
     defineField({
       name: 'examples',

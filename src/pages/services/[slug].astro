@@ -1,173 +1,513 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import { sanityClient, urlFor } from '../../lib/sanity';
-import { allServicesQuery, serviceBySlugQuery } from '../../lib/queries';
+// src/pages/services/[slug].astro
+// Dynamic service page — fetches from Sanity, renders hero, gallery, steps, commission form
+export const prerender = false;
 
-export async function getStaticPaths() {
-  try {
-    const services = await sanityClient.fetch(allServicesQuery);
-    if (!services || services.length === 0) return [];
-    return services.map((s: any) => ({
-      params: { slug: s.slug },
-    }));
-  } catch (e) {
-    console.warn('Sanity fetch failed for services getStaticPaths');
-    return [];
-  }
-}
+import { sanityClient } from '../../lib/sanity';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import CommissionForm from '../../components/CommissionForm.jsx';
+import '../../styles/commission-form.css';
 
 const { slug } = Astro.params;
-const service = await sanityClient.fetch(serviceBySlugQuery, { slug });
+
+const service = await sanityClient.fetch(
+  `*[_type == "service" && slug.current == $slug][0]{
+    _id,
+    title,
+    description,
+    extendedDescription,
+    importantNote,
+    slug,
+    steps,
+    price,
+    hasFileUpload,
+    hasDigitalDelivery,
+    hasPrintOrder,
+    "heroImage": heroImage.asset->url,
+    examples[]{
+      label,
+      images[]{
+        tag,
+        "url": image.asset->url
+      },
+      videos[]{
+        youtubeId,
+        tag,
+        title
+      },
+      audioTracks[]{
+        title,
+        duration,
+        "coverUrl": coverImage.asset->url,
+        "audioUrl": audioFile.asset->url
+      }
+    }
+  }`,
+  { slug }
+);
 
 if (!service) {
-  return Astro.redirect('/services');
+  return Astro.redirect('/404');
 }
+
+const seoTitle = `${service.title} | Pixel8 Multimedia`;
+const seoDesc = service.description?.substring(0, 155);
+
+const extParagraphs = service.extendedDescription
+  ? service.extendedDescription.split(/\n\n+/).filter(Boolean)
+  : [];
 ---
 
-<BaseLayout
-  title={service.title}
-  description={service.description}
->
-
-  <!-- Hero -->
-  <section class="colour-block-orange py-12">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h1 class="font-montserrat text-4xl md:text-5xl font-bold mb-4">{service.title}</h1>
-      <p class="font-dm text-lg leading-relaxed">{service.description}</p>
-      {service.extendedDescription && (
-        <p class="font-dm text-base leading-relaxed mt-4 opacity-90">{service.extendedDescription}</p>
+<BaseLayout title={seoTitle} description={seoDesc}>
+  <div class="service-page">
+    <!-- Hero Section -->
+    <section class="service-page__hero">
+      {service.heroImage && (
+        <div class="service-page__hero-frame">
+          <img
+            src={service.heroImage}
+            alt={service.title}
+            class="service-page__hero-image"
+            loading="eager"
+          />
+        </div>
       )}
-    </div>
-  </section>
+      <div class="service-page__hero-content">
+        <h1 class="service-page__title">{service.title}</h1>
+        <p class="service-page__description">{service.description}</p>
+      </div>
+    </section>
 
-  <!-- Gallery Examples -->
-  {service.examples && service.examples.length > 0 && (
-    <section class="py-12 bg-bg-primary">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    {extParagraphs.length > 0 && (
+      <section class="service-page__extended">
+        {extParagraphs.map((para) => (
+          <p>{para}</p>
+        ))}
+      </section>
+    )}
 
-        {service.examples.map((example: any, exIdx: number) => (
-          <div class={`${exIdx > 0 ? 'mt-16 pt-16 border-t border-edge-line' : ''}`}>
+    <!-- Gallery Examples -->
+    {service.examples?.length > 0 && (
+      <section class="service-page__gallery">
+        <h2 class="service-page__section-title">Examples</h2>
+        {service.examples.map((example) => (
+          <div class="example-block">
+            {example.label && (
+              <h3 class="example-block__label">{example.label}</h3>
+            )}
 
-            {/* Images Grid */}
-            {example.images && example.images.length > 0 && (
-              <div class={`grid gap-4 mb-8 ${example.images.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                {example.images.map((img: any) => (
-                  <div class="relative">
+            {example.images?.length > 0 && (
+              <div class="example-block__images">
+                {example.images.filter(img => img.url).map((img) => (
+                  <figure class="example-block__figure">
+                    <img
+                      src={img.url}
+                      alt={`${example.label || service.title} — ${img.tag || ''}`}
+                      loading="lazy"
+                      class="example-block__image"
+                    />
                     {img.tag && (
-                      <span class="absolute top-2 left-2 bg-pop-orange text-black font-montserrat text-xs font-bold px-2 py-1 rounded z-10">{img.tag}</span>
+                      <figcaption class="example-block__tag">{img.tag}</figcaption>
                     )}
-                    {img.image?.asset ? (
-                      <img
-                        src={urlFor(img.image).width(600).url()}
-                        alt={img.tag || service.title}
-                        class="w-full aspect-square object-cover rounded-lg border border-edge-line"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div class="w-full aspect-square bg-bg-secondary rounded-lg border border-edge-line flex items-center justify-center">
-                        <span class="font-montserrat text-xs text-deep-grey uppercase">{img.tag || 'Image'}</span>
-                      </div>
-                    )}
-                  </div>
+                  </figure>
                 ))}
               </div>
             )}
 
-            {/* YouTube Videos Grid */}
-            {example.videos && example.videos.length > 0 && (
-              <div class={`grid gap-4 mb-8 ${example.videos.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                {example.videos.map((video: any) => (
-                  <div>
-                    {video.tag && (
-                      <p class="font-montserrat text-xs font-bold text-pop-orange uppercase tracking-wider mb-2">{video.tag}</p>
-                    )}
-                    <div class="aspect-video rounded-lg overflow-hidden border border-edge-line">
+            {example.videos?.length > 0 && (
+              <div class="example-block__videos">
+                {example.videos.map((vid) => (
+                  <div class="example-block__video-wrap">
+                    <div class="example-block__video-container">
                       <iframe
-                        src={`https://www.youtube.com/embed/${video.youtubeId}`}
-                        title={video.title || video.tag || 'Video'}
+                        src={`https://www.youtube.com/embed/${vid.youtubeId}`}
+                        title={vid.title || `${example.label} video`}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowfullscreen
-                        class="w-full h-full"
                         loading="lazy"
                       ></iframe>
                     </div>
+                    {vid.tag && (
+                      <p class="example-block__video-tag">{vid.tag}</p>
+                    )}
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Audio Tracks (for Your Song Your Story) */}
-            {example.audioTracks && example.audioTracks.length > 0 && (
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                {example.audioTracks.map((track: any) => (
-                  <div class="bg-bg-secondary rounded-lg border border-edge-line overflow-hidden">
-                    {track.coverImage?.asset && (
-                      <img src={urlFor(track.coverImage).width(400).height(400).url()} alt={track.title} class="w-full aspect-square object-cover" loading="lazy" />
+            {example.audioTracks?.length > 0 && (
+              <div class="example-block__audio-list">
+                {example.audioTracks.map((track) => (
+                  <div class="example-block__audio-item">
+                    {track.coverUrl && (
+                      <img
+                        src={track.coverUrl}
+                        alt={track.title}
+                        class="example-block__audio-cover"
+                        loading="lazy"
+                      />
                     )}
-                    <div class="p-3">
-                      <p class="font-dm text-sm text-off-white font-medium truncate">{track.title}</p>
-                      {track.duration && <p class="font-mono text-xs text-deep-grey">{track.duration}</p>}
-                      {track.audioUrl && (
-                        <audio controls class="w-full mt-2 h-8" preload="none">
-                          <source src={track.audioUrl} />
-                        </audio>
+                    <div class="example-block__audio-info">
+                      <p class="example-block__audio-title">{track.title}</p>
+                      {track.duration && (
+                        <span class="example-block__audio-duration">{track.duration}</span>
                       )}
                     </div>
+                    {track.audioUrl && (
+                      <audio controls preload="none" class="example-block__audio-player">
+                        <source src={track.audioUrl} />
+                      </audio>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
         ))}
-      </div>
-    </section>
-  )}
+      </section>
+    )}
 
-  <!-- How It Works -->
-  {service.steps && service.steps.length > 0 && (
-    <section class="py-12 bg-bg-secondary">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="font-montserrat text-2xl font-bold text-off-white mb-6">How It Works:</h2>
-        <ol class="space-y-3">
-          {service.steps.map((step: any, i: number) => (
-            <li class="flex items-start gap-3">
-              <span class="flex-shrink-0 w-7 h-7 bg-pop-orange text-black font-montserrat font-bold text-sm rounded flex items-center justify-center">{i + 1}</span>
-              <span class="font-dm text-mid-grey leading-relaxed">{step.text}</span>
+    <!-- How It Works -->
+    {service.steps?.length > 0 && (
+      <section class="service-page__how-it-works">
+        <h2 class="service-page__section-title">How It Works</h2>
+        <ol class="service-page__steps">
+          {service.steps.map((step, i) => (
+            <li class="service-page__step">
+              <span class="service-page__step-number">{i + 1}</span>
+              <p>{step.text}</p>
             </li>
           ))}
         </ol>
+      </section>
+    )}
 
-        {service.importantNote && (
-          <div class="mt-6 p-4 bg-bg-tertiary border-l-4 border-pop-orange rounded">
-            <p class="font-montserrat text-sm font-bold text-pop-orange mb-1">⚠️ Important Note</p>
-            <p class="font-dm text-sm text-mid-grey">{service.importantNote}</p>
-          </div>
-        )}
-      </div>
+    {service.importantNote && (
+      <aside class="service-page__note">
+        <strong>Please Note:</strong> {service.importantNote}
+      </aside>
+    )}
+
+    <!-- Commission Form -->
+    <section class="service-page__commission" id="commission">
+      <CommissionForm
+        client:visible
+        service={{
+          slug: service.slug.current,
+          title: service.title,
+          hasFileUpload: service.hasFileUpload,
+          hasDigitalDelivery: service.hasDigitalDelivery,
+          hasPrintOrder: service.hasPrintOrder,
+        }}
+      />
     </section>
-  )}
-
-  <!-- Order CTAs -->
-  <section class="py-12 bg-bg-primary">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-      {service.hasDigitalDelivery && (
-        <a href="/contact" class="flex items-center gap-2 font-dm text-lg text-pixel-cyan hover:underline">
-          <span>👉</span> Place Your Digital Delivery Only Order Here
-        </a>
-      )}
-      {service.hasPrintOrder && (
-        <a href="/contact" class="flex items-center gap-2 font-dm text-lg text-pixel-cyan hover:underline">
-          <span>👉</span> Place Your Poster OR Canvas Order Here
-        </a>
-      )}
-      {service.hasFileUpload && (
-        <div class="pt-4">
-          <a href="/contact" class="inline-block bg-bg-primary border-2 border-off-white text-off-white font-montserrat font-bold text-sm uppercase tracking-wider px-8 py-3 hover:bg-off-white hover:text-bg-primary transition-all">
-            Upload Your Files Here
-          </a>
-        </div>
-      )}
-    </div>
-  </section>
-
+  </div>
 </BaseLayout>
+
+<style>
+  /* ── Page container ─────────────────────── */
+  .service-page {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem 4rem;
+  }
+
+  /* ── Hero ────────────────────────────────── */
+  .service-page__hero {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .service-page__hero-frame {
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    background: transparent;
+  }
+
+  .service-page__hero-image {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .service-page__title {
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0 0 1rem;
+  }
+
+  .service-page__description {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: var(--text-muted, #a1a1aa);
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .service-page__extended {
+    max-width: 700px;
+    margin: 0 auto 2.5rem;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-muted, #a1a1aa);
+    text-align: center;
+  }
+
+  .service-page__extended p {
+    margin: 0 0 1rem;
+  }
+
+  .service-page__extended p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* ── Section titles ─────────────────────── */
+  .service-page__section-title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 2rem;
+    letter-spacing: -0.02em;
+  }
+
+  /* ── Gallery Examples ───────────────────── */
+  .service-page__gallery {
+    margin-bottom: 3rem;
+  }
+
+  .example-block {
+    margin-bottom: 3rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--border, #27272a);
+  }
+
+  .example-block:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .example-block__label {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 1.25rem;
+    text-align: center;
+    color: var(--text, #fafafa);
+  }
+
+  /* Images grid — centre each image within its cell */
+  .example-block__images {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+  }
+
+  .example-block__figure {
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background: transparent;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .example-block__image {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 12px;
+    transition: transform 300ms ease;
+  }
+
+  .example-block__figure:hover .example-block__image {
+    transform: scale(1.03);
+  }
+
+  .example-block__tag {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    padding: 0.25rem 0.625rem;
+    background: rgba(0, 0, 0, 0.75);
+    color: #F07828;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    letter-spacing: 0.02em;
+    z-index: 1;
+  }
+
+  /* Videos grid */
+  .example-block__videos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .example-block__video-wrap {
+    text-align: center;
+  }
+
+  .example-block__video-container {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #000;
+    border: 1px solid var(--border, #27272a);
+  }
+
+  .example-block__video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .example-block__video-tag {
+    margin: 0.625rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--text-muted, #a1a1aa);
+    font-weight: 500;
+  }
+
+  /* Audio tracks */
+  .example-block__audio-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .example-block__audio-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface, #18181b);
+    border: 1px solid var(--border, #27272a);
+    border-radius: 10px;
+  }
+
+  .example-block__audio-cover {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .example-block__audio-info {
+    flex-shrink: 0;
+    min-width: 120px;
+  }
+
+  .example-block__audio-title {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text, #fafafa);
+  }
+
+  .example-block__audio-duration {
+    font-size: 0.75rem;
+    color: var(--text-muted, #a1a1aa);
+  }
+
+  .example-block__audio-player {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+  }
+
+  /* ── How It Works ───────────────────────── */
+  .service-page__how-it-works {
+    margin-bottom: 2.5rem;
+  }
+
+  .service-page__steps {
+    list-style: none;
+    padding: 0;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .service-page__step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .service-page__step-number {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    background: #F07828;
+    color: #000;
+    font-weight: 700;
+    font-size: 0.875rem;
+    border-radius: 50%;
+  }
+
+  .service-page__step p {
+    margin: 0.25rem 0 0;
+    line-height: 1.5;
+    color: var(--text-muted, #a1a1aa);
+  }
+
+  /* ── Important Note ─────────────────────── */
+  .service-page__note {
+    max-width: 560px;
+    margin: 0 auto 2rem;
+    padding: 1rem 1.25rem;
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 3px solid #f59e0b;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--text-muted, #a1a1aa);
+  }
+
+  .service-page__note strong {
+    color: #f59e0b;
+  }
+
+  /* ── Responsive ─────────────────────────── */
+  @media (max-width: 640px) {
+    .service-page {
+      padding: 1rem 1rem 3rem;
+    }
+
+    .example-block__images {
+      grid-template-columns: 1fr;
+    }
+
+    .example-block__videos {
+      grid-template-columns: 1fr;
+    }
+
+    .example-block__audio-item {
+      flex-wrap: wrap;
+    }
+
+    .example-block__audio-player {
+      width: 100%;
+    }
+  }
+</style>

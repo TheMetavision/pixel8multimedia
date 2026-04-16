@@ -1,107 +1,169 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+// src/pages/services/index.astro
+// Services listing page — fetches all services from Sanity, renders grid
+export const prerender = false;
+
 import { sanityClient } from '../../lib/sanity';
-import { allServicesQuery } from '../../lib/queries';
+import Layout from '../../layouts/Layout.astro';
 
-let services: any[] = [];
-
-try {
-  services = await sanityClient.fetch(allServicesQuery);
-} catch (e) {
-  console.warn('Sanity fetch failed for services page');
-}
-
-// Fallback if Sanity is empty
-const fallbackServices = [
-  { title: 'Cartoonify Me!', slug: 'cartoonify-me', description: 'Turn your photo into a hand-crafted cartoon masterpiece in your favourite style.' },
-  { title: 'Stills to Reels', slug: 'stills-to-reels', description: 'Watch your favourite snapshot come alive! We animate your photo into a short cinematic scene.' },
-  { title: 'The Missing Moment', slug: 'the-missing-moment', description: 'Add someone special into an existing photo — a loved one who has passed, or a friend who missed your wedding.' },
-  { title: 'Past Perfect', slug: 'past-perfect', description: 'Restore treasured memories with professional photo repair and colourisation.' },
-  { title: 'Your Song Your Story', slug: 'your-song-your-story', description: 'Turn memories, milestones, or inside jokes into an original song.' },
-  { title: 'Story Of Your Life', slug: 'story-of-your-life', description: 'Transform a lifetime of photographs into one beautifully crafted cinematic story.' },
-  { title: 'Back in Time', slug: 'back-in-time', description: 'See yourself evolve across eras. From the 1950s through to the 2000s.' },
-  { title: 'The Day I Met...', slug: 'the-day-i-met', description: 'Creates a believable, cinematic image of you alongside your favourite celebrity.' },
-  { title: 'Scene Stealer', slug: 'scene-stealer', description: "Become the star of cinema's most iconic scenes." },
-  { title: 'Crayon To Creation', slug: 'crayon-to-creation', description: "Turn your child's imagination into something truly special." },
-  { title: 'Star Power', slug: 'star-power', description: 'Turn your child or pet into the star of their very own blockbuster.' },
-  { title: 'Prankz!', slug: 'prankz', description: 'Prank your friends with images that look way too real to ignore.' },
-];
-
-const displayServices = services.length > 0 ? services : fallbackServices;
-
-// Map service slugs to their image files and delivery type
-const serviceImages: Record<string, { image: string; delivery: string; color: string }> = {
-  'cartoonify-me':       { image: '/services/cartoonify-me.png',       delivery: 'Digital + Print', color: 'hot-magenta' },
-  'stills-to-reels':     { image: '/services/stills-to-reels.png',     delivery: 'Digital Only',    color: 'pixel-cyan' },
-  'the-missing-moment':  { image: '/services/the-missing-moment.jpeg', delivery: 'Digital + Print', color: 'pop-orange' },
-  'past-perfect':        { image: '/services/past-perfect.png',        delivery: 'Digital + Print', color: 'pop-orange' },
-  'your-song-your-story': { image: '/services/your-song-your-story.png', delivery: 'Digital Only',  color: 'pixel-cyan' },
-  'story-of-your-life':  { image: '/services/story-of-your-life.jpeg', delivery: 'Digital Only',    color: 'pixel-cyan' },
-  'back-in-time':        { image: '/services/back-in-time.png',        delivery: 'Digital + Print', color: 'hot-magenta' },
-  'the-day-i-met':       { image: '/services/the-day-i-met.jpeg',      delivery: 'Digital + Print', color: 'pop-orange' },
-  'scene-stealer':       { image: '/services/scene-stealer.jpeg',      delivery: 'Digital + Print', color: 'hot-magenta' },
-  'crayon-to-creation':  { image: '/services/crayon-to-creation.png',  delivery: 'Digital + Print', color: 'pop-orange' },
-  'star-power':          { image: '/services/star-power.png',          delivery: 'Digital + Print', color: 'hot-magenta' },
-  'prankz':              { image: '/services/prankz.png',              delivery: 'Digital + Print', color: 'pixel-cyan' },
-};
+const services = await sanityClient.fetch(`
+  *[_type == "service"] | order(sortOrder asc) {
+    _id,
+    title,
+    description,
+    slug,
+    "heroImage": heroImage.asset->url
+  }
+`);
 ---
 
-<BaseLayout
-  title="Services — Your Way"
-  description="Pixel8 Multimedia creative services. Photo transformation, animation, restoration, custom songs, and more. UK-based, worldwide delivery."
+<Layout
+  title="Services — Pixel8 Multimedia"
+  description="Bespoke photo transformations, AI art commissions, and creative services from Pixel8 Multimedia."
 >
-  <!-- Hero -->
-  <section class="bg-bg-secondary py-16 border-b border-edge-line">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center reveal">
-      <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">Your Way</span>
-      <h1 class="section-heading mt-2 mb-4">Our Services</h1>
-      <p class="font-dm text-mid-grey text-lg max-w-2xl mx-auto">
-        Your vision, our craft. From cartoon transformations to cinematic animations, photo restoration to custom songs — every piece is uniquely yours.
+  <main class="services-index">
+    <header class="services-index__header">
+      <h1 class="services-index__title">Our Services</h1>
+      <p class="services-index__subtitle">
+        Every creation is bespoke. Choose a service, upload your photos, and let us bring your vision to life.
       </p>
-    </div>
-  </section>
+    </header>
 
-  <!-- Services Grid -->
-  <section class="py-16 bg-bg-primary">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {displayServices.map((service: any, i: number) => {
-          const meta = serviceImages[service.slug] || { image: '', delivery: 'Digital + Print', color: 'pop-orange' };
-          return (
-            <a href={`/services/${service.slug}`}
-               class={`bg-bg-secondary border border-edge-line rounded-lg overflow-hidden hover:border-${meta.color} hover:shadow-glow-${meta.color === 'pop-orange' ? 'orange' : meta.color === 'pixel-cyan' ? 'cyan' : 'magenta'} transition-all duration-300 group reveal`}
-               style={`transition-delay: ${Math.min(i * 50, 300)}ms`}>
-              {meta.image && (
-                <div class="aspect-[16/9] overflow-hidden">
-                  <img src={meta.image} alt={`${service.title} service example`} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-                </div>
-              )}
-              <div class="p-5">
-                <h3 class={`font-montserrat text-lg font-bold text-off-white mb-2 group-hover:text-${meta.color} transition-colors`}>{service.title}</h3>
-                <p class="font-dm text-sm text-mid-grey leading-relaxed line-clamp-3 mb-3">{service.description}</p>
-                <span class={`font-mono text-xs text-${meta.color} uppercase tracking-wider`}>{meta.delivery} →</span>
-              </div>
-            </a>
-          );
-        })}
-      </div>
+    <div class="services-index__grid">
+      {services.map((svc) => (
+        <a href={`/services/${svc.slug.current}`} class="service-card">
+          {svc.heroImage ? (
+            <img
+              src={svc.heroImage}
+              alt={svc.title}
+              class="service-card__image"
+              loading="lazy"
+            />
+          ) : (
+            <div class="service-card__placeholder">
+              <span>✨</span>
+            </div>
+          )}
+          <div class="service-card__body">
+            <h2 class="service-card__title">{svc.title}</h2>
+            <p class="service-card__desc">{svc.description}</p>
+            <span class="service-card__cta">
+              Start Commission →
+            </span>
+          </div>
+        </a>
+      ))}
     </div>
-  </section>
+  </main>
+</Layout>
 
-  <!-- How Ordering Works -->
-  <section class="colour-block-orange py-16">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h2 class="font-montserrat text-3xl font-bold mb-8 reveal">How Ordering Works</h2>
-      <div class="grid md:grid-cols-2 gap-8">
-        <div class="bg-black/10 rounded-lg p-6 reveal">
-          <h3 class="font-montserrat text-xl font-bold mb-3">Digital Delivery</h3>
-          <p class="font-dm leading-relaxed">Receive your finished creation as a high-resolution digital file — ready to download, share, or use however you like.</p>
-        </div>
-        <div class="bg-black/10 rounded-lg p-6 reveal stagger-1">
-          <h3 class="font-montserrat text-xl font-bold mb-3">Print / Canvas</h3>
-          <p class="font-dm leading-relaxed">Want it on your wall? We'll produce your artwork as a premium poster print or canvas — made in-house at our UK studio.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-</BaseLayout>
+<style>
+  .services-index {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+  }
+
+  .services-index__header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .services-index__title {
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.75rem;
+  }
+
+  .services-index__subtitle {
+    font-size: 1.125rem;
+    color: var(--text-muted, #6b7280);
+    max-width: 560px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .services-index__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  /* ── Service Card ──────── */
+  .service-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e2e5ea);
+    border-radius: 14px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+
+  .service-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .service-card__image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+  }
+
+  .service-card__placeholder {
+    width: 100%;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    font-size: 3rem;
+  }
+
+  .service-card__body {
+    padding: 1.25rem 1.5rem 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .service-card__title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .service-card__desc {
+    font-size: 0.875rem;
+    color: var(--text-muted, #6b7280);
+    line-height: 1.55;
+    margin: 0 0 1rem;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .service-card__cta {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--accent, #7c3aed);
+    letter-spacing: 0.01em;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .service-card {
+      background: #1e1e24;
+      border-color: #2e2e38;
+    }
+    .service-card:hover {
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+  }
+</style>

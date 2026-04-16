@@ -1,0 +1,421 @@
+/* src/styles/commission-form.css
+   Commission form — Pixel8 Multimedia
+   Matches global brand: dark bg, Montserrat headings, DM Sans body,
+   pop-orange (#F07828) primary, pixel-cyan (#00BCD4) secondary,
+   hot-magenta (#E91E7B) accent
+*/
+
+.commission-form {
+  --cf-bg: #0D0D0D;
+  --cf-surface: #141418;
+  --cf-surface-hover: #1a1a20;
+  --cf-border: rgba(255, 255, 255, 0.08);
+  --cf-border-hover: rgba(255, 255, 255, 0.15);
+  --cf-text: #F0EDE6;
+  --cf-text-muted: #8A8A8E;
+  --cf-orange: #F07828;
+  --cf-orange-glow: rgba(240, 120, 40, 0.25);
+  --cf-cyan: #00BCD4;
+  --cf-cyan-glow: rgba(0, 188, 212, 0.2);
+  --cf-magenta: #E91E7B;
+  --cf-error: #ef4444;
+  --cf-error-bg: rgba(239, 68, 68, 0.08);
+  --cf-radius: 8px;
+  --cf-transition: 200ms ease;
+
+  max-width: 640px;
+  margin: 3rem auto;
+  padding: 2.5rem;
+  background: var(--cf-surface);
+  border: 1px solid var(--cf-border);
+  border-radius: 12px;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  color: var(--cf-text);
+}
+
+@media (max-width: 520px) {
+  .commission-form {
+    padding: 1.5rem;
+    margin: 1.5rem 0.75rem;
+  }
+}
+
+/* ── Heading ───────────────────────────── */
+.commission-form__heading {
+  margin: 0 0 0.5rem;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--cf-text);
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.commission-form__heading::after {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 3px;
+  background: var(--cf-orange);
+  margin-top: 0.75rem;
+  margin-bottom: 1.75rem;
+  border-radius: 2px;
+}
+
+/* ── Layout ────────────────────────────── */
+.commission-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 520px) {
+  .commission-form__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.commission-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 1.25rem;
+}
+
+.commission-form__fieldset {
+  border: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+}
+
+/* ── Labels ────────────────────────────── */
+.commission-form__label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--cf-orange);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.commission-form__hint {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+  color: var(--cf-text-muted);
+  font-size: 0.6875rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── Inputs ────────────────────────────── */
+.commission-form__input,
+.commission-form__textarea,
+.commission-form__select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--cf-text);
+  background: var(--cf-bg);
+  border: 1px solid var(--cf-border);
+  border-radius: var(--cf-radius);
+  outline: none;
+  transition:
+    border-color var(--cf-transition),
+    box-shadow var(--cf-transition);
+  box-sizing: border-box;
+}
+
+.commission-form__input::placeholder,
+.commission-form__textarea::placeholder {
+  color: var(--cf-text-muted);
+  opacity: 0.6;
+}
+
+.commission-form__input:focus,
+.commission-form__textarea:focus,
+.commission-form__select:focus {
+  border-color: var(--cf-orange);
+  box-shadow: 0 0 0 3px var(--cf-orange-glow);
+}
+
+.commission-form__textarea {
+  resize: vertical;
+  min-height: 5rem;
+  line-height: 1.6;
+}
+
+.commission-form__select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23F07828' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  padding-right: 2.25rem;
+}
+
+/* ── Dropzone ──────────────────────────── */
+.commission-form__dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 2.25rem 1.5rem;
+  border: 2px dashed var(--cf-border-hover);
+  border-radius: var(--cf-radius);
+  background: var(--cf-bg);
+  cursor: pointer;
+  transition:
+    border-color var(--cf-transition),
+    background var(--cf-transition);
+  text-align: center;
+}
+
+.commission-form__dropzone:hover,
+.commission-form__dropzone--active {
+  border-color: var(--cf-cyan);
+  background: rgba(0, 188, 212, 0.04);
+}
+
+.commission-form__upload-icon {
+  color: var(--cf-cyan);
+  opacity: 0.7;
+}
+
+.commission-form__dropzone:hover .commission-form__upload-icon,
+.commission-form__dropzone--active .commission-form__upload-icon {
+  opacity: 1;
+}
+
+.commission-form__dropzone-text {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--cf-text-muted);
+}
+
+.commission-form__file-input {
+  display: none;
+}
+
+/* ── File List ─────────────────────────── */
+.commission-form__file-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.commission-form__file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.875rem;
+  background: var(--cf-bg);
+  border: 1px solid var(--cf-border);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+
+.commission-form__file-name {
+  color: var(--cf-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: calc(100% - 2rem);
+}
+
+.commission-form__file-size {
+  color: var(--cf-text-muted);
+  margin-left: 0.375rem;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6875rem;
+}
+
+.commission-form__file-remove {
+  background: none;
+  border: none;
+  color: var(--cf-text-muted);
+  font-size: 1.125rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+  transition: color var(--cf-transition);
+}
+
+.commission-form__file-remove:hover {
+  color: var(--cf-error);
+}
+
+/* ── Radio Cards ───────────────────────── */
+.commission-form__radio-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.commission-form__radio-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 1.125rem 0.75rem;
+  border: 1px solid var(--cf-border);
+  border-radius: var(--cf-radius);
+  background: var(--cf-bg);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    border-color var(--cf-transition),
+    background var(--cf-transition),
+    box-shadow var(--cf-transition),
+    transform var(--cf-transition);
+}
+
+.commission-form__radio-card:hover {
+  border-color: var(--cf-border-hover);
+  background: var(--cf-surface-hover);
+  transform: translateY(-2px);
+}
+
+.commission-form__radio-card--selected {
+  border-color: var(--cf-cyan);
+  background: rgba(0, 188, 212, 0.06);
+  box-shadow: 0 0 12px var(--cf-cyan-glow);
+}
+
+.commission-form__radio-card--selected .commission-form__radio-title {
+  color: var(--cf-cyan);
+}
+
+.commission-form__radio-card input[type='radio'] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.commission-form__radio-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.commission-form__radio-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--cf-text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color var(--cf-transition);
+}
+
+.commission-form__radio-desc {
+  font-size: 0.6875rem;
+  color: var(--cf-text-muted);
+  line-height: 1.4;
+}
+
+/* ── Print Options ─────────────────────── */
+.commission-form__print-options {
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  background: var(--cf-bg);
+  border: 1px solid var(--cf-border);
+  border-radius: var(--cf-radius);
+  animation: cf-slide-in 250ms ease;
+}
+
+@keyframes cf-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* ── Error ─────────────────────────────── */
+.commission-form__error {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: var(--cf-error-bg);
+  color: var(--cf-error);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+/* ── Submit — matches .btn-primary style ─ */
+.commission-form__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #000;
+  background: var(--cf-orange);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition:
+    transform var(--cf-transition),
+    box-shadow var(--cf-transition);
+}
+
+.commission-form__submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px var(--cf-orange-glow);
+}
+
+.commission-form__submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.commission-form__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.commission-form__spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: cf-spin 0.6s linear infinite;
+}
+
+@keyframes cf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Terms ─────────────────────────────── */
+.commission-form__terms {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  font-size: 0.6875rem;
+  color: var(--cf-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.commission-form__terms a {
+  color: var(--cf-cyan);
+  text-decoration: none;
+  transition: color var(--cf-transition);
+}
+
+.commission-form__terms a:hover {
+  color: var(--cf-orange);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

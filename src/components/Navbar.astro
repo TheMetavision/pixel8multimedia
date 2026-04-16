@@ -90,16 +90,16 @@ const navLinks = [
       <div class="flex items-center gap-3">
         <!-- Social Icons (desktop) -->
         <div class="hidden lg:flex items-center gap-2">
-          <a href="https://facebook.com/pixel8multimedia" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="text-deep-grey hover:text-pop-orange transition-colors">
+          <a href="https://www.facebook.com/pixel8mm/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="text-deep-grey hover:text-pop-orange transition-colors">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
           </a>
-          <a href="https://instagram.com/pixel8multimedia" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="text-deep-grey hover:text-pop-orange transition-colors">
+          <a href="https://www.instagram.com/pixel8mm" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="text-deep-grey hover:text-pop-orange transition-colors">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
           </a>
-          <a href="https://x.com/pixel8multi" target="_blank" rel="noopener noreferrer" aria-label="X" class="text-deep-grey hover:text-pop-orange transition-colors">
+          <a href="https://x.com/pixel8mm" target="_blank" rel="noopener noreferrer" aria-label="X" class="text-deep-grey hover:text-pop-orange transition-colors">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.265 5.64 5.899-5.64zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </a>
-          <a href="https://tiktok.com/@pixel8multimedia" target="_blank" rel="noopener noreferrer" aria-label="TikTok" class="text-deep-grey hover:text-pop-orange transition-colors">
+          <a href="https://www.tiktok.com/@pixel8multimedia" target="_blank" rel="noopener noreferrer" aria-label="TikTok" class="text-deep-grey hover:text-pop-orange transition-colors">
             <svg class="w-3.5 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V9.02a8.16 8.16 0 004.77 1.52V7.1a4.85 4.85 0 01-1-.41z"/></svg>
           </a>
         </div>
@@ -127,28 +127,54 @@ const navLinks = [
   </div>
 
   <!-- Mobile Menu -->
-  <div id="mobile-menu" class="hidden lg:hidden bg-black border-t border-edge-line">
+  <div id="mobile-menu" class="hidden lg:hidden bg-black border-t border-edge-line max-h-[calc(100vh-10rem)] overflow-y-auto">
     <div class="px-4 py-4 space-y-1">
-      {navLinks.map((link) => (
+      {navLinks.map((link, idx) => (
         link.children ? (
-          <div>
-            <div class="font-montserrat text-off-white uppercase tracking-wider py-2 text-sm font-bold text-pop-orange">
-              {link.label}
+          <div class="mobile-submenu-wrapper">
+            <button
+              type="button"
+              class="mobile-submenu-toggle w-full flex items-center justify-between py-3 font-montserrat text-pop-orange uppercase tracking-wider text-sm font-semibold hover:text-pixel-cyan transition-colors"
+              data-submenu-index={idx}
+              aria-expanded="false"
+            >
+              <span>{link.label}</span>
+              <svg class="mobile-submenu-chevron w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="mobile-submenu-content hidden pb-2" data-submenu-content={idx}>
+              {link.children.map((child) => (
+                <a href={child.href}
+                   class="block pl-4 py-2 font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">
+                  {child.label}
+                </a>
+              ))}
             </div>
-            {link.children.map((child) => (
-              <a href={child.href}
-                 class="block pl-4 py-2 font-dm text-sm text-pop-orange hover:text-pixel-cyan transition-colors">
-                {child.label}
-              </a>
-            ))}
           </div>
         ) : (
           <a href={link.href}
-             class="block py-2 font-montserrat text-pop-orange uppercase tracking-wider text-sm hover:text-pixel-cyan transition-colors font-semibold">
+             class="block py-3 font-montserrat text-pop-orange uppercase tracking-wider text-sm hover:text-pixel-cyan transition-colors font-semibold">
             {link.label}
           </a>
         )
       ))}
+
+      <!-- Social Icons (mobile) -->
+      <div class="flex items-center justify-center gap-5 pt-4 mt-4 border-t border-edge-line">
+        <a href="https://www.facebook.com/pixel8mm/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="text-deep-grey hover:text-pop-orange transition-colors">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+        </a>
+        <a href="https://www.instagram.com/pixel8mm" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="text-deep-grey hover:text-pop-orange transition-colors">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+        </a>
+        <a href="https://x.com/pixel8mm" target="_blank" rel="noopener noreferrer" aria-label="X" class="text-deep-grey hover:text-pop-orange transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.265 5.64 5.899-5.64zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+        <a href="https://www.tiktok.com/@pixel8multimedia" target="_blank" rel="noopener noreferrer" aria-label="TikTok" class="text-deep-grey hover:text-pop-orange transition-colors">
+          <svg class="w-4 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V9.02a8.16 8.16 0 004.77 1.52V7.1a4.85 4.85 0 01-1-.41z"/></svg>
+        </a>
+      </div>
     </div>
   </div>
 </nav>
@@ -178,6 +204,22 @@ const navLinks = [
     mobileMenu?.classList.toggle('hidden');
     menuIcon?.classList.toggle('hidden', !isHidden);
     closeIcon?.classList.toggle('hidden', isHidden);
+  });
+
+  // Mobile submenu collapse/expand for Services & Shop
+  document.querySelectorAll<HTMLButtonElement>('.mobile-submenu-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const index = btn.dataset.submenuIndex;
+      const content = document.querySelector<HTMLDivElement>(`[data-submenu-content="${index}"]`);
+      const chevron = btn.querySelector<SVGElement>('.mobile-submenu-chevron');
+      const isOpen = !content?.classList.contains('hidden');
+
+      content?.classList.toggle('hidden');
+      btn.setAttribute('aria-expanded', String(!isOpen));
+      if (chevron) {
+        (chevron as HTMLElement).style.transform = isOpen ? '' : 'rotate(180deg)';
+      }
+    });
   });
 
   import { cartCount, cartOpen } from '../stores/cart';
