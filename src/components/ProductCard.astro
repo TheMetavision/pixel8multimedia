@@ -1,7 +1,6 @@
 ---
 import { urlFor } from '../lib/sanity';
 import { PRICES, STYLE_LABELS, CATEGORY_LABELS } from '../data/products';
-
 interface Props {
   product: {
     title: string;
@@ -11,18 +10,31 @@ interface Props {
     accentColor?: string;
     prices?: any;
     images?: any[];
+    serviceHeroUrl?: string; // passed through for personalised products
   };
 }
-
 const { product } = Astro.props;
-const imageUrl = product.images?.[0]?.asset ? urlFor(product.images[0]).width(600).height(800).url() : null;
+
+// Personalised products link to the matching service page
+const isPersonalised = product.category === 'personalised';
+const serviceSlug = isPersonalised ? product.slug.replace(/^personalised-/, '') : null;
+const href = isPersonalised ? `/services/${serviceSlug}` : `/store/${product.slug}`;
+
+// Image: use product image if set, fallback to service hero for personalised items
+const productImageUrl = product.images?.[0]?.asset
+  ? urlFor(product.images[0]).width(600).height(800).url()
+  : null;
+const imageUrl = productImageUrl || product.serviceHeroUrl || null;
+
 const lowestPrice = product.prices?.poster?.small || PRICES.poster.small;
 const accent = product.accentColor || '#F07828';
 const styleLabel = product.style ? (STYLE_LABELS[product.style] || product.style) : '';
 const categoryLabel = product.category ? (CATEGORY_LABELS[product.category] || product.category) : '';
----
 
-<a href={`/store/${product.slug}`} class="product-card group block" data-category={product.category} data-style={product.style} data-title={product.title?.toLowerCase()}>
+// CTA label differs for personalised
+const ctaLabel = isPersonalised ? 'Commission' : 'Quick View';
+---
+<a href={href} class="product-card group block" data-category={product.category} data-style={product.style} data-title={product.title?.toLowerCase()}>
   <div class="aspect-[3/4] relative overflow-hidden">
     {imageUrl ? (
       <img src={imageUrl} alt={product.title} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
@@ -31,13 +43,18 @@ const categoryLabel = product.category ? (CATEGORY_LABELS[product.category] || p
         <span class="font-montserrat text-xs uppercase tracking-widest">{product.title}</span>
       </div>
     )}
-    {styleLabel && (
+    {styleLabel && !isPersonalised && (
       <span class="absolute top-2 left-2 bg-black/70 backdrop-blur-sm text-xs font-montserrat font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border border-white/10" style={`color: ${accent}`}>
         {styleLabel}
       </span>
     )}
+    {isPersonalised && (
+      <span class="absolute top-2 left-2 bg-pixel-cyan/90 backdrop-blur-sm text-xs font-montserrat font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full text-black">
+        Bespoke
+      </span>
+    )}
     <div class="absolute inset-0 bg-bg-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
-      <span class="font-montserrat text-xs font-bold uppercase tracking-widest text-off-white border border-off-white/50 px-4 py-2 rounded hover:bg-off-white hover:text-black transition-colors">Quick View</span>
+      <span class="font-montserrat text-xs font-bold uppercase tracking-widest text-off-white border border-off-white/50 px-4 py-2 rounded hover:bg-off-white hover:text-black transition-colors">{ctaLabel}</span>
     </div>
   </div>
   <div class="p-3 flex items-start justify-between gap-2">
@@ -50,7 +67,6 @@ const categoryLabel = product.category ? (CATEGORY_LABELS[product.category] || p
     <span class="price-tag text-sm flex-shrink-0">From £{lowestPrice.toFixed(2)}</span>
   </div>
 </a>
-
 <style define:vars={{ accent }}>
   .product-card:hover {
     border-color: var(--accent);

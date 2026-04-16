@@ -7,16 +7,42 @@ import { CATEGORIES, STYLES } from '../../data/products';
 
 let products: any[] = [];
 let categories: any[] = [];
+let serviceHeroMap: Record<string, string> = {};
 
 try {
-  [products, categories] = await Promise.all([
+  const [productsResult, categoriesResult, servicesResult] = await Promise.all([
     sanityClient.fetch(allProductsQuery),
     sanityClient.fetch(allCategoriesQuery),
+    // Fetch service hero images so Personalised products can borrow them
+    sanityClient.fetch(`
+      *[_type == "service"]{
+        "slug": slug.current,
+        "heroUrl": heroImage.asset->url
+      }
+    `),
   ]);
+
+  products = productsResult;
+  categories = categoriesResult;
+
+  // Build a slug -> heroUrl map from services
+  serviceHeroMap = (servicesResult || []).reduce((acc: any, svc: any) => {
+    if (svc.slug && svc.heroUrl) acc[svc.slug] = svc.heroUrl;
+    return acc;
+  }, {});
 } catch (e) {
   console.warn('Sanity fetch failed for store page');
   categories = CATEGORIES.map((c) => ({ ...c, productCount: 0 }));
 }
+
+// Attach serviceHeroUrl to personalised products so the card can render the image
+products = products.map((p: any) => {
+  if (p.category === 'personalised' && typeof p.slug === 'string') {
+    const svcSlug = p.slug.replace(/^personalised-/, '');
+    return { ...p, serviceHeroUrl: serviceHeroMap[svcSlug] || null };
+  }
+  return p;
+});
 ---
 
 <BaseLayout
@@ -46,7 +72,6 @@ try {
   <!-- Filters -->
   <section class="bg-bg-primary border-b border-edge-line sticky top-40 z-30">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-3">
-      <!-- Search + Sort -->
       <div class="flex items-center gap-3 flex-wrap">
         <div class="relative flex-1 min-w-[200px] max-w-[360px]">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-deep-grey pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -62,7 +87,6 @@ try {
         <span class="text-xs text-deep-grey font-dm ml-auto" id="product-count">{products.length} products</span>
       </div>
 
-      <!-- Category tabs -->
       <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" id="category-filters">
         <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-off-white bg-pop-orange whitespace-nowrap transition-all" data-type="category" data-value="all">All</button>
         {(categories.length > 0 ? categories : CATEGORIES).map((cat: any) => (
@@ -73,7 +97,6 @@ try {
         ))}
       </div>
 
-      <!-- Style pills -->
       <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" id="style-filters">
         <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-off-white bg-pop-orange whitespace-nowrap transition-all" data-type="style" data-value="all">All Styles</button>
         {STYLES.map((s) => (
@@ -165,7 +188,6 @@ try {
       }
     });
 
-    // Sort
     if (sortBy === 'price-asc') {
       visible.sort((a, b) => parseFloat(a.dataset.price || '0') - parseFloat(b.dataset.price || '0'));
     } else if (sortBy === 'price-desc') {
@@ -181,7 +203,6 @@ try {
     if (countEl) countEl.textContent = `${visible.length} product${visible.length !== 1 ? 's' : ''}`;
   }
 
-  // Read URL params on page load
   const params = new URLSearchParams(window.location.search);
   const urlCategory = params.get('category');
   const urlStyle = params.get('style');
@@ -189,23 +210,19 @@ try {
   if (urlCategory) activateCategoryTab(urlCategory);
   if (urlStyle) activateStyleTab(urlStyle);
 
-  // Apply filters on load (handles URL params + shows count)
   applyFilters();
 
-  // Category filter clicks
   document.querySelectorAll('[data-type="category"]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const value = (btn as HTMLElement).dataset.value || 'all';
       activateCategoryTab(value);
       applyFilters();
-      // Update URL without reload
       const url = new URL(window.location.href);
       if (value === 'all') { url.searchParams.delete('category'); } else { url.searchParams.set('category', value); }
       history.replaceState(null, '', url.toString());
     });
   });
 
-  // Style filter clicks
   document.querySelectorAll('[data-type="style"]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const value = (btn as HTMLElement).dataset.value || 'all';
