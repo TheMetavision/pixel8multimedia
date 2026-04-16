@@ -3,12 +3,12 @@
 // Shown after successful Stripe Checkout for a commission order
 export const prerender = false;
 
-import Layout from '../../layouts/Layout.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const ref = Astro.url.searchParams.get('ref') || '';
 ---
 
-<Layout title="Order Confirmed — Pixel8 Multimedia" description="Your commission order has been placed successfully.">
+<BaseLayout title="Order Confirmed — Pixel8 Multimedia" description="Your commission order has been placed successfully.">
   <main class="success-page">
     <div class="success-page__card">
       <div class="success-page__icon">✅</div>
@@ -47,7 +47,7 @@ const ref = Astro.url.searchParams.get('ref') || '';
       <a href="/" class="success-page__cta">Back to Pixel8</a>
     </div>
   </main>
-</Layout>
+</BaseLayout>
 
 <style>
   .success-page {
@@ -63,8 +63,8 @@ const ref = Astro.url.searchParams.get('ref') || '';
     width: 100%;
     text-align: center;
     padding: 3rem 2.5rem;
-    background: var(--surface, #fff);
-    border: 1px solid var(--border, #e2e5ea);
+    background: #141418;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
   }
 
@@ -74,31 +74,34 @@ const ref = Astro.url.searchParams.get('ref') || '';
   }
 
   .success-page__title {
+    font-family: 'Montserrat', sans-serif;
     font-size: 1.75rem;
     font-weight: 800;
     letter-spacing: -0.02em;
     margin: 0 0 0.5rem;
+    text-transform: uppercase;
+    color: #F0EDE6;
   }
 
   .success-page__ref {
     font-size: 0.9375rem;
-    color: var(--text-muted, #6b7280);
+    color: #8A8A8E;
     margin: 0 0 1.5rem;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Space Mono', monospace;
   }
 
   .success-page__ref strong {
-    color: var(--accent, #7c3aed);
+    color: #F07828;
   }
 
   .success-page__message {
+    font-family: 'DM Sans', sans-serif;
     font-size: 1rem;
     line-height: 1.6;
-    color: var(--text-muted, #6b7280);
+    color: #8A8A8E;
     margin: 0 0 2rem;
   }
 
-  /* ── Timeline ─────────── */
   .success-page__timeline {
     display: flex;
     flex-direction: column;
@@ -115,8 +118,9 @@ const ref = Astro.url.searchParams.get('ref') || '';
     gap: 0.75rem;
     position: relative;
     padding: 0.625rem 0;
+    font-family: 'DM Sans', sans-serif;
     font-size: 0.875rem;
-    color: var(--text-muted, #6b7280);
+    color: #8A8A8E;
   }
 
   .success-page__step:not(:last-child)::after {
@@ -126,7 +130,7 @@ const ref = Astro.url.searchParams.get('ref') || '';
     top: calc(50% + 10px);
     width: 2px;
     height: calc(100% - 4px);
-    background: var(--border, #e2e5ea);
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .success-page__dot {
@@ -134,28 +138,29 @@ const ref = Astro.url.searchParams.get('ref') || '';
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    border: 2px solid var(--border, #d1d5db);
+    border: 2px solid rgba(255, 255, 255, 0.15);
     background: transparent;
   }
 
   .success-page__step--done .success-page__dot {
-    background: #22c55e;
-    border-color: #22c55e;
+    background: #00BCD4;
+    border-color: #00BCD4;
   }
 
   .success-page__step--done {
-    color: var(--text, #1a1a2e);
+    color: #F0EDE6;
     font-weight: 600;
   }
 
   .success-page__contact {
+    font-family: 'DM Sans', sans-serif;
     font-size: 0.8125rem;
-    color: var(--text-muted, #9ca3af);
+    color: #8A8A8E;
     margin: 0 0 1.5rem;
   }
 
   .success-page__contact a {
-    color: var(--accent, #7c3aed);
+    color: #00BCD4;
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -163,17 +168,19 @@ const ref = Astro.url.searchParams.get('ref') || '';
   .success-page__cta {
     display: inline-block;
     padding: 0.75rem 2rem;
-    background: var(--accent, #7c3aed);
-    color: #fff;
+    background: #F07828;
+    color: #000;
     text-decoration: none;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.9375rem;
-    transition: background 180ms ease, transform 180ms ease;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: transform 180ms ease, box-shadow 180ms ease;
   }
 
   .success-page__cta:hover {
-    background: #6d28d9;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(240, 120, 40, 0.3);
   }
 </style>
