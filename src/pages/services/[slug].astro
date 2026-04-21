@@ -57,6 +57,10 @@ const extParagraphs = service.extendedDescription
   ? service.extendedDescription.split(/\n\n+/).filter(Boolean)
   : [];
 
+// Coming Soon pages — hide commission form, show banner instead
+const comingSoonSlugs = ['stills-to-reels'];
+const isComingSoon = comingSoonSlugs.includes(slug);
+
 // Helper: split images into original (first with tag "Original") and the rest
 function splitOriginal(images = []) {
   const valid = images.filter((img) => img.url);
@@ -110,7 +114,6 @@ function splitOriginal(images = []) {
                 <h3 class="example-block__label">{example.label}</h3>
               )}
 
-              {/* Centred Original above the rest */}
               {original && (
                 <div class="example-block__original">
                   <figure class="example-block__figure">
@@ -127,7 +130,6 @@ function splitOriginal(images = []) {
                 </div>
               )}
 
-              {/* Remaining images in responsive grid */}
               {rest.length > 0 && (
                 <div class="example-block__images">
                   {rest.map((img) => (
@@ -221,19 +223,35 @@ function splitOriginal(images = []) {
       </aside>
     )}
 
-    <!-- Commission Form -->
-    <section class="service-page__commission" id="commission">
-      <CommissionForm
-        client:visible
-        service={{
-          slug: service.slug.current,
-          title: service.title,
-          hasFileUpload: service.hasFileUpload,
-          hasDigitalDelivery: service.hasDigitalDelivery,
-          hasPrintOrder: service.hasPrintOrder,
-        }}
-      />
-    </section>
+    <!-- Coming Soon Banner -->
+    {isComingSoon && (
+      <section class="coming-soon">
+        <div class="coming-soon__inner">
+          <span class="coming-soon__icon">🚀</span>
+          <h2 class="coming-soon__title">Coming Soon</h2>
+          <p class="coming-soon__text">
+            We're putting the finishing touches on {service.title}. Want to be notified when it launches?
+          </p>
+          <a href="/contact" class="coming-soon__cta">Register Your Interest →</a>
+        </div>
+      </section>
+    )}
+
+    <!-- Commission Form (hidden on Coming Soon pages) -->
+    {!isComingSoon && (
+      <section class="service-page__commission" id="commission">
+        <CommissionForm
+          client:visible
+          service={{
+            slug: service.slug.current,
+            title: service.title,
+            hasFileUpload: service.hasFileUpload,
+            hasDigitalDelivery: service.hasDigitalDelivery,
+            hasPrintOrder: service.hasPrintOrder,
+          }}
+        />
+      </section>
+    )}
   </div>
 </BaseLayout>
 
@@ -533,6 +551,80 @@ function splitOriginal(images = []) {
     color: #f59e0b;
   }
 
+  /* ── Coming Soon Banner ─────────────────── */
+  .coming-soon {
+    margin: 2rem 0 3rem;
+  }
+
+  .coming-soon__inner {
+    max-width: 700px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 3.5rem 2.5rem;
+    background: linear-gradient(135deg, rgba(240, 120, 40, 0.08) 0%, rgba(0, 188, 212, 0.08) 100%);
+    border: 2px solid rgba(240, 120, 40, 0.25);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .coming-soon__inner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #F07828, #00BCD4, #E91E7B);
+  }
+
+  .coming-soon__icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .coming-soon__title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    margin: 0 0 1rem;
+    background: linear-gradient(135deg, #F07828, #00BCD4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .coming-soon__text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: #8A8A8E;
+    max-width: 480px;
+    margin: 0 auto 2rem;
+  }
+
+  .coming-soon__cta {
+    display: inline-block;
+    padding: 0.875rem 2.5rem;
+    background: #F07828;
+    color: #000;
+    text-decoration: none;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+
+  .coming-soon__cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 24px rgba(240, 120, 40, 0.3);
+  }
+
   /* ── Responsive ─────────────────────────── */
   @media (max-width: 640px) {
     .service-page {
@@ -553,6 +645,10 @@ function splitOriginal(images = []) {
 
     .example-block__audio-player {
       width: 100%;
+    }
+
+    .coming-soon__inner {
+      padding: 2.5rem 1.5rem;
     }
   }
 </style>
