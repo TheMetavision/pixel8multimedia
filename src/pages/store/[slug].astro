@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
 import { sanityClient, urlFor } from '../../lib/sanity';
 import { allProductsQuery, productBySlugQuery } from '../../lib/queries';
-import { PRICES, FORMAT_LABELS, SIZE_LABELS, FORMATS, SIZES, CATEGORY_LABELS, STYLE_LABELS } from '../../data/products';
+import { PRICES, FORMAT_LABELS, SIZE_LABELS, FORMATS, SIZES, CATEGORY_LABELS } from '../../data/products';
 import type { ProductFormat, ProductSize } from '../../data/products';
 
 export async function getStaticPaths() {
@@ -26,7 +26,6 @@ if (!product) {
   return Astro.redirect('/store');
 }
 
-// Use Sanity prices if available, otherwise fallback to static PRICES
 const productPrices = product.prices || PRICES;
 const basePrice = productPrices.poster?.small || PRICES.poster.small;
 const hasImages = product.images && product.images.length > 0;
@@ -34,13 +33,56 @@ const mainImageUrl = hasImages && product.images[0]?.asset
   ? urlFor(product.images[0]).width(800).url()
   : null;
 
-const relatedProducts = product.relatedProducts || [];
 const seoTitle = product.seo?.metaTitle || product.title;
 const seoDesc = product.seo?.metaDescription || (typeof product.description === 'string' ? product.description : '');
 const categoryLabel = CATEGORY_LABELS[product.category] || product.category || 'Collection';
-const styleLabel = STYLE_LABELS[product.style] || product.style || '';
+
+// Derive "OPTION X" badge from the style field (e.g. "style-b" → "OPTION B").
+// Replaces the old STYLE_LABELS lookup which produced "MINIMALIST COOL" etc.
+const optionLetter = product.style?.replace('style-', '').toUpperCase() || '';
+const optionBadge = optionLetter ? `Option ${optionLetter}` : '';
+
 const accent = product.accentColor || '#F07828';
 const sizes = product.sizes || { small: '12x8', medium: '16x12', large: '24x16' };
+
+// --- Sibling design variants: "More <Character> designs" ---
+let siblingDesigns: any[] = [];
+let characterDisplayName = '';
+if (product.category !== 'personalised' && typeof product.slug === 'string') {
+  const characterSlug = product.slug.replace(/-style-[a-j]$/, '');
+  if (characterSlug && characterSlug !== product.slug) {
+    try {
+      siblingDesigns = await sanityClient.fetch(
+        `*[
+          _type == "product"
+          && slug.current match $pattern
+          && slug.current != $currentSlug
+        ] | order(slug.current asc) {
+          _id,
+          title,
+          "slug": slug.current,
+          category,
+          style,
+          accentColor,
+          prices,
+          images,
+          seo
+        }`,
+        {
+          pattern: `${characterSlug}-style-*`,
+          currentSlug: product.slug,
+        }
+      );
+      // Derive character name from title prefix: "Boba Fett — Option C: Tatooine Hunt" → "Boba Fett"
+      characterDisplayName = (product.title || '').split(' — ')[0] || product.title || '';
+    } catch (e) {
+      console.warn('Sibling design fetch failed for', product.slug, e);
+      siblingDesigns = [];
+    }
+  }
+}
+
+const relatedProducts = product.relatedProducts || [];
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -111,11 +153,10 @@ const jsonLd = {
         <div>
           <div class="flex items-center gap-2 mb-3">
             <span class="style-badge">{categoryLabel}</span>
-            {styleLabel && <span class="font-montserrat text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full border border-edge-line" style={`color: ${accent}`}>{styleLabel}</span>}
+            {optionBadge && <span class="font-montserrat text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full border border-edge-line" style={`color: ${accent}`}>{optionBadge}</span>}
           </div>
           <h1 class="font-montserrat text-3xl md:text-4xl font-bold text-off-white mt-2 mb-4">{product.title}</h1>
 
-          {/* Render portable text description */}
           {product.description && (
             <div class="font-dm text-mid-grey leading-relaxed mb-6">
               {Array.isArray(product.description)
@@ -197,7 +238,26 @@ const jsonLd = {
         </div>
       </div>
 
-      <!-- Related Products -->
+      <!-- More <Character> designs -->
+      {siblingDesigns.length > 0 && (
+        <div class="mt-20 border-t border-edge-line pt-16">
+          <div class="flex items-baseline justify-between mb-8">
+            <h2 class="font-montserrat text-2xl font-bold text-off-white">
+              More {characterDisplayName} designs
+            </h2>
+            <span class="font-dm text-sm text-deep-grey">
+              {siblingDesigns.length} other option{siblingDesigns.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {siblingDesigns.map((rp: any) => (
+              <ProductCard product={rp} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <!-- You Might Also Like (only if Sanity sets relatedProducts explicitly) -->
       {relatedProducts.length > 0 && (
         <div class="mt-20 border-t border-edge-line pt-16">
           <h2 class="font-montserrat text-2xl font-bold text-off-white mb-8">You Might Also Like</h2>
