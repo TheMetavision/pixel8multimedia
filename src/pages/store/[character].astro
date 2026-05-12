@@ -1,0 +1,506 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { sanityClient, urlFor } from '../../lib/sanity';
+import {
+  productsByCharacterQuery,
+  allCharacterSlugsQuery,
+  relatedCharactersQuery,
+} from '../../lib/queries';
+import {
+  PRICES,
+  FORMAT_LABELS,
+  SIZE_LABELS,
+  FORMATS,
+  SIZES,
+  CATEGORY_LABELS,
+} from '../../data/products';
+
+export async function getStaticPaths() {
+  try {
+    const variantSlugs: string[] = await sanityClient.fetch(allCharacterSlugsQuery);
+    if (!variantSlugs || variantSlugs.length === 0) return [];
+
+    // Collapse "<character>-style-<a..j>" → unique character slugs.
+    const characters = new Set<string>();
+    for (const slug of variantSlugs) {
+      const characterSlug = slug.replace(/-style-[a-j]$/, '');
+      if (characterSlug && characterSlug !== slug) characters.add(characterSlug);
+    }
+    return Array.from(characters).map((character) => ({ params: { character } }));
+  } catch (e) {
+    console.warn('Sanity fetch failed in getStaticPaths for store/[character]');
+    return [];
+  }
+}
+
+const { character } = Astro.params;
+
+// Fetch every variant (style-a..j) for this character.
+const variants: any[] = await sanityClient.fetch(productsByCharacterQuery, {
+  pattern: `${character}-style-?`,
+});
+
+if (!variants || variants.length === 0) {
+  return Astro.redirect('/store');
+}
+
+// Pick the active variant from ?option=<a-j>, default to first (style-a).
+const requestedOption = (Astro.url.searchParams.get('option') || 'a').toLowerCase();
+const activeVariant =
+  variants.find((v) => v.style === `style-${requestedOption}`) || variants[0];
+
+// Common metadata derived from the active variant (this is what gets rendered first paint).
+const productPrices = activeVariant.prices || PRICES;
+const basePrice = productPrices.poster?.small || PRICES.poster.small;
+const accent = activeVariant.accentColor || '#F07828';
+const sizes = activeVariant.sizes || { small: '12x8', medium: '16x12', large: '24x16' };
+
+const categoryLabel =
+  CATEGORY_LABELS[activeVariant.category] || activeVariant.category || 'Collection';
+const optionLetter = activeVariant.style?.replace('style-', '').toUpperCase() || '';
+const optionBadge = optionLetter ? `Option ${optionLetter}` : '';
+
+// Character display name — strip the " — Option X" suffix from the title.
+const characterDisplayName =
+  (activeVariant.title || '').split(' — ')[0] || activeVariant.title || character;
+
+// SEO uses the character-level URL as canonical so Google sees one page per character.
+const seoTitle =
+  activeVariant.seo?.metaTitle ||
+  `${characterDisplayName} Wall Art — 10 Original Designs | Pixel8 Multimedia`;
+const seoDesc =
+  activeVariant.seo?.metaDescription ||
+  `${characterDisplayName} reimagined in 10 exclusive Pixel8 designs. Poster prints and canvas, made to order in the UK.`;
+
+const mainImageUrl = activeVariant.images?.[0]?.asset
+  ? urlFor(activeVariant.images[0]).width(800).url()
+  : null;
+
+// Related characters (same category, excludes this character's variants).
+const relatedCharacters: any[] = await sanityClient.fetch(relatedCharactersQuery, {
+  category: activeVariant.category,
+  excludePattern: `${character}-style-?`,
+});
+
+// Pre-build a per-variant payload that the client script can swap to instantly.
+const variantPayloads = variants
+  .filter((v) => /^style-[a-j]$/.test(v.style || ''))
+  .map((v) => {
+    const letter = v.style.replace('style-', '');
+    const heroUrl = v.images?.[0]?.asset ? urlFor(v.images[0]).width(800).url() : '';
+    const thumbUrl = v.images?.[0]?.asset
+      ? urlFor(v.images[0]).width(160).height(160).url()
+      : '';
+    const descText = Array.isArray(v.description)
+      ? v.description
+          .map((b: any) => b.children?.map((c: any) => c.text).join('') || '')
+          .join('\n\n')
+      : typeof v.description === 'string'
+      ? v.description
+      : '';
+    return {
+      letter,
+      style: v.style,
+      productId: v._id,
+      slug: v.slug,
+      title: v.title,
+      description: descText,
+      accentColor: v.accentColor || '#F07828',
+      prices: v.prices || PRICES,
+      heroUrl,
+      thumbUrl,
+    };
+  })
+  .sort((a, b) => a.letter.localeCompare(b.letter));
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: characterDisplayName,
+  description: seoDesc,
+  url: `https://pixel8multimedia.netlify.app/store/${character}`,
+  ...(mainImageUrl && { image: mainImageUrl }),
+  brand: { '@type': 'Brand', name: 'Pixel8 Multimedia' },
+  category: `Wall Art > ${categoryLabel}`,
+  offers: {
+    '@type': 'AggregateOffer',
+    lowPrice: (productPrices.poster?.small || 9.99).toFixed(2),
+    highPrice: (productPrices.canvasGallery?.large || 47.99).toFixed(2),
+    priceCurrency: 'GBP',
+    availability: 'https://schema.org/InStock',
+    offerCount: variantPayloads.length,
+  },
+};
+---
+
+<BaseLayout title={seoTitle} description={seoDesc} ogType="product" jsonLd={jsonLd}>
+  <section class="bg-bg-primary py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Breadcrumbs -->
+      <nav class="flex items-center gap-2 font-dm text-sm text-deep-grey mb-8">
+        <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
+        <span>/</span>
+        <a href="/store" class="hover:text-pop-orange transition-colors">Shop</a>
+        <span>/</span>
+        <a href={`/store?category=${activeVariant.category}`} class="hover:text-pop-orange transition-colors">{categoryLabel}</a>
+        <span>/</span>
+        <span class="text-off-white" id="bc-character">{characterDisplayName}</span>
+      </nav>
+
+      <!-- Product Layout -->
+      <div class="grid lg:grid-cols-2 gap-12">
+        <!-- Images -->
+        <div>
+          <div class="aspect-[3/4] bg-bg-secondary rounded-lg overflow-hidden border border-edge-line" id="main-image-container">
+            {mainImageUrl ? (
+              <img id="main-image" src={mainImageUrl} alt={`${characterDisplayName} — ${optionBadge}`} class="w-full h-full object-cover" />
+            ) : (
+              <div class="img-placeholder w-full h-full">
+                <span class="font-montserrat text-sm uppercase tracking-widest">{characterDisplayName}</span>
+              </div>
+            )}
+          </div>
+
+          <!-- Style Thumbnail Strip -->
+          <div class="mt-3">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">
+              Option <span class="text-deep-grey font-normal normal-case">— {variantPayloads.length} designs</span>
+            </label>
+            <div class="grid grid-cols-5 sm:grid-cols-10 gap-2" id="style-strip">
+              {variantPayloads.map((v) => (
+                <button
+                  class={`aspect-square bg-bg-secondary rounded border ${v.letter === requestedOption || (requestedOption === 'a' && v.letter === 'a') ? 'border-pop-orange border-2' : 'border-edge-line'} overflow-hidden style-thumb-btn hover:border-pop-orange transition-colors relative group`}
+                  data-letter={v.letter}
+                  aria-label={`View Option ${v.letter.toUpperCase()}`}
+                >
+                  {v.thumbUrl ? (
+                    <img src={v.thumbUrl} alt={`${characterDisplayName} Option ${v.letter.toUpperCase()}`} class="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <div class="w-full h-full flex items-center justify-center text-xs font-montserrat text-deep-grey">{v.letter.toUpperCase()}</div>
+                  )}
+                  <span class="absolute bottom-0 inset-x-0 bg-black/70 text-off-white font-montserrat text-[0.6rem] font-bold uppercase tracking-wider py-0.5 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {v.letter.toUpperCase()}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <!-- Details -->
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="style-badge">{categoryLabel}</span>
+            <span id="option-badge" class="font-montserrat text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full border border-edge-line" style={`color: ${accent}`}>{optionBadge}</span>
+          </div>
+
+          <h1 id="product-title" class="font-montserrat text-3xl md:text-4xl font-bold text-off-white mt-2 mb-4">{activeVariant.title}</h1>
+
+          <div id="product-description" class="font-dm text-mid-grey leading-relaxed mb-6">
+            {activeVariant.description && (
+              Array.isArray(activeVariant.description)
+                ? activeVariant.description.map((block: any) => (
+                    <p>{block.children?.map((child: any) => child.text).join('') || ''}</p>
+                  ))
+                : <p>{activeVariant.description}</p>
+            )}
+          </div>
+
+          <div class="price-tag text-2xl mb-8" id="display-price">From £{basePrice.toFixed(2)}</div>
+
+          <!-- Option Pills -->
+          <div class="mb-6">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Option</label>
+            <div class="grid grid-cols-5 sm:grid-cols-10 gap-2" id="option-pills">
+              {variantPayloads.map((v) => (
+                <button
+                  class={`option-pill font-montserrat text-sm font-semibold py-3 px-2 rounded border transition-all text-center ${v.letter === requestedOption ? 'border-pop-orange bg-pop-orange/10 text-pop-orange' : 'border-edge-line text-mid-grey hover:border-pop-orange hover:text-pop-orange'}`}
+                  data-letter={v.letter}
+                  aria-label={`Option ${v.letter.toUpperCase()}`}
+                >
+                  {v.letter.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <!-- Format Selector -->
+          <div class="mb-6">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Format</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="format-selector">
+              {FORMATS.map((format, i) => (
+                <button
+                  class={`format-btn font-dm text-sm py-3 px-4 rounded border transition-all text-center ${i === 0 ? 'border-pop-orange bg-pop-orange/10 text-pop-orange' : 'border-edge-line text-mid-grey hover:border-pop-orange hover:text-pop-orange'}`}
+                  data-format={format}
+                >
+                  {FORMAT_LABELS[format]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <!-- Size Selector -->
+          <div class="mb-6">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Size</label>
+            <div class="grid grid-cols-3 gap-2" id="size-selector">
+              {SIZES.map((size, i) => (
+                <button
+                  class={`size-btn font-dm text-sm py-3 px-4 rounded border transition-all text-center ${i === 0 ? 'border-pop-orange bg-pop-orange/10 text-pop-orange' : 'border-edge-line text-mid-grey hover:border-pop-orange hover:text-pop-orange'}`}
+                  data-size={size}
+                >
+                  {SIZE_LABELS[size].split(' (')[0]}
+                  <span class="block text-xs text-deep-grey mt-0.5">{sizes[size] || SIZE_LABELS[size].match(/\((.+)\)/)?.[1]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <!-- Quantity -->
+          <div class="mb-8">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Quantity</label>
+            <div class="flex items-center gap-3">
+              <button id="qty-decrease" class="w-10 h-10 bg-bg-secondary border border-edge-line rounded flex items-center justify-center text-off-white hover:border-pop-orange transition-colors">−</button>
+              <span id="qty-display" class="font-mono text-lg text-off-white w-8 text-center">1</span>
+              <button id="qty-increase" class="w-10 h-10 bg-bg-secondary border border-edge-line rounded flex items-center justify-center text-off-white hover:border-pop-orange transition-colors">+</button>
+            </div>
+          </div>
+
+          <!-- Add to Cart -->
+          <button id="add-to-cart" class="btn-primary w-full text-center text-base py-4 mb-4">
+            Add to Cart — <span id="cart-price">£{basePrice.toFixed(2)}</span>
+          </button>
+
+          <!-- Delivery Info -->
+          <div class="mt-8 border-t border-edge-line pt-6 space-y-3 font-dm text-sm text-mid-grey">
+            <div class="flex items-start gap-2">
+              <svg class="w-4 h-4 text-pop-orange flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8"/></svg>
+              <span>Made to order — dispatched within 3-6 working days</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <svg class="w-4 h-4 text-pixel-cyan flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+              <span>Free UK P&P on orders over £50</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <svg class="w-4 h-4 text-hot-magenta flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span>14-day returns on standard products</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Related Characters (same category) -->
+      {relatedCharacters.length > 0 && (
+        <div class="mt-20 border-t border-edge-line pt-16">
+          <h2 class="font-montserrat text-2xl font-bold text-off-white mb-8">You Might Also Like</h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {relatedCharacters.map((rp: any) => (
+              <ProductCard product={rp} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<!-- All variants serialised for the client-side switcher -->
+<script type="application/json" id="variant-data" set:html={JSON.stringify({
+  characterSlug: character,
+  characterName: characterDisplayName,
+  variants: variantPayloads,
+  initialLetter: requestedOption,
+})} />
+
+<script>
+  import { addToCart } from '../../stores/cart';
+
+  type Variant = {
+    letter: string;
+    style: string;
+    productId: string;
+    slug: string;
+    title: string;
+    description: string;
+    accentColor: string;
+    prices: any;
+    heroUrl: string;
+    thumbUrl: string;
+  };
+
+  const dataEl = document.getElementById('variant-data');
+  const data = JSON.parse(dataEl?.textContent || '{}');
+  const variants: Variant[] = data.variants || [];
+  const characterName: string = data.characterName || '';
+  const initialLetter: string = (data.initialLetter || 'a').toLowerCase();
+
+  let activeLetter =
+    variants.find((v) => v.letter === initialLetter)?.letter ||
+    variants[0]?.letter ||
+    'a';
+  let selectedFormat: 'poster' | 'canvasStandard' | 'canvasGallery' = 'poster';
+  let selectedSize: 'small' | 'medium' | 'large' = 'small';
+  let quantity = 1;
+
+  function active(): Variant | undefined {
+    return variants.find((v) => v.letter === activeLetter);
+  }
+
+  function getPrice(): number {
+    const v = active();
+    return v?.prices?.[selectedFormat]?.[selectedSize] ?? 9.99;
+  }
+
+  function paintVariant() {
+    const v = active();
+    if (!v) return;
+
+    // Hero image
+    const mainImg = document.getElementById('main-image') as HTMLImageElement | null;
+    if (mainImg && v.heroUrl) {
+      mainImg.src = v.heroUrl;
+      mainImg.alt = `${characterName} — Option ${v.letter.toUpperCase()}`;
+    }
+
+    // Title
+    const titleEl = document.getElementById('product-title');
+    if (titleEl) titleEl.textContent = v.title;
+
+    // Option badge
+    const badgeEl = document.getElementById('option-badge');
+    if (badgeEl) {
+      badgeEl.textContent = `Option ${v.letter.toUpperCase()}`;
+      badgeEl.style.color = v.accentColor;
+    }
+
+    // Description
+    const descEl = document.getElementById('product-description');
+    if (descEl) {
+      descEl.innerHTML = v.description
+        ? v.description
+            .split(/\n\n+/)
+            .map((p) => `<p>${p.replace(/</g, '&lt;')}</p>`)
+            .join('')
+        : '';
+    }
+
+    // Active thumbnail border
+    document.querySelectorAll('.style-thumb-btn').forEach((btn) => {
+      const el = btn as HTMLElement;
+      const isActive = el.dataset.letter === v.letter;
+      el.classList.toggle('border-pop-orange', isActive);
+      el.classList.toggle('border-2', isActive);
+      el.classList.toggle('border-edge-line', !isActive);
+    });
+
+    // Active option pill state
+    document.querySelectorAll('.option-pill').forEach((btn) => {
+      const el = btn;
+      const isActive = el.dataset.letter === v.letter;
+      el.classList.toggle('border-pop-orange', isActive);
+      el.classList.toggle('bg-pop-orange/10', isActive);
+      el.classList.toggle('text-pop-orange', isActive);
+      el.classList.toggle('border-edge-line', !isActive);
+      el.classList.toggle('text-mid-grey', !isActive);
+    });
+
+    // URL sync (preserves the rest of the URL, only edits ?option=)
+    const url = new URL(window.location.href);
+    if (v.letter === 'a') {
+      url.searchParams.delete('option');
+    } else {
+      url.searchParams.set('option', v.letter);
+    }
+    history.replaceState(null, '', url.toString());
+
+    paintPrice();
+  }
+
+  function paintPrice() {
+    const price = getPrice();
+    const total = price * quantity;
+    const displayEl = document.getElementById('display-price');
+    const cartEl = document.getElementById('cart-price');
+    const qtyEl = document.getElementById('qty-display');
+    if (displayEl) displayEl.textContent = `£${price.toFixed(2)}`;
+    if (cartEl) cartEl.textContent = `£${total.toFixed(2)}`;
+    if (qtyEl) qtyEl.textContent = String(quantity);
+  }
+
+  // Style thumbnail clicks
+  document.querySelectorAll<HTMLElement>('.style-thumb-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const letter = btn.dataset.letter;
+      if (!letter) return;
+      activeLetter = letter;
+      paintVariant();
+    });
+  });
+
+  // Option pill clicks (mirrors thumbnail behaviour)
+  document.querySelectorAll('.option-pill').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const letter = btn.dataset.letter;
+      if (!letter) return;
+      activeLetter = letter;
+      paintVariant();
+    });
+  });
+
+  // Format buttons
+  document.querySelectorAll<HTMLElement>('.format-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.format-btn').forEach((b) => {
+        b.classList.remove('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+        b.classList.add('border-edge-line', 'text-mid-grey');
+      });
+      btn.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+      btn.classList.remove('border-edge-line', 'text-mid-grey');
+      selectedFormat = (btn.dataset.format as any) || 'poster';
+      paintPrice();
+    });
+  });
+
+  // Size buttons
+  document.querySelectorAll<HTMLElement>('.size-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.size-btn').forEach((b) => {
+        b.classList.remove('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+        b.classList.add('border-edge-line', 'text-mid-grey');
+      });
+      btn.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+      btn.classList.remove('border-edge-line', 'text-mid-grey');
+      selectedSize = (btn.dataset.size as any) || 'small';
+      paintPrice();
+    });
+  });
+
+  // Quantity controls
+  document.getElementById('qty-decrease')?.addEventListener('click', () => {
+    if (quantity > 1) { quantity--; paintPrice(); }
+  });
+  document.getElementById('qty-increase')?.addEventListener('click', () => {
+    if (quantity < 10) { quantity++; paintPrice(); }
+  });
+
+  // Add to cart — uses the currently active VARIANT's ids, not the character.
+  document.getElementById('add-to-cart')?.addEventListener('click', () => {
+    const v = active();
+    if (!v) return;
+    addToCart({
+      productId: v.productId,
+      slug: v.slug,
+      title: v.title,
+      collection: '',
+      format: selectedFormat,
+      size: selectedSize,
+      quantity,
+      unitPrice: getPrice(),
+      accentColor: v.accentColor,
+      imageUrl: v.heroUrl,
+    });
+  });
+
+  // Initial paint to align UI with ?option=
+  paintVariant();
+</script>

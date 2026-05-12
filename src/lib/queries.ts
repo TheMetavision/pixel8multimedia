@@ -275,3 +275,66 @@ export const serviceBySlugQuery = `
     hasFileUpload
   }
 `;
+
+
+// --- Character variants (one character ? all style variants) ----------------
+
+// Returns every product whose slug starts with `<characterSlug>-style-`.
+// Used by the character-driven PDP at /store/[character] to load
+// all 10 style options for a single character in one shot.
+export const productsByCharacterQuery = `
+  *[_type == "product" && slug.current match $pattern] | order(style asc) {
+    _id,
+    title,
+    "slug": slug.current,
+    category,
+    style,
+    description,
+    images[] {
+      asset-> { _id, url },
+      alt,
+      "lqip": asset->metadata.lqip
+    },
+    "printFileUrl": printFile.asset->url,
+    prices,
+    sizes,
+    personalisationFee,
+    stripePriceIds,
+    accentColor,
+    tags,
+    featured,
+    sortOrder,
+    seo
+  }
+`;
+
+// Distinct character slugs (the prefix before "-style-x") across the catalogue.
+// Used by getStaticPaths to know which character pages to build.
+export const allCharacterSlugsQuery = `
+  array::unique(
+    *[_type == "product" && defined(slug.current) && slug.current match "*-style-?"].slug.current
+  )
+`;
+
+// Related characters in the same category (excluding the current character).
+// Used for the "You Might Also Like" rail on the PDP.
+export const relatedCharactersQuery = `
+  *[
+    _type == "product"
+    && category == $category
+    && !(slug.current match $excludePattern)
+    && style == "style-a"
+  ] | order(sortOrder asc, title asc)[0..3] {
+    _id,
+    title,
+    "slug": slug.current,
+    category,
+    style,
+    prices,
+    accentColor,
+    images[0] {
+      asset-> { _id, url },
+      alt
+    }
+  }
+`;
