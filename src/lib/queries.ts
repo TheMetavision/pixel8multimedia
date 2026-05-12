@@ -1,7 +1,7 @@
-// GROQ queries for Pixel8 Multimedia
-// Rewired: collection (reference) → category + style (string fields)
+﻿// GROQ queries for Pixel8 Multimedia
+// Rewired: collection (reference) â†’ category + style (string fields)
 
-// ─── Categories ───────────────────────────────────────────
+// â”€â”€â”€ Categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const allCategoriesQuery = `
   *[_type == "category"] | order(sortOrder asc) {
@@ -36,7 +36,7 @@ export const categoryBySlugQuery = `
   }
 `;
 
-// ─── Products ─────────────────────────────────────────────
+// â”€â”€â”€ Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const allProductsQuery = `
   *[_type == "product"] | order(sortOrder asc, title asc) {
@@ -127,14 +127,14 @@ export const featuredProductsQuery = `
     style,
     prices,
     accentColor,
-    images[0] {
+    images[0...1] {
       asset-> { _id, url },
       alt
     }
   }
 `;
 
-// ─── Blog ─────────────────────────────────────────────────
+// â”€â”€â”€ Blog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const allBlogPostsQuery = `
   *[_type == "blogPost"] | order(publishedAt desc) {
@@ -189,7 +189,7 @@ export const blogPostBySlugQuery = `
   }
 `;
 
-// ─── Testimonials ─────────────────────────────────────────
+// â”€â”€â”€ Testimonials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const testimonialsQuery = `
   *[_type == "testimonial" && featured == true] | order(_createdAt desc) {
@@ -202,7 +202,7 @@ export const testimonialsQuery = `
   }
 `;
 
-// ─── FAQs ─────────────────────────────────────────────────
+// â”€â”€â”€ FAQs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const faqsByPageQuery = `
   *[_type == "faq" && (page == $page || page == "both")] | order(sortOrder asc) {
@@ -213,7 +213,7 @@ export const faqsByPageQuery = `
   }
 `;
 
-// ─── Site Settings ────────────────────────────────────────
+// â”€â”€â”€ Site Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const siteSettingsQuery = `
   *[_type == "siteSettings"][0] {
@@ -226,7 +226,7 @@ export const siteSettingsQuery = `
   }
 `;
 
-// ─── Services ─────────────────────────────────────────────
+// â”€â”€â”€ Services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const allServicesQuery = `
   *[_type == "service"] | order(sortOrder asc) {
@@ -332,14 +332,14 @@ export const relatedCharactersQuery = `
     style,
     prices,
     accentColor,
-    images[0] {
+    images[0...1] {
       asset-> { _id, url },
       alt
     }
   }
 `;
 
-// ─── Shop listing (one row per character) ──────────────────────────────────
+// â”€â”€â”€ Shop listing (one row per character) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Returns one row per character with all 10 variants grouped in.
 // Each row uses the Option A variant as the canonical title/price/image,
@@ -359,7 +359,7 @@ export const allCharactersForListingQuery = `
     style,
     prices,
     accentColor,
-    images[0] {
+    images[0...1] {
       asset-> { _id, url },
       alt,
       "lqip": asset->metadata.lqip
