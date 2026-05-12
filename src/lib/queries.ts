@@ -338,3 +338,42 @@ export const relatedCharactersQuery = `
     }
   }
 `;
+
+// ─── Shop listing (one row per character) ──────────────────────────────────
+
+// Returns one row per character with all 10 variants grouped in.
+// Each row uses the Option A variant as the canonical title/price/image,
+// and includes a `variants[]` array of thumbnail data for hover preview
+// and filter swapping.
+export const allCharactersForListingQuery = `
+  *[
+    _type == "product"
+    && defined(slug.current)
+    && style == "style-a"
+  ] | order(category asc, title asc) {
+    _id,
+    title,
+    "slug": slug.current,
+    "characterSlug": string::split(slug.current, "-style-")[0],
+    category,
+    style,
+    prices,
+    accentColor,
+    images[0] {
+      asset-> { _id, url },
+      alt,
+      "lqip": asset->metadata.lqip
+    },
+    "variants": *[
+      _type == "product"
+      && string::split(slug.current, "-style-")[0] == string::split(^.slug.current, "-style-")[0]
+    ] | order(style asc) {
+      style,
+      "slug": slug.current,
+      images[0] {
+        asset-> { _id, url },
+        alt
+      }
+    }
+  }
+`;
