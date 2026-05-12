@@ -65,12 +65,12 @@ const navLinks = [
         {navLinks.map((link) => (
           link.children ? (
             <div class="relative group">
-              <button class="nav-link flex items-center gap-1 px-3 py-2">
+              <a href={link.href} class="nav-link flex items-center gap-1 px-3 py-2">
                 {link.label}
                 <svg class="w-3 h-3 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
-              </button>
+              </a>
               <div class={`absolute top-full left-0 mt-1 bg-bg-secondary border border-edge-line border-t-2 border-t-pop-orange opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-xl ${link.label === 'Services' ? 'w-[360px] grid grid-cols-2 max-h-[70vh] overflow-y-auto' : 'w-52'}`}>
                 {link.children.map((child, i) => (
                   <a href={child.href}

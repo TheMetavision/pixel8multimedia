@@ -43,16 +43,16 @@ export const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
 // ── Styles ──────────────────────────────────────────────
 
 export const STYLES = [
-  { value: 'style-a', label: 'Neon Glow',       color: '#FF00FF' },
-  { value: 'style-b', label: 'Minimalist Cool',  color: '#E0E0E0' },
-  { value: 'style-c', label: 'Retro Vibes',      color: '#FF6B35' },
-  { value: 'style-d', label: 'Pixel Art',         color: '#00E5FF' },
-  { value: 'style-e', label: 'Abstract Burst',    color: '#FFD600' },
-  { value: 'style-f', label: 'Pop Art',           color: '#FF1744' },
-  { value: 'style-g', label: 'Watercolour',       color: '#81D4FA' },
-  { value: 'style-h', label: 'Noir',              color: '#424242' },
-  { value: 'style-i', label: 'Geometric',         color: '#7C4DFF' },
-  { value: 'style-j', label: 'Street Art',        color: '#76FF03' },
+  { value: 'style-a', label: 'Option A', color: '#FF00FF' },
+  { value: 'style-b', label: 'Option B', color: '#E0E0E0' },
+  { value: 'style-c', label: 'Option C', color: '#FF6B35' },
+  { value: 'style-d', label: 'Option D', color: '#00E5FF' },
+  { value: 'style-e', label: 'Option E', color: '#FFD600' },
+  { value: 'style-f', label: 'Option F', color: '#FF1744' },
+  { value: 'style-g', label: 'Option G', color: '#81D4FA' },
+  { value: 'style-h', label: 'Option H', color: '#424242' },
+  { value: 'style-i', label: 'Option I', color: '#7C4DFF' },
+  { value: 'style-j', label: 'Option J', color: '#76FF03' },
 ] as const;
 
 export const STYLE_LABELS: Record<string, string> = Object.fromEntries(
