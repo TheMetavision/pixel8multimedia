@@ -1,0 +1,646 @@
+{
+  "_meta": {
+    "description": "Sub-name manifest for Pixel8 Multimedia catalogue rename. 103 characters x 10 styles. Edit any cell freely - the rename script reads this JSON directly.",
+    "styleOrder": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"],
+    "styleNames": {
+      "a": "Neon Glow",
+      "b": "Minimalist Cool",
+      "c": "Retro Vibes",
+      "d": "Pixel Art",
+      "e": "Abstract Burst",
+      "f": "Pop Art",
+      "g": "Watercolour",
+      "h": "Noir",
+      "i": "Geometric",
+      "j": "Street Art"
+    },
+    "slugFixes": {
+      "hans-solo": "han-solo",
+      "c3-p0": "c-3po"
+    }
+  },
+  "characters": {
+    "anakin-skywalker": {
+      "displayName": "Anakin Skywalker",
+      "category": "tv-movies",
+      "theme": "Skywalker / Padawan / fall to dark side",
+      "subNames": ["Padawan Glow", "Chosen One", "Tatooine Sands", "Eight-Bit Skywalker", "Force Rising", "Hero Reborn", "Brushed Padawan", "Twilight Anakin", "Saber Geometry", "Naboo Stencil"]
+    },
+    "batman": {
+      "displayName": "Batman",
+      "category": "tv-movies",
+      "theme": "Dark Knight / Gotham / vigilante",
+      "subNames": ["Night Pulse", "Cowl Minimal", "Gotham 89", "Eight-Bit Bat", "Bat Burst", "Bat Pop", "Inked Knight", "Shadow Vigil", "Caped Geometry", "Wall Knight"]
+    },
+    "beetlejuice": {
+      "displayName": "Beetlejuice",
+      "category": "tv-movies",
+      "theme": "Ghost / chaos / stripes",
+      "subNames": ["Spectral Glow", "Stripe Minimal", "Afterlife 88", "Eight-Bit Beetle", "Chaos Burst", "Stripe Pop", "Ghost Wash", "Sandworm Shadow", "Hex Geometry", "Stripe Stencil"]
+    },
+    "boba-fett": {
+      "displayName": "Boba Fett",
+      "category": "tv-movies",
+      "theme": "Bounty hunter / Mandalorian armour",
+      "subNames": ["Bounty Glow", "Helm Minimal", "Tatooine Hunt", "Eight-Bit Boba", "Mando Burst", "Bounty Pop", "Painted Helm", "Carbonite Shadow", "Beskar Geometry", "Bounty Stencil"]
+    },
+    "bruce-lee": {
+      "displayName": "Bruce Lee",
+      "category": "tv-movies",
+      "theme": "Martial arts / dragon / Hong Kong cinema",
+      "subNames": ["Dragon Glow", "Stance Minimal", "Hong Kong 73", "Eight-Bit Lee", "Fury Burst", "Dragon Pop", "Brushed Dragon", "Dragon Shadow", "Fist Geometry", "Dragon Stencil"]
+    },
+    "c3-p0": {
+      "displayName": "C-3PO",
+      "category": "tv-movies",
+      "theme": "Protocol droid / golden / etiquette",
+      "subNames": ["Gold Glow", "Droid Minimal", "Protocol 77", "Eight-Bit Droid", "Gold Burst", "Droid Pop", "Painted Protocol", "Polished Shadow", "Gold Geometry", "Droid Stencil"]
+    },
+    "captain-america": {
+      "displayName": "Captain America",
+      "category": "tv-movies",
+      "theme": "Shield / star-spangled / WWII hero",
+      "subNames": ["Star Glow", "Shield Minimal", "Brooklyn 45", "Eight-Bit Cap", "Star Burst", "Shield Pop", "Painted Patriot", "Shadow Sentinel", "Shield Geometry", "Star Stencil"]
+    },
+    "chewbacca": {
+      "displayName": "Chewbacca",
+      "category": "tv-movies",
+      "theme": "Wookiee / Kashyyyk / co-pilot",
+      "subNames": ["Wookiee Glow", "Furred Minimal", "Kashyyyk 77", "Eight-Bit Chewie", "Bowcaster Burst", "Wookiee Pop", "Painted Pelt", "Forest Shadow", "Bandolier Geometry", "Wookiee Stencil"]
+    },
+    "chucky": {
+      "displayName": "Chucky",
+      "category": "tv-movies",
+      "theme": "Killer doll / dungarees / red hair",
+      "subNames": ["Friend Glow", "Doll Minimal", "Play Pal 88", "Eight-Bit Chucky", "Slash Burst", "Doll Pop", "Painted Pal", "Doll Shadow", "Stitch Geometry", "Doll Stencil"]
+    },
+    "count-dooku": {
+      "displayName": "Count Dooku",
+      "category": "tv-movies",
+      "theme": "Sith Lord / aristocrat / curved saber",
+      "subNames": ["Sith Glow", "Count Minimal", "Serenno Era", "Eight-Bit Dooku", "Sith Burst", "Lord Pop", "Painted Count", "Sith Shadow", "Curved Geometry", "Count Stencil"]
+    },
+    "darth-maul": {
+      "displayName": "Darth Maul",
+      "category": "tv-movies",
+      "theme": "Zabrak Sith / horns / double saber",
+      "subNames": ["Maul Glow", "Horned Minimal", "Naboo 99", "Eight-Bit Maul", "Sith Burst", "Maul Pop", "Painted Zabrak", "Maul Shadow", "Horn Geometry", "Maul Stencil"]
+    },
+    "darth-vader": {
+      "displayName": "Darth Vader",
+      "category": "tv-movies",
+      "theme": "Sith Lord / mask / Empire",
+      "subNames": ["Sith Glow", "Helm Minimal", "Empire 77", "Eight-Bit Vader", "Force Burst", "Sith Pop", "Painted Sith", "Vader Shadow", "Helm Geometry", "Vader Stencil"]
+    },
+    "deadpool": {
+      "displayName": "Deadpool",
+      "category": "tv-movies",
+      "theme": "Merc with a mouth / red and black / fourth wall",
+      "subNames": ["Merc Glow", "Mask Minimal", "Chimichanga 91", "Eight-Bit Pool", "Merc Burst", "Mouth Pop", "Painted Merc", "Mask Shadow", "Katana Geometry", "Merc Stencil"]
+    },
+    "ellen-ripley": {
+      "displayName": "Ellen Ripley",
+      "category": "tv-movies",
+      "theme": "Alien / Nostromo / final girl",
+      "subNames": ["Ripley Glow", "Suit Minimal", "Nostromo 79", "Eight-Bit Ripley", "Xeno Burst", "Ripley Pop", "Painted Survivor", "Xeno Shadow", "Loader Geometry", "Ripley Stencil"]
+    },
+    "freddy-krueger": {
+      "displayName": "Freddy Krueger",
+      "category": "tv-movies",
+      "theme": "Dream slasher / glove / Elm Street",
+      "subNames": ["Dream Glow", "Glove Minimal", "Elm Street 84", "Eight-Bit Freddy", "Nightmare Burst", "Slash Pop", "Painted Nightmare", "Dream Shadow", "Glove Geometry", "Freddy Stencil"]
+    },
+    "gandalf": {
+      "displayName": "Gandalf",
+      "category": "tv-movies",
+      "theme": "Wizard / Middle-earth / staff",
+      "subNames": ["Wizard Glow", "Staff Minimal", "Shire Era", "Eight-Bit Wizard", "Mithrandir Burst", "Wizard Pop", "Painted Mithrandir", "Wizard Shadow", "Staff Geometry", "Wizard Stencil"]
+    },
+    "general-grievous": {
+      "displayName": "General Grievous",
+      "category": "tv-movies",
+      "theme": "Cyborg general / four sabers / cough",
+      "subNames": ["Grievous Glow", "Cyborg Minimal", "Utapau Era", "Eight-Bit General", "Saber Burst", "General Pop", "Painted Cyborg", "Grievous Shadow", "Quad Geometry", "General Stencil"]
+    },
+    "ghostface": {
+      "displayName": "Ghostface",
+      "category": "tv-movies",
+      "theme": "Slasher / phone / Scream mask",
+      "subNames": ["Ghost Glow", "Mask Minimal", "Woodsboro 96", "Eight-Bit Ghost", "Scream Burst", "Mask Pop", "Painted Scream", "Ghost Shadow", "Knife Geometry", "Ghost Stencil"]
+    },
+    "gollum": {
+      "displayName": "Gollum",
+      "category": "tv-movies",
+      "theme": "Precious / Smeagol / cave dweller",
+      "subNames": ["Precious Glow", "Smeagol Minimal", "Mordor Era", "Eight-Bit Gollum", "Precious Burst", "Gollum Pop", "Painted Smeagol", "Cave Shadow", "Ring Geometry", "Gollum Stencil"]
+    },
+    "greedo": {
+      "displayName": "Greedo",
+      "category": "tv-movies",
+      "theme": "Rodian bounty hunter / Mos Eisley / cantina",
+      "subNames": ["Rodian Glow", "Greedo Minimal", "Cantina 77", "Eight-Bit Greedo", "Blaster Burst", "Rodian Pop", "Painted Rodian", "Cantina Shadow", "Blaster Geometry", "Rodian Stencil"]
+    },
+    "grogu": {
+      "displayName": "Grogu",
+      "category": "tv-movies",
+      "theme": "Baby Yoda / The Child / Force-sensitive",
+      "subNames": ["Grogu Glow", "Child Minimal", "Pram 19", "Eight-Bit Grogu", "Force Burst", "Grogu Pop", "Painted Child", "Grogu Shadow", "Pram Geometry", "Grogu Stencil"]
+    },
+    "groot": {
+      "displayName": "Groot",
+      "category": "tv-movies",
+      "theme": "I am Groot / Flora colossus / tree",
+      "subNames": ["Groot Glow", "Sapling Minimal", "Guardian 14", "Eight-Bit Groot", "Branch Burst", "Groot Pop", "Painted Sapling", "Forest Shadow", "Branch Geometry", "Groot Stencil"]
+    },
+    "hans-solo": {
+      "displayName": "Han Solo",
+      "category": "tv-movies",
+      "theme": "Smuggler / Falcon pilot / scoundrel",
+      "subNames": ["Smuggler Glow", "Solo Minimal", "Falcon 77", "Eight-Bit Solo", "Blaster Burst", "Solo Pop", "Painted Smuggler", "Carbonite Shadow", "Falcon Geometry", "Solo Stencil"]
+    },
+    "homer-simpson": {
+      "displayName": "Homer Simpson",
+      "category": "tv-movies",
+      "theme": "Springfield / donut / D'oh",
+      "subNames": ["Donut Glow", "Homer Minimal", "Springfield 89", "Eight-Bit Homer", "Donut Burst", "Doh Pop", "Painted Homer", "Sector Shadow", "Donut Geometry", "Homer Stencil"]
+    },
+    "indiana-jones": {
+      "displayName": "Indiana Jones",
+      "category": "tv-movies",
+      "theme": "Adventurer / fedora / whip / archaeology",
+      "subNames": ["Fedora Glow", "Jones Minimal", "Pulp 81", "Eight-Bit Indy", "Adventure Burst", "Indy Pop", "Painted Adventurer", "Temple Shadow", "Whip Geometry", "Indy Stencil"]
+    },
+    "iron-man": {
+      "displayName": "Iron Man",
+      "category": "tv-movies",
+      "theme": "Tony Stark / armour / arc reactor",
+      "subNames": ["Arc Glow", "Suit Minimal", "Stark 08", "Eight-Bit Stark", "Arc Burst", "Iron Pop", "Painted Stark", "Suit Shadow", "Plate Geometry", "Stark Stencil"]
+    },
+    "jabba-the-hutt": {
+      "displayName": "Jabba The Hutt",
+      "category": "tv-movies",
+      "theme": "Crime lord / Tatooine / palace",
+      "subNames": ["Hutt Glow", "Slug Minimal", "Palace 83", "Eight-Bit Jabba", "Hutt Burst", "Slug Pop", "Painted Hutt", "Palace Shadow", "Throne Geometry", "Hutt Stencil"]
+    },
+    "jack-sparrow": {
+      "displayName": "Jack Sparrow",
+      "category": "tv-movies",
+      "theme": "Pirate / Black Pearl / Caribbean",
+      "subNames": ["Pirate Glow", "Sparrow Minimal", "Tortuga 03", "Eight-Bit Sparrow", "Pirate Burst", "Captain Pop", "Painted Pirate", "Pearl Shadow", "Compass Geometry", "Pirate Stencil"]
+    },
+    "jason-vorhees": {
+      "displayName": "Jason Vorhees",
+      "category": "tv-movies",
+      "theme": "Crystal Lake / hockey mask / machete",
+      "subNames": ["Lake Glow", "Mask Minimal", "Crystal Lake 80", "Eight-Bit Jason", "Slasher Burst", "Mask Pop", "Painted Slasher", "Lake Shadow", "Mask Geometry", "Jason Stencil"]
+    },
+    "jawa": {
+      "displayName": "Jawa",
+      "category": "tv-movies",
+      "theme": "Tatooine scavenger / glowing eyes / hooded",
+      "subNames": ["Jawa Glow", "Hood Minimal", "Sandcrawler 77", "Eight-Bit Jawa", "Scavenge Burst", "Jawa Pop", "Painted Hood", "Crawler Shadow", "Hood Geometry", "Jawa Stencil"]
+    },
+    "john-wick": {
+      "displayName": "John Wick",
+      "category": "tv-movies",
+      "theme": "Baba Yaga / Continental / suit",
+      "subNames": ["Wick Glow", "Suit Minimal", "Continental 14", "Eight-Bit Wick", "Wick Burst", "Suit Pop", "Painted Wick", "Continental Shadow", "Pistol Geometry", "Wick Stencil"]
+    },
+    "joker": {
+      "displayName": "Joker",
+      "category": "tv-movies",
+      "theme": "Clown prince / chaos / purple and green",
+      "subNames": ["Joker Glow", "Smile Minimal", "Arkham 89", "Eight-Bit Joker", "Chaos Burst", "Joker Pop", "Painted Smile", "Joker Shadow", "Smile Geometry", "Joker Stencil"]
+    },
+    "jules-winnfield": {
+      "displayName": "Jules Winnfield",
+      "category": "tv-movies",
+      "theme": "Pulp Fiction / Ezekiel 25:17 / jheri curl",
+      "subNames": ["Jules Glow", "Jheri Minimal", "Pulp 94", "Eight-Bit Jules", "Ezekiel Burst", "Jules Pop", "Painted Jules", "Diner Shadow", "Wallet Geometry", "Jules Stencil"]
+    },
+    "kylo-ren": {
+      "displayName": "Kylo Ren",
+      "category": "tv-movies",
+      "theme": "First Order / cross-guard saber / mask",
+      "subNames": ["Ren Glow", "Mask Minimal", "First Order Era", "Eight-Bit Ren", "Sith Burst", "Ren Pop", "Painted Knight", "Ren Shadow", "Cross Geometry", "Ren Stencil"]
+    },
+    "leatherface": {
+      "displayName": "Leatherface",
+      "category": "tv-movies",
+      "theme": "Texas Chainsaw / mask / dance",
+      "subNames": ["Saw Glow", "Mask Minimal", "Texas 74", "Eight-Bit Saw", "Saw Burst", "Mask Pop", "Painted Mask", "Saw Shadow", "Chain Geometry", "Saw Stencil"]
+    },
+    "luke-skywalker": {
+      "displayName": "Luke Skywalker",
+      "category": "tv-movies",
+      "theme": "Jedi / Tatooine farmboy / hero",
+      "subNames": ["Jedi Glow", "Skywalker Minimal", "Yavin 77", "Eight-Bit Luke", "Force Burst", "Jedi Pop", "Painted Farmboy", "Jedi Shadow", "Saber Geometry", "Luke Stencil"]
+    },
+    "marty-mcfly": {
+      "displayName": "Marty McFly",
+      "category": "tv-movies",
+      "theme": "Hill Valley / DeLorean / 1985",
+      "subNames": ["Flux Glow", "Hill Valley Minimal", "Hill Valley 85", "Eight-Bit Marty", "Flux Burst", "Marty Pop", "Painted Marty", "Hill Valley Shadow", "Flux Geometry", "Marty Stencil"]
+    },
+    "michael-myers": {
+      "displayName": "Michael Myers",
+      "category": "tv-movies",
+      "theme": "Haddonfield / mask / Halloween",
+      "subNames": ["Myers Glow", "Mask Minimal", "Haddonfield 78", "Eight-Bit Myers", "Boogeyman Burst", "Mask Pop", "Painted Boogeyman", "Myers Shadow", "Mask Geometry", "Myers Stencil"]
+    },
+    "obi-wan-kenobi": {
+      "displayName": "Obi-Wan Kenobi",
+      "category": "tv-movies",
+      "theme": "Negotiator / Jedi master / desert exile",
+      "subNames": ["Kenobi Glow", "Robe Minimal", "Tatooine Exile", "Eight-Bit Obi", "Force Burst", "Kenobi Pop", "Painted Master", "Kenobi Shadow", "Saber Geometry", "Kenobi Stencil"]
+    },
+    "pennywise": {
+      "displayName": "Pennywise",
+      "category": "tv-movies",
+      "theme": "Derry / red balloon / clown",
+      "subNames": ["Balloon Glow", "Clown Minimal", "Derry 89", "Eight-Bit IT", "Balloon Burst", "Clown Pop", "Painted Clown", "Sewer Shadow", "Balloon Geometry", "IT Stencil"]
+    },
+    "princess-leia": {
+      "displayName": "Princess Leia",
+      "category": "tv-movies",
+      "theme": "Rebellion / Alderaan / royal",
+      "subNames": ["Leia Glow", "Buns Minimal", "Alderaan Era", "Eight-Bit Leia", "Rebel Burst", "Leia Pop", "Painted Princess", "Rebel Shadow", "Buns Geometry", "Leia Stencil"]
+    },
+    "r2d2": {
+      "displayName": "R2-D2",
+      "category": "tv-movies",
+      "theme": "Astromech / blue and white / loyal droid",
+      "subNames": ["Droid Glow", "Dome Minimal", "Astromech 77", "Eight-Bit R2", "Beep Burst", "Droid Pop", "Painted Astromech", "Dome Shadow", "Dome Geometry", "R2 Stencil"]
+    },
+    "rey": {
+      "displayName": "Rey",
+      "category": "tv-movies",
+      "theme": "Jakku scavenger / staff / new hope",
+      "subNames": ["Rey Glow", "Scavenger Minimal", "Jakku Era", "Eight-Bit Rey", "Force Burst", "Rey Pop", "Painted Scavenger", "Rey Shadow", "Staff Geometry", "Rey Stencil"]
+    },
+    "snake-plissken": {
+      "displayName": "Snake Plissken",
+      "category": "tv-movies",
+      "theme": "Escape from NY / eyepatch / antihero",
+      "subNames": ["Snake Glow", "Patch Minimal", "Escape 81", "Eight-Bit Snake", "Snake Burst", "Patch Pop", "Painted Snake", "Manhattan Shadow", "Patch Geometry", "Snake Stencil"]
+    },
+    "spider-man": {
+      "displayName": "Spider-Man",
+      "category": "tv-movies",
+      "theme": "Queens / web-slinger / red and blue",
+      "subNames": ["Web Glow", "Mask Minimal", "Queens 62", "Eight-Bit Spidey", "Web Burst", "Spidey Pop", "Painted Web", "Web Shadow", "Web Geometry", "Spidey Stencil"]
+    },
+    "stormtrooper": {
+      "displayName": "Stormtrooper",
+      "category": "tv-movies",
+      "theme": "Imperial / white armour / blaster",
+      "subNames": ["Trooper Glow", "Helm Minimal", "Imperial 77", "Eight-Bit Trooper", "Blaster Burst", "Trooper Pop", "Painted Trooper", "Helm Shadow", "Plate Geometry", "Trooper Stencil"]
+    },
+    "superman": {
+      "displayName": "Superman",
+      "category": "tv-movies",
+      "theme": "Krypton / cape / Metropolis",
+      "subNames": ["Krypton Glow", "Cape Minimal", "Metropolis 38", "Eight-Bit Supes", "Krypton Burst", "Supes Pop", "Painted Cape", "Cape Shadow", "Crest Geometry", "Supes Stencil"]
+    },
+    "the-dude": {
+      "displayName": "The Dude",
+      "category": "tv-movies",
+      "theme": "Big Lebowski / bowling / White Russian",
+      "subNames": ["Dude Glow", "Robe Minimal", "Lebowski 98", "Eight-Bit Dude", "Bowling Burst", "Dude Pop", "Painted Dude", "Bowling Shadow", "Lane Geometry", "Dude Stencil"]
+    },
+    "the-godfather": {
+      "displayName": "The Godfather",
+      "category": "tv-movies",
+      "theme": "Corleone / Sicily / family",
+      "subNames": ["Don Glow", "Don Minimal", "Corleone 72", "Eight-Bit Don", "Family Burst", "Don Pop", "Painted Don", "Don Shadow", "Don Geometry", "Don Stencil"]
+    },
+    "the-incredible-hulk": {
+      "displayName": "The Incredible Hulk",
+      "category": "tv-movies",
+      "theme": "Bruce Banner / smash / green",
+      "subNames": ["Smash Glow", "Hulk Minimal", "Gamma 62", "Eight-Bit Hulk", "Smash Burst", "Hulk Pop", "Painted Smash", "Banner Shadow", "Smash Geometry", "Hulk Stencil"]
+    },
+    "the-mandalorian": {
+      "displayName": "The Mandalorian",
+      "category": "tv-movies",
+      "theme": "Beskar / Mandalore / way",
+      "subNames": ["Beskar Glow", "Helm Minimal", "Mando 19", "Eight-Bit Mando", "Beskar Burst", "Mando Pop", "Painted Mando", "Mando Shadow", "Beskar Geometry", "Mando Stencil"]
+    },
+    "tony-montana": {
+      "displayName": "Tony Montana",
+      "category": "tv-movies",
+      "theme": "Scarface / Miami / little friend",
+      "subNames": ["Miami Glow", "Tony Minimal", "Miami 83", "Eight-Bit Tony", "Montana Burst", "Tony Pop", "Painted Tony", "Mansion Shadow", "Cuban Geometry", "Tony Stencil"]
+    },
+    "tusken-raider": {
+      "displayName": "Tusken Raider",
+      "category": "tv-movies",
+      "theme": "Sand People / Tatooine / gaffi stick",
+      "subNames": ["Tusken Glow", "Raider Minimal", "Tatooine 77", "Eight-Bit Tusken", "Gaffi Burst", "Tusken Pop", "Painted Raider", "Dune Shadow", "Gaffi Geometry", "Tusken Stencil"]
+    },
+    "tyler-durden": {
+      "displayName": "Tyler Durden",
+      "category": "tv-movies",
+      "theme": "Fight Club / soap / rules",
+      "subNames": ["Tyler Glow", "Soap Minimal", "Fight Club 99", "Eight-Bit Tyler", "Riot Burst", "Tyler Pop", "Painted Tyler", "Basement Shadow", "Rule Geometry", "Tyler Stencil"]
+    },
+    "wicket": {
+      "displayName": "Wicket",
+      "category": "tv-movies",
+      "theme": "Ewok / Endor / forest moon",
+      "subNames": ["Ewok Glow", "Hood Minimal", "Endor 83", "Eight-Bit Wicket", "Forest Burst", "Ewok Pop", "Painted Ewok", "Forest Shadow", "Hood Geometry", "Ewok Stencil"]
+    },
+    "wolverine": {
+      "displayName": "Wolverine",
+      "category": "tv-movies",
+      "theme": "Adamantium / claws / Logan",
+      "subNames": ["Logan Glow", "Claw Minimal", "Weapon X", "Eight-Bit Wolvie", "Claw Burst", "Wolvie Pop", "Painted Logan", "Logan Shadow", "Claw Geometry", "Logan Stencil"]
+    },
+    "yoda": {
+      "displayName": "Yoda",
+      "category": "tv-movies",
+      "theme": "Jedi master / Dagobah / wisdom",
+      "subNames": ["Yoda Glow", "Sage Minimal", "Dagobah Era", "Eight-Bit Yoda", "Force Burst", "Sage Pop", "Painted Sage", "Yoda Shadow", "Saber Geometry", "Yoda Stencil"]
+    },
+
+    "bart-simpson": {
+      "displayName": "Bart Simpson",
+      "category": "animations",
+      "theme": "Skateboard / chalkboard / Springfield",
+      "subNames": ["Bart Glow", "Bart Minimal", "Springfield 89", "Eight-Bit Bart", "Skater Burst", "Bart Pop", "Painted Bart", "Bart Shadow", "Skater Geometry", "Bart Stencil"]
+    },
+    "bugs-bunny": {
+      "displayName": "Bugs Bunny",
+      "category": "animations",
+      "theme": "Carrot / Looney Tunes / Brooklyn rabbit",
+      "subNames": ["Bugs Glow", "Bugs Minimal", "Looney 40", "Eight-Bit Bugs", "Carrot Burst", "Bugs Pop", "Painted Bugs", "Burrow Shadow", "Carrot Geometry", "Bugs Stencil"]
+    },
+    "charlie-brown": {
+      "displayName": "Charlie Brown",
+      "category": "animations",
+      "theme": "Peanuts / zigzag / Snoopy",
+      "subNames": ["Charlie Glow", "Zigzag Minimal", "Peanuts 50", "Eight-Bit Charlie", "Peanuts Burst", "Charlie Pop", "Painted Charlie", "Peanuts Shadow", "Zigzag Geometry", "Charlie Stencil"]
+    },
+    "daffy-duck": {
+      "displayName": "Daffy Duck",
+      "category": "animations",
+      "theme": "Looney Tunes / lisp / despicable",
+      "subNames": ["Daffy Glow", "Daffy Minimal", "Looney 37", "Eight-Bit Daffy", "Daffy Burst", "Daffy Pop", "Painted Daffy", "Daffy Shadow", "Daffy Geometry", "Daffy Stencil"]
+    },
+    "donald-duck": {
+      "displayName": "Donald Duck",
+      "category": "animations",
+      "theme": "Disney / sailor / temper",
+      "subNames": ["Donald Glow", "Sailor Minimal", "Disney 34", "Eight-Bit Donald", "Quack Burst", "Donald Pop", "Painted Donald", "Donald Shadow", "Sailor Geometry", "Donald Stencil"]
+    },
+    "eeyore": {
+      "displayName": "Eeyore",
+      "category": "animations",
+      "theme": "Hundred Acre Wood / gloomy / donkey",
+      "subNames": ["Eeyore Glow", "Eeyore Minimal", "Acre Wood 26", "Eight-Bit Eeyore", "Eeyore Burst", "Eeyore Pop", "Painted Eeyore", "Eeyore Shadow", "Tail Geometry", "Eeyore Stencil"]
+    },
+    "garfield": {
+      "displayName": "Garfield",
+      "category": "animations",
+      "theme": "Lasagna / Monday / orange cat",
+      "subNames": ["Garfield Glow", "Cat Minimal", "Comic Strip 78", "Eight-Bit Garfield", "Lasagna Burst", "Garfield Pop", "Painted Garfield", "Lasagna Shadow", "Stripe Geometry", "Garfield Stencil"]
+    },
+    "goofy": {
+      "displayName": "Goofy",
+      "category": "animations",
+      "theme": "Disney / yuk / hat",
+      "subNames": ["Goofy Glow", "Goofy Minimal", "Disney 32", "Eight-Bit Goofy", "Yuk Burst", "Goofy Pop", "Painted Goofy", "Goofy Shadow", "Hat Geometry", "Goofy Stencil"]
+    },
+    "kermit-the-frog": {
+      "displayName": "Kermit the Frog",
+      "category": "animations",
+      "theme": "Muppets / banjo / Rainbow Connection",
+      "subNames": ["Kermit Glow", "Frog Minimal", "Muppet 55", "Eight-Bit Kermit", "Banjo Burst", "Kermit Pop", "Painted Frog", "Frog Shadow", "Banjo Geometry", "Kermit Stencil"]
+    },
+    "mickey-mouse": {
+      "displayName": "Mickey Mouse",
+      "category": "animations",
+      "theme": "Disney / ears / Steamboat",
+      "subNames": ["Mickey Glow", "Ears Minimal", "Steamboat 28", "Eight-Bit Mickey", "Mickey Burst", "Mickey Pop", "Painted Mickey", "Mickey Shadow", "Ears Geometry", "Mickey Stencil"]
+    },
+    "optimus-prime": {
+      "displayName": "Optimus Prime",
+      "category": "animations",
+      "theme": "Autobot / leader / transform",
+      "subNames": ["Prime Glow", "Autobot Minimal", "Cybertron 84", "Eight-Bit Prime", "Autobot Burst", "Prime Pop", "Painted Prime", "Cybertron Shadow", "Autobot Geometry", "Prime Stencil"]
+    },
+    "paddington": {
+      "displayName": "Paddington",
+      "category": "animations",
+      "theme": "Peru / marmalade / duffel coat",
+      "subNames": ["Paddington Glow", "Marmalade Minimal", "Peru 58", "Eight-Bit Paddington", "Marmalade Burst", "Paddington Pop", "Painted Bear", "Station Shadow", "Coat Geometry", "Paddington Stencil"]
+    },
+    "patrick-star": {
+      "displayName": "Patrick Star",
+      "category": "animations",
+      "theme": "Bikini Bottom / starfish / rock",
+      "subNames": ["Patrick Glow", "Patrick Minimal", "Bikini 99", "Eight-Bit Patrick", "Patrick Burst", "Patrick Pop", "Painted Star", "Rock Shadow", "Star Geometry", "Patrick Stencil"]
+    },
+    "pikachu": {
+      "displayName": "Pikachu",
+      "category": "animations",
+      "theme": "Pokemon / electric / yellow",
+      "subNames": ["Pika Glow", "Pika Minimal", "Kanto 96", "Eight-Bit Pika", "Bolt Burst", "Pika Pop", "Painted Pika", "Bolt Shadow", "Bolt Geometry", "Pika Stencil"]
+    },
+    "pluto": {
+      "displayName": "Pluto",
+      "category": "animations",
+      "theme": "Disney / dog / loyal pup",
+      "subNames": ["Pluto Glow", "Pluto Minimal", "Disney 30", "Eight-Bit Pluto", "Pluto Burst", "Pluto Pop", "Painted Pluto", "Pluto Shadow", "Bone Geometry", "Pluto Stencil"]
+    },
+    "popeye": {
+      "displayName": "Popeye",
+      "category": "animations",
+      "theme": "Spinach / sailor / Olive",
+      "subNames": ["Popeye Glow", "Sailor Minimal", "Sailor 29", "Eight-Bit Popeye", "Spinach Burst", "Popeye Pop", "Painted Sailor", "Sailor Shadow", "Anchor Geometry", "Popeye Stencil"]
+    },
+    "scooby-doo": {
+      "displayName": "Scooby Doo",
+      "category": "animations",
+      "theme": "Mystery Inc / Scooby Snacks / Great Dane",
+      "subNames": ["Scooby Glow", "Scooby Minimal", "Mystery 69", "Eight-Bit Scooby", "Snack Burst", "Scooby Pop", "Painted Scooby", "Mystery Shadow", "Collar Geometry", "Scooby Stencil"]
+    },
+    "shaggy": {
+      "displayName": "Shaggy",
+      "category": "animations",
+      "theme": "Mystery Inc / Zoinks / Scooby's pal",
+      "subNames": ["Shaggy Glow", "Shaggy Minimal", "Mystery 69", "Eight-Bit Shaggy", "Zoinks Burst", "Shaggy Pop", "Painted Shaggy", "Mystery Shadow", "Van Geometry", "Shaggy Stencil"]
+    },
+    "snoopy": {
+      "displayName": "Snoopy",
+      "category": "animations",
+      "theme": "Peanuts / beagle / doghouse",
+      "subNames": ["Snoopy Glow", "Snoopy Minimal", "Peanuts 50", "Eight-Bit Snoopy", "Snoopy Burst", "Snoopy Pop", "Painted Beagle", "Doghouse Shadow", "House Geometry", "Snoopy Stencil"]
+    },
+    "sonic-the-hedgehog": {
+      "displayName": "Sonic the Hedgehog",
+      "category": "animations",
+      "theme": "Sega / gotta go fast / rings",
+      "subNames": ["Sonic Glow", "Sonic Minimal", "Sega 91", "Eight-Bit Sonic", "Speed Burst", "Sonic Pop", "Painted Sonic", "Sonic Shadow", "Ring Geometry", "Sonic Stencil"]
+    },
+    "spongebob-squarepants": {
+      "displayName": "SpongeBob SquarePants",
+      "category": "animations",
+      "theme": "Bikini Bottom / Krabby Patty / sponge",
+      "subNames": ["Sponge Glow", "Sponge Minimal", "Bikini 99", "Eight-Bit Sponge", "Krabby Burst", "Sponge Pop", "Painted Sponge", "Sponge Shadow", "Square Geometry", "Sponge Stencil"]
+    },
+    "squidward-tentacles": {
+      "displayName": "Squidward Tentacles",
+      "category": "animations",
+      "theme": "Bikini Bottom / clarinet / grumpy neighbour",
+      "subNames": ["Squid Glow", "Squid Minimal", "Bikini 99", "Eight-Bit Squid", "Clarinet Burst", "Squid Pop", "Painted Squid", "Squid Shadow", "Clarinet Geometry", "Squid Stencil"]
+    },
+    "stewie-griffin": {
+      "displayName": "Stewie Griffin",
+      "category": "animations",
+      "theme": "Family Guy / British baby / Quahog",
+      "subNames": ["Stewie Glow", "Stewie Minimal", "Quahog 99", "Eight-Bit Stewie", "Stewie Burst", "Stewie Pop", "Painted Stewie", "Quahog Shadow", "Ray Geometry", "Stewie Stencil"]
+    },
+    "stitch": {
+      "displayName": "Stitch",
+      "category": "animations",
+      "theme": "Ohana / experiment 626 / blue alien",
+      "subNames": ["Stitch Glow", "Ohana Minimal", "Hawaii 02", "Eight-Bit Stitch", "Ohana Burst", "Stitch Pop", "Painted Ohana", "Ohana Shadow", "Ear Geometry", "Stitch Stencil"]
+    },
+    "sylvester-the-cat": {
+      "displayName": "Sylvester the Cat",
+      "category": "animations",
+      "theme": "Looney Tunes / Tweety chase / suffering succotash",
+      "subNames": ["Sylvester Glow", "Cat Minimal", "Looney 45", "Eight-Bit Sylvester", "Chase Burst", "Sylvester Pop", "Painted Sylvester", "Sylvester Shadow", "Tail Geometry", "Sylvester Stencil"]
+    },
+    "the-pink-panther": {
+      "displayName": "The Pink Panther",
+      "category": "animations",
+      "theme": "Pink / cool cat / saxophone",
+      "subNames": ["Pink Glow", "Panther Minimal", "Pink 63", "Eight-Bit Panther", "Pink Burst", "Panther Pop", "Painted Panther", "Panther Shadow", "Sax Geometry", "Panther Stencil"]
+    },
+    "the-roadrunner": {
+      "displayName": "The Roadrunner",
+      "category": "animations",
+      "theme": "Looney Tunes / desert / meep meep",
+      "subNames": ["Runner Glow", "Runner Minimal", "Desert 49", "Eight-Bit Runner", "Speed Burst", "Runner Pop", "Painted Runner", "Desert Shadow", "Mesa Geometry", "Runner Stencil"]
+    },
+    "tigger": {
+      "displayName": "Tigger",
+      "category": "animations",
+      "theme": "Hundred Acre Wood / bouncing / wonderful thing",
+      "subNames": ["Tigger Glow", "Stripe Minimal", "Acre Wood 68", "Eight-Bit Tigger", "Bounce Burst", "Tigger Pop", "Painted Tigger", "Tigger Shadow", "Stripe Geometry", "Tigger Stencil"]
+    },
+    "tom-and-jerry": {
+      "displayName": "Tom and Jerry",
+      "category": "animations",
+      "theme": "Cat and mouse chase / Hanna-Barbera",
+      "subNames": ["Chase Glow", "Chase Minimal", "Hanna 40", "Eight-Bit Duo", "Chase Burst", "Duo Pop", "Painted Duo", "Chase Shadow", "Chase Geometry", "Duo Stencil"]
+    },
+    "tweety-pie": {
+      "displayName": "Tweety Pie",
+      "category": "animations",
+      "theme": "Looney Tunes / canary / I tawt I taw",
+      "subNames": ["Tweety Glow", "Tweety Minimal", "Looney 42", "Eight-Bit Tweety", "Tweety Burst", "Tweety Pop", "Painted Tweety", "Cage Shadow", "Cage Geometry", "Tweety Stencil"]
+    },
+    "wile-e-coyote": {
+      "displayName": "Wile E Coyote",
+      "category": "animations",
+      "theme": "Roadrunner chase / Acme / desert",
+      "subNames": ["Wile Glow", "Coyote Minimal", "Acme 49", "Eight-Bit Wile", "Acme Burst", "Coyote Pop", "Painted Coyote", "Desert Shadow", "Acme Geometry", "Coyote Stencil"]
+    },
+    "winnie-the-pooh": {
+      "displayName": "Winnie the Pooh",
+      "category": "animations",
+      "theme": "Hundred Acre Wood / honey / bear",
+      "subNames": ["Pooh Glow", "Honey Minimal", "Acre Wood 26", "Eight-Bit Pooh", "Honey Burst", "Pooh Pop", "Painted Pooh", "Honey Shadow", "Pot Geometry", "Pooh Stencil"]
+    },
+    "yosemite-sam": {
+      "displayName": "Yosemite Sam",
+      "category": "animations",
+      "theme": "Looney Tunes / red moustache / cowboy",
+      "subNames": ["Sam Glow", "Sam Minimal", "Looney 45", "Eight-Bit Sam", "Sam Burst", "Sam Pop", "Painted Sam", "Sam Shadow", "Pistol Geometry", "Sam Stencil"]
+    },
+
+    "billie-eilish": {
+      "displayName": "Billie Eilish",
+      "category": "music",
+      "theme": "Bad Guy / dark pop / green hair era",
+      "subNames": ["Billie Glow", "Bad Guy Minimal", "Bad Guy 19", "Eight-Bit Billie", "Bad Burst", "Billie Pop", "Painted Billie", "Ocean Shadow", "Bad Geometry", "Billie Stencil"]
+    },
+    "bob-marley": {
+      "displayName": "Bob Marley",
+      "category": "music",
+      "theme": "Reggae / Jamaica / one love",
+      "subNames": ["Roots Glow", "Roots Minimal", "Trenchtown 76", "Eight-Bit Marley", "Roots Burst", "Marley Pop", "Painted Marley", "Roots Shadow", "Roots Geometry", "Marley Stencil"]
+    },
+    "elvis": {
+      "displayName": "Elvis",
+      "category": "music",
+      "theme": "King of Rock / Graceland / jumpsuit",
+      "subNames": ["King Glow", "King Minimal", "Graceland 56", "Eight-Bit Elvis", "King Burst", "King Pop", "Painted King", "Graceland Shadow", "Quiff Geometry", "King Stencil"]
+    },
+    "eminem": {
+      "displayName": "Eminem",
+      "category": "music",
+      "theme": "Detroit / Slim Shady / 8 Mile",
+      "subNames": ["Detroit Glow", "Slim Minimal", "Detroit 99", "Eight-Bit Em", "Mic Burst", "Slim Pop", "Painted Slim", "Mile Shadow", "Mic Geometry", "Em Stencil"]
+    },
+    "jimi-hendrix": {
+      "displayName": "Jimi Hendrix",
+      "category": "music",
+      "theme": "Strat / Woodstock / Purple Haze",
+      "subNames": ["Haze Glow", "Strat Minimal", "Woodstock 69", "Eight-Bit Jimi", "Haze Burst", "Jimi Pop", "Painted Jimi", "Haze Shadow", "Strat Geometry", "Jimi Stencil"]
+    },
+    "john-lennon": {
+      "displayName": "John Lennon",
+      "category": "music",
+      "theme": "Beatle / Imagine / round glasses",
+      "subNames": ["Lennon Glow", "Imagine Minimal", "Liverpool 64", "Eight-Bit Lennon", "Imagine Burst", "Lennon Pop", "Painted Lennon", "Imagine Shadow", "Round Geometry", "Lennon Stencil"]
+    },
+    "kurt-cobain": {
+      "displayName": "Kurt Cobain",
+      "category": "music",
+      "theme": "Nirvana / Seattle / grunge",
+      "subNames": ["Kurt Glow", "Grunge Minimal", "Seattle 91", "Eight-Bit Kurt", "Smells Burst", "Kurt Pop", "Painted Kurt", "Cardigan Shadow", "Strat Geometry", "Kurt Stencil"]
+    },
+    "michael-jackson": {
+      "displayName": "Michael Jackson",
+      "category": "music",
+      "theme": "King of Pop / moonwalk / glove",
+      "subNames": ["MJ Glow", "Glove Minimal", "Thriller 82", "Eight-Bit MJ", "Moon Burst", "MJ Pop", "Painted MJ", "Moonwalk Shadow", "Glove Geometry", "MJ Stencil"]
+    },
+    "prince": {
+      "displayName": "Prince",
+      "category": "music",
+      "theme": "Purple Rain / Minneapolis / symbol",
+      "subNames": ["Prince Glow", "Purple Minimal", "Purple 84", "Eight-Bit Prince", "Purple Burst", "Prince Pop", "Painted Prince", "Purple Shadow", "Symbol Geometry", "Prince Stencil"]
+    },
+    "snoop-dogg": {
+      "displayName": "Snoop Dogg",
+      "category": "music",
+      "theme": "Long Beach / Doggystyle / G-funk",
+      "subNames": ["Snoop Glow", "Snoop Minimal", "Long Beach 93", "Eight-Bit Snoop", "G-Funk Burst", "Snoop Pop", "Painted Snoop", "Doggy Shadow", "G Geometry", "Snoop Stencil"]
+    },
+
+    "michael-jordan": {
+      "displayName": "Michael Jordan",
+      "category": "sport",
+      "theme": "Bulls / Air Jordan / 23",
+      "subNames": ["Air Glow", "23 Minimal", "Chicago 96", "Eight-Bit MJ", "Jumpman Burst", "Jordan Pop", "Painted Jordan", "Jordan Shadow", "Jumpman Geometry", "Air Stencil"]
+    },
+    "muhammad-ali": {
+      "displayName": "Muhammad Ali",
+      "category": "sport",
+      "theme": "Boxing / float like a butterfly / greatest",
+      "subNames": ["Ali Glow", "Greatest Minimal", "Kinshasa 74", "Eight-Bit Ali", "Float Burst", "Ali Pop", "Painted Ali", "Ali Shadow", "Glove Geometry", "Ali Stencil"]
+    },
+
+    "albert-einstein": {
+      "displayName": "Albert Einstein",
+      "category": "miscellaneous",
+      "theme": "Physics / E=mc2 / wild hair",
+      "subNames": ["Einstein Glow", "Theory Minimal", "Princeton 50", "Eight-Bit Einstein", "Cosmic Burst", "Einstein Pop", "Painted Genius", "Theory Shadow", "Theory Geometry", "Einstein Stencil"]
+    }
+  }
+}

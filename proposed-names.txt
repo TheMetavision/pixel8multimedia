@@ -1,0 +1,1373 @@
+================================================================================
+PIXEL8 MULTIMEDIA — PROPOSED RENAME PREVIEW
+Generated: 2026-05-11T23:53:41.388Z
+Total products to rename: 1030
+================================================================================
+
+SLUG FIXES (typo corrections):
+  hans-solo → han-solo
+  c3-p0 → c-3po
+
+
+================================================================================
+CATEGORY: TV-MOVIES  (57 characters, 570 products)
+================================================================================
+
+Anakin Skywalker
+  theme: Skywalker / Padawan / fall to dark side
+    A (Neon Glow      ) → "Anakin Skywalker — Style A: Padawan Glow"
+    B (Minimalist Cool) → "Anakin Skywalker — Style B: Chosen One"
+    C (Retro Vibes    ) → "Anakin Skywalker — Style C: Tatooine Sands"
+    D (Pixel Art      ) → "Anakin Skywalker — Style D: Eight-Bit Skywalker"
+    E (Abstract Burst ) → "Anakin Skywalker — Style E: Force Rising"
+    F (Pop Art        ) → "Anakin Skywalker — Style F: Hero Reborn"
+    G (Watercolour    ) → "Anakin Skywalker — Style G: Brushed Padawan"
+    H (Noir           ) → "Anakin Skywalker — Style H: Twilight Anakin"
+    I (Geometric      ) → "Anakin Skywalker — Style I: Saber Geometry"
+    J (Street Art     ) → "Anakin Skywalker — Style J: Naboo Stencil"
+
+Batman
+  theme: Dark Knight / Gotham / vigilante
+    A (Neon Glow      ) → "Batman — Style A: Night Pulse"
+    B (Minimalist Cool) → "Batman — Style B: Cowl Minimal"
+    C (Retro Vibes    ) → "Batman — Style C: Gotham 89"
+    D (Pixel Art      ) → "Batman — Style D: Eight-Bit Bat"
+    E (Abstract Burst ) → "Batman — Style E: Bat Burst"
+    F (Pop Art        ) → "Batman — Style F: Bat Pop"
+    G (Watercolour    ) → "Batman — Style G: Inked Knight"
+    H (Noir           ) → "Batman — Style H: Shadow Vigil"
+    I (Geometric      ) → "Batman — Style I: Caped Geometry"
+    J (Street Art     ) → "Batman — Style J: Wall Knight"
+
+Beetlejuice
+  theme: Ghost / chaos / stripes
+    A (Neon Glow      ) → "Beetlejuice — Style A: Spectral Glow"
+    B (Minimalist Cool) → "Beetlejuice — Style B: Stripe Minimal"
+    C (Retro Vibes    ) → "Beetlejuice — Style C: Afterlife 88"
+    D (Pixel Art      ) → "Beetlejuice — Style D: Eight-Bit Beetle"
+    E (Abstract Burst ) → "Beetlejuice — Style E: Chaos Burst"
+    F (Pop Art        ) → "Beetlejuice — Style F: Stripe Pop"
+    G (Watercolour    ) → "Beetlejuice — Style G: Ghost Wash"
+    H (Noir           ) → "Beetlejuice — Style H: Sandworm Shadow"
+    I (Geometric      ) → "Beetlejuice — Style I: Hex Geometry"
+    J (Street Art     ) → "Beetlejuice — Style J: Stripe Stencil"
+
+Boba Fett
+  theme: Bounty hunter / Mandalorian armour
+    A (Neon Glow      ) → "Boba Fett — Style A: Bounty Glow"
+    B (Minimalist Cool) → "Boba Fett — Style B: Helm Minimal"
+    C (Retro Vibes    ) → "Boba Fett — Style C: Tatooine Hunt"
+    D (Pixel Art      ) → "Boba Fett — Style D: Eight-Bit Boba"
+    E (Abstract Burst ) → "Boba Fett — Style E: Mando Burst"
+    F (Pop Art        ) → "Boba Fett — Style F: Bounty Pop"
+    G (Watercolour    ) → "Boba Fett — Style G: Painted Helm"
+    H (Noir           ) → "Boba Fett — Style H: Carbonite Shadow"
+    I (Geometric      ) → "Boba Fett — Style I: Beskar Geometry"
+    J (Street Art     ) → "Boba Fett — Style J: Bounty Stencil"
+
+Bruce Lee
+  theme: Martial arts / dragon / Hong Kong cinema
+    A (Neon Glow      ) → "Bruce Lee — Style A: Dragon Glow"
+    B (Minimalist Cool) → "Bruce Lee — Style B: Stance Minimal"
+    C (Retro Vibes    ) → "Bruce Lee — Style C: Hong Kong 73"
+    D (Pixel Art      ) → "Bruce Lee — Style D: Eight-Bit Lee"
+    E (Abstract Burst ) → "Bruce Lee — Style E: Fury Burst"
+    F (Pop Art        ) → "Bruce Lee — Style F: Dragon Pop"
+    G (Watercolour    ) → "Bruce Lee — Style G: Brushed Dragon"
+    H (Noir           ) → "Bruce Lee — Style H: Dragon Shadow"
+    I (Geometric      ) → "Bruce Lee — Style I: Fist Geometry"
+    J (Street Art     ) → "Bruce Lee — Style J: Dragon Stencil"
+
+C-3PO  [slug: c3-p0 → c-3po]
+  theme: Protocol droid / golden / etiquette
+    A (Neon Glow      ) → "C-3PO — Style A: Gold Glow"
+    B (Minimalist Cool) → "C-3PO — Style B: Droid Minimal"
+    C (Retro Vibes    ) → "C-3PO — Style C: Protocol 77"
+    D (Pixel Art      ) → "C-3PO — Style D: Eight-Bit Droid"
+    E (Abstract Burst ) → "C-3PO — Style E: Gold Burst"
+    F (Pop Art        ) → "C-3PO — Style F: Droid Pop"
+    G (Watercolour    ) → "C-3PO — Style G: Painted Protocol"
+    H (Noir           ) → "C-3PO — Style H: Polished Shadow"
+    I (Geometric      ) → "C-3PO — Style I: Gold Geometry"
+    J (Street Art     ) → "C-3PO — Style J: Droid Stencil"
+
+Captain America
+  theme: Shield / star-spangled / WWII hero
+    A (Neon Glow      ) → "Captain America — Style A: Star Glow"
+    B (Minimalist Cool) → "Captain America — Style B: Shield Minimal"
+    C (Retro Vibes    ) → "Captain America — Style C: Brooklyn 45"
+    D (Pixel Art      ) → "Captain America — Style D: Eight-Bit Cap"
+    E (Abstract Burst ) → "Captain America — Style E: Star Burst"
+    F (Pop Art        ) → "Captain America — Style F: Shield Pop"
+    G (Watercolour    ) → "Captain America — Style G: Painted Patriot"
+    H (Noir           ) → "Captain America — Style H: Shadow Sentinel"
+    I (Geometric      ) → "Captain America — Style I: Shield Geometry"
+    J (Street Art     ) → "Captain America — Style J: Star Stencil"
+
+Chewbacca
+  theme: Wookiee / Kashyyyk / co-pilot
+    A (Neon Glow      ) → "Chewbacca — Style A: Wookiee Glow"
+    B (Minimalist Cool) → "Chewbacca — Style B: Furred Minimal"
+    C (Retro Vibes    ) → "Chewbacca — Style C: Kashyyyk 77"
+    D (Pixel Art      ) → "Chewbacca — Style D: Eight-Bit Chewie"
+    E (Abstract Burst ) → "Chewbacca — Style E: Bowcaster Burst"
+    F (Pop Art        ) → "Chewbacca — Style F: Wookiee Pop"
+    G (Watercolour    ) → "Chewbacca — Style G: Painted Pelt"
+    H (Noir           ) → "Chewbacca — Style H: Forest Shadow"
+    I (Geometric      ) → "Chewbacca — Style I: Bandolier Geometry"
+    J (Street Art     ) → "Chewbacca — Style J: Wookiee Stencil"
+
+Chucky
+  theme: Killer doll / dungarees / red hair
+    A (Neon Glow      ) → "Chucky — Style A: Friend Glow"
+    B (Minimalist Cool) → "Chucky — Style B: Doll Minimal"
+    C (Retro Vibes    ) → "Chucky — Style C: Play Pal 88"
+    D (Pixel Art      ) → "Chucky — Style D: Eight-Bit Chucky"
+    E (Abstract Burst ) → "Chucky — Style E: Slash Burst"
+    F (Pop Art        ) → "Chucky — Style F: Doll Pop"
+    G (Watercolour    ) → "Chucky — Style G: Painted Pal"
+    H (Noir           ) → "Chucky — Style H: Doll Shadow"
+    I (Geometric      ) → "Chucky — Style I: Stitch Geometry"
+    J (Street Art     ) → "Chucky — Style J: Doll Stencil"
+
+Count Dooku
+  theme: Sith Lord / aristocrat / curved saber
+    A (Neon Glow      ) → "Count Dooku — Style A: Sith Glow"
+    B (Minimalist Cool) → "Count Dooku — Style B: Count Minimal"
+    C (Retro Vibes    ) → "Count Dooku — Style C: Serenno Era"
+    D (Pixel Art      ) → "Count Dooku — Style D: Eight-Bit Dooku"
+    E (Abstract Burst ) → "Count Dooku — Style E: Sith Burst"
+    F (Pop Art        ) → "Count Dooku — Style F: Lord Pop"
+    G (Watercolour    ) → "Count Dooku — Style G: Painted Count"
+    H (Noir           ) → "Count Dooku — Style H: Sith Shadow"
+    I (Geometric      ) → "Count Dooku — Style I: Curved Geometry"
+    J (Street Art     ) → "Count Dooku — Style J: Count Stencil"
+
+Darth Maul
+  theme: Zabrak Sith / horns / double saber
+    A (Neon Glow      ) → "Darth Maul — Style A: Maul Glow"
+    B (Minimalist Cool) → "Darth Maul — Style B: Horned Minimal"
+    C (Retro Vibes    ) → "Darth Maul — Style C: Naboo 99"
+    D (Pixel Art      ) → "Darth Maul — Style D: Eight-Bit Maul"
+    E (Abstract Burst ) → "Darth Maul — Style E: Sith Burst"
+    F (Pop Art        ) → "Darth Maul — Style F: Maul Pop"
+    G (Watercolour    ) → "Darth Maul — Style G: Painted Zabrak"
+    H (Noir           ) → "Darth Maul — Style H: Maul Shadow"
+    I (Geometric      ) → "Darth Maul — Style I: Horn Geometry"
+    J (Street Art     ) → "Darth Maul — Style J: Maul Stencil"
+
+Darth Vader
+  theme: Sith Lord / mask / Empire
+    A (Neon Glow      ) → "Darth Vader — Style A: Sith Glow"
+    B (Minimalist Cool) → "Darth Vader — Style B: Helm Minimal"
+    C (Retro Vibes    ) → "Darth Vader — Style C: Empire 77"
+    D (Pixel Art      ) → "Darth Vader — Style D: Eight-Bit Vader"
+    E (Abstract Burst ) → "Darth Vader — Style E: Force Burst"
+    F (Pop Art        ) → "Darth Vader — Style F: Sith Pop"
+    G (Watercolour    ) → "Darth Vader — Style G: Painted Sith"
+    H (Noir           ) → "Darth Vader — Style H: Vader Shadow"
+    I (Geometric      ) → "Darth Vader — Style I: Helm Geometry"
+    J (Street Art     ) → "Darth Vader — Style J: Vader Stencil"
+
+Deadpool
+  theme: Merc with a mouth / red and black / fourth wall
+    A (Neon Glow      ) → "Deadpool — Style A: Merc Glow"
+    B (Minimalist Cool) → "Deadpool — Style B: Mask Minimal"
+    C (Retro Vibes    ) → "Deadpool — Style C: Chimichanga 91"
+    D (Pixel Art      ) → "Deadpool — Style D: Eight-Bit Pool"
+    E (Abstract Burst ) → "Deadpool — Style E: Merc Burst"
+    F (Pop Art        ) → "Deadpool — Style F: Mouth Pop"
+    G (Watercolour    ) → "Deadpool — Style G: Painted Merc"
+    H (Noir           ) → "Deadpool — Style H: Mask Shadow"
+    I (Geometric      ) → "Deadpool — Style I: Katana Geometry"
+    J (Street Art     ) → "Deadpool — Style J: Merc Stencil"
+
+Ellen Ripley
+  theme: Alien / Nostromo / final girl
+    A (Neon Glow      ) → "Ellen Ripley — Style A: Ripley Glow"
+    B (Minimalist Cool) → "Ellen Ripley — Style B: Suit Minimal"
+    C (Retro Vibes    ) → "Ellen Ripley — Style C: Nostromo 79"
+    D (Pixel Art      ) → "Ellen Ripley — Style D: Eight-Bit Ripley"
+    E (Abstract Burst ) → "Ellen Ripley — Style E: Xeno Burst"
+    F (Pop Art        ) → "Ellen Ripley — Style F: Ripley Pop"
+    G (Watercolour    ) → "Ellen Ripley — Style G: Painted Survivor"
+    H (Noir           ) → "Ellen Ripley — Style H: Xeno Shadow"
+    I (Geometric      ) → "Ellen Ripley — Style I: Loader Geometry"
+    J (Street Art     ) → "Ellen Ripley — Style J: Ripley Stencil"
+
+Freddy Krueger
+  theme: Dream slasher / glove / Elm Street
+    A (Neon Glow      ) → "Freddy Krueger — Style A: Dream Glow"
+    B (Minimalist Cool) → "Freddy Krueger — Style B: Glove Minimal"
+    C (Retro Vibes    ) → "Freddy Krueger — Style C: Elm Street 84"
+    D (Pixel Art      ) → "Freddy Krueger — Style D: Eight-Bit Freddy"
+    E (Abstract Burst ) → "Freddy Krueger — Style E: Nightmare Burst"
+    F (Pop Art        ) → "Freddy Krueger — Style F: Slash Pop"
+    G (Watercolour    ) → "Freddy Krueger — Style G: Painted Nightmare"
+    H (Noir           ) → "Freddy Krueger — Style H: Dream Shadow"
+    I (Geometric      ) → "Freddy Krueger — Style I: Glove Geometry"
+    J (Street Art     ) → "Freddy Krueger — Style J: Freddy Stencil"
+
+Gandalf
+  theme: Wizard / Middle-earth / staff
+    A (Neon Glow      ) → "Gandalf — Style A: Wizard Glow"
+    B (Minimalist Cool) → "Gandalf — Style B: Staff Minimal"
+    C (Retro Vibes    ) → "Gandalf — Style C: Shire Era"
+    D (Pixel Art      ) → "Gandalf — Style D: Eight-Bit Wizard"
+    E (Abstract Burst ) → "Gandalf — Style E: Mithrandir Burst"
+    F (Pop Art        ) → "Gandalf — Style F: Wizard Pop"
+    G (Watercolour    ) → "Gandalf — Style G: Painted Mithrandir"
+    H (Noir           ) → "Gandalf — Style H: Wizard Shadow"
+    I (Geometric      ) → "Gandalf — Style I: Staff Geometry"
+    J (Street Art     ) → "Gandalf — Style J: Wizard Stencil"
+
+General Grievous
+  theme: Cyborg general / four sabers / cough
+    A (Neon Glow      ) → "General Grievous — Style A: Grievous Glow"
+    B (Minimalist Cool) → "General Grievous — Style B: Cyborg Minimal"
+    C (Retro Vibes    ) → "General Grievous — Style C: Utapau Era"
+    D (Pixel Art      ) → "General Grievous — Style D: Eight-Bit General"
+    E (Abstract Burst ) → "General Grievous — Style E: Saber Burst"
+    F (Pop Art        ) → "General Grievous — Style F: General Pop"
+    G (Watercolour    ) → "General Grievous — Style G: Painted Cyborg"
+    H (Noir           ) → "General Grievous — Style H: Grievous Shadow"
+    I (Geometric      ) → "General Grievous — Style I: Quad Geometry"
+    J (Street Art     ) → "General Grievous — Style J: General Stencil"
+
+Ghostface
+  theme: Slasher / phone / Scream mask
+    A (Neon Glow      ) → "Ghostface — Style A: Ghost Glow"
+    B (Minimalist Cool) → "Ghostface — Style B: Mask Minimal"
+    C (Retro Vibes    ) → "Ghostface — Style C: Woodsboro 96"
+    D (Pixel Art      ) → "Ghostface — Style D: Eight-Bit Ghost"
+    E (Abstract Burst ) → "Ghostface — Style E: Scream Burst"
+    F (Pop Art        ) → "Ghostface — Style F: Mask Pop"
+    G (Watercolour    ) → "Ghostface — Style G: Painted Scream"
+    H (Noir           ) → "Ghostface — Style H: Ghost Shadow"
+    I (Geometric      ) → "Ghostface — Style I: Knife Geometry"
+    J (Street Art     ) → "Ghostface — Style J: Ghost Stencil"
+
+Gollum
+  theme: Precious / Smeagol / cave dweller
+    A (Neon Glow      ) → "Gollum — Style A: Precious Glow"
+    B (Minimalist Cool) → "Gollum — Style B: Smeagol Minimal"
+    C (Retro Vibes    ) → "Gollum — Style C: Mordor Era"
+    D (Pixel Art      ) → "Gollum — Style D: Eight-Bit Gollum"
+    E (Abstract Burst ) → "Gollum — Style E: Precious Burst"
+    F (Pop Art        ) → "Gollum — Style F: Gollum Pop"
+    G (Watercolour    ) → "Gollum — Style G: Painted Smeagol"
+    H (Noir           ) → "Gollum — Style H: Cave Shadow"
+    I (Geometric      ) → "Gollum — Style I: Ring Geometry"
+    J (Street Art     ) → "Gollum — Style J: Gollum Stencil"
+
+Greedo
+  theme: Rodian bounty hunter / Mos Eisley / cantina
+    A (Neon Glow      ) → "Greedo — Style A: Rodian Glow"
+    B (Minimalist Cool) → "Greedo — Style B: Greedo Minimal"
+    C (Retro Vibes    ) → "Greedo — Style C: Cantina 77"
+    D (Pixel Art      ) → "Greedo — Style D: Eight-Bit Greedo"
+    E (Abstract Burst ) → "Greedo — Style E: Blaster Burst"
+    F (Pop Art        ) → "Greedo — Style F: Rodian Pop"
+    G (Watercolour    ) → "Greedo — Style G: Painted Rodian"
+    H (Noir           ) → "Greedo — Style H: Cantina Shadow"
+    I (Geometric      ) → "Greedo — Style I: Blaster Geometry"
+    J (Street Art     ) → "Greedo — Style J: Rodian Stencil"
+
+Grogu
+  theme: Baby Yoda / The Child / Force-sensitive
+    A (Neon Glow      ) → "Grogu — Style A: Grogu Glow"
+    B (Minimalist Cool) → "Grogu — Style B: Child Minimal"
+    C (Retro Vibes    ) → "Grogu — Style C: Pram 19"
+    D (Pixel Art      ) → "Grogu — Style D: Eight-Bit Grogu"
+    E (Abstract Burst ) → "Grogu — Style E: Force Burst"
+    F (Pop Art        ) → "Grogu — Style F: Grogu Pop"
+    G (Watercolour    ) → "Grogu — Style G: Painted Child"
+    H (Noir           ) → "Grogu — Style H: Grogu Shadow"
+    I (Geometric      ) → "Grogu — Style I: Pram Geometry"
+    J (Street Art     ) → "Grogu — Style J: Grogu Stencil"
+
+Groot
+  theme: I am Groot / Flora colossus / tree
+    A (Neon Glow      ) → "Groot — Style A: Groot Glow"
+    B (Minimalist Cool) → "Groot — Style B: Sapling Minimal"
+    C (Retro Vibes    ) → "Groot — Style C: Guardian 14"
+    D (Pixel Art      ) → "Groot — Style D: Eight-Bit Groot"
+    E (Abstract Burst ) → "Groot — Style E: Branch Burst"
+    F (Pop Art        ) → "Groot — Style F: Groot Pop"
+    G (Watercolour    ) → "Groot — Style G: Painted Sapling"
+    H (Noir           ) → "Groot — Style H: Forest Shadow"
+    I (Geometric      ) → "Groot — Style I: Branch Geometry"
+    J (Street Art     ) → "Groot — Style J: Groot Stencil"
+
+Han Solo  [slug: hans-solo → han-solo]
+  theme: Smuggler / Falcon pilot / scoundrel
+    A (Neon Glow      ) → "Han Solo — Style A: Smuggler Glow"
+    B (Minimalist Cool) → "Han Solo — Style B: Solo Minimal"
+    C (Retro Vibes    ) → "Han Solo — Style C: Falcon 77"
+    D (Pixel Art      ) → "Han Solo — Style D: Eight-Bit Solo"
+    E (Abstract Burst ) → "Han Solo — Style E: Blaster Burst"
+    F (Pop Art        ) → "Han Solo — Style F: Solo Pop"
+    G (Watercolour    ) → "Han Solo — Style G: Painted Smuggler"
+    H (Noir           ) → "Han Solo — Style H: Carbonite Shadow"
+    I (Geometric      ) → "Han Solo — Style I: Falcon Geometry"
+    J (Street Art     ) → "Han Solo — Style J: Solo Stencil"
+
+Homer Simpson
+  theme: Springfield / donut / D'oh
+    A (Neon Glow      ) → "Homer Simpson — Style A: Donut Glow"
+    B (Minimalist Cool) → "Homer Simpson — Style B: Homer Minimal"
+    C (Retro Vibes    ) → "Homer Simpson — Style C: Springfield 89"
+    D (Pixel Art      ) → "Homer Simpson — Style D: Eight-Bit Homer"
+    E (Abstract Burst ) → "Homer Simpson — Style E: Donut Burst"
+    F (Pop Art        ) → "Homer Simpson — Style F: Doh Pop"
+    G (Watercolour    ) → "Homer Simpson — Style G: Painted Homer"
+    H (Noir           ) → "Homer Simpson — Style H: Sector Shadow"
+    I (Geometric      ) → "Homer Simpson — Style I: Donut Geometry"
+    J (Street Art     ) → "Homer Simpson — Style J: Homer Stencil"
+
+Indiana Jones
+  theme: Adventurer / fedora / whip / archaeology
+    A (Neon Glow      ) → "Indiana Jones — Style A: Fedora Glow"
+    B (Minimalist Cool) → "Indiana Jones — Style B: Jones Minimal"
+    C (Retro Vibes    ) → "Indiana Jones — Style C: Pulp 81"
+    D (Pixel Art      ) → "Indiana Jones — Style D: Eight-Bit Indy"
+    E (Abstract Burst ) → "Indiana Jones — Style E: Adventure Burst"
+    F (Pop Art        ) → "Indiana Jones — Style F: Indy Pop"
+    G (Watercolour    ) → "Indiana Jones — Style G: Painted Adventurer"
+    H (Noir           ) → "Indiana Jones — Style H: Temple Shadow"
+    I (Geometric      ) → "Indiana Jones — Style I: Whip Geometry"
+    J (Street Art     ) → "Indiana Jones — Style J: Indy Stencil"
+
+Iron Man
+  theme: Tony Stark / armour / arc reactor
+    A (Neon Glow      ) → "Iron Man — Style A: Arc Glow"
+    B (Minimalist Cool) → "Iron Man — Style B: Suit Minimal"
+    C (Retro Vibes    ) → "Iron Man — Style C: Stark 08"
+    D (Pixel Art      ) → "Iron Man — Style D: Eight-Bit Stark"
+    E (Abstract Burst ) → "Iron Man — Style E: Arc Burst"
+    F (Pop Art        ) → "Iron Man — Style F: Iron Pop"
+    G (Watercolour    ) → "Iron Man — Style G: Painted Stark"
+    H (Noir           ) → "Iron Man — Style H: Suit Shadow"
+    I (Geometric      ) → "Iron Man — Style I: Plate Geometry"
+    J (Street Art     ) → "Iron Man — Style J: Stark Stencil"
+
+Jabba The Hutt
+  theme: Crime lord / Tatooine / palace
+    A (Neon Glow      ) → "Jabba The Hutt — Style A: Hutt Glow"
+    B (Minimalist Cool) → "Jabba The Hutt — Style B: Slug Minimal"
+    C (Retro Vibes    ) → "Jabba The Hutt — Style C: Palace 83"
+    D (Pixel Art      ) → "Jabba The Hutt — Style D: Eight-Bit Jabba"
+    E (Abstract Burst ) → "Jabba The Hutt — Style E: Hutt Burst"
+    F (Pop Art        ) → "Jabba The Hutt — Style F: Slug Pop"
+    G (Watercolour    ) → "Jabba The Hutt — Style G: Painted Hutt"
+    H (Noir           ) → "Jabba The Hutt — Style H: Palace Shadow"
+    I (Geometric      ) → "Jabba The Hutt — Style I: Throne Geometry"
+    J (Street Art     ) → "Jabba The Hutt — Style J: Hutt Stencil"
+
+Jack Sparrow
+  theme: Pirate / Black Pearl / Caribbean
+    A (Neon Glow      ) → "Jack Sparrow — Style A: Pirate Glow"
+    B (Minimalist Cool) → "Jack Sparrow — Style B: Sparrow Minimal"
+    C (Retro Vibes    ) → "Jack Sparrow — Style C: Tortuga 03"
+    D (Pixel Art      ) → "Jack Sparrow — Style D: Eight-Bit Sparrow"
+    E (Abstract Burst ) → "Jack Sparrow — Style E: Pirate Burst"
+    F (Pop Art        ) → "Jack Sparrow — Style F: Captain Pop"
+    G (Watercolour    ) → "Jack Sparrow — Style G: Painted Pirate"
+    H (Noir           ) → "Jack Sparrow — Style H: Pearl Shadow"
+    I (Geometric      ) → "Jack Sparrow — Style I: Compass Geometry"
+    J (Street Art     ) → "Jack Sparrow — Style J: Pirate Stencil"
+
+Jason Vorhees
+  theme: Crystal Lake / hockey mask / machete
+    A (Neon Glow      ) → "Jason Vorhees — Style A: Lake Glow"
+    B (Minimalist Cool) → "Jason Vorhees — Style B: Mask Minimal"
+    C (Retro Vibes    ) → "Jason Vorhees — Style C: Crystal Lake 80"
+    D (Pixel Art      ) → "Jason Vorhees — Style D: Eight-Bit Jason"
+    E (Abstract Burst ) → "Jason Vorhees — Style E: Slasher Burst"
+    F (Pop Art        ) → "Jason Vorhees — Style F: Mask Pop"
+    G (Watercolour    ) → "Jason Vorhees — Style G: Painted Slasher"
+    H (Noir           ) → "Jason Vorhees — Style H: Lake Shadow"
+    I (Geometric      ) → "Jason Vorhees — Style I: Mask Geometry"
+    J (Street Art     ) → "Jason Vorhees — Style J: Jason Stencil"
+
+Jawa
+  theme: Tatooine scavenger / glowing eyes / hooded
+    A (Neon Glow      ) → "Jawa — Style A: Jawa Glow"
+    B (Minimalist Cool) → "Jawa — Style B: Hood Minimal"
+    C (Retro Vibes    ) → "Jawa — Style C: Sandcrawler 77"
+    D (Pixel Art      ) → "Jawa — Style D: Eight-Bit Jawa"
+    E (Abstract Burst ) → "Jawa — Style E: Scavenge Burst"
+    F (Pop Art        ) → "Jawa — Style F: Jawa Pop"
+    G (Watercolour    ) → "Jawa — Style G: Painted Hood"
+    H (Noir           ) → "Jawa — Style H: Crawler Shadow"
+    I (Geometric      ) → "Jawa — Style I: Hood Geometry"
+    J (Street Art     ) → "Jawa — Style J: Jawa Stencil"
+
+John Wick
+  theme: Baba Yaga / Continental / suit
+    A (Neon Glow      ) → "John Wick — Style A: Wick Glow"
+    B (Minimalist Cool) → "John Wick — Style B: Suit Minimal"
+    C (Retro Vibes    ) → "John Wick — Style C: Continental 14"
+    D (Pixel Art      ) → "John Wick — Style D: Eight-Bit Wick"
+    E (Abstract Burst ) → "John Wick — Style E: Wick Burst"
+    F (Pop Art        ) → "John Wick — Style F: Suit Pop"
+    G (Watercolour    ) → "John Wick — Style G: Painted Wick"
+    H (Noir           ) → "John Wick — Style H: Continental Shadow"
+    I (Geometric      ) → "John Wick — Style I: Pistol Geometry"
+    J (Street Art     ) → "John Wick — Style J: Wick Stencil"
+
+Joker
+  theme: Clown prince / chaos / purple and green
+    A (Neon Glow      ) → "Joker — Style A: Joker Glow"
+    B (Minimalist Cool) → "Joker — Style B: Smile Minimal"
+    C (Retro Vibes    ) → "Joker — Style C: Arkham 89"
+    D (Pixel Art      ) → "Joker — Style D: Eight-Bit Joker"
+    E (Abstract Burst ) → "Joker — Style E: Chaos Burst"
+    F (Pop Art        ) → "Joker — Style F: Joker Pop"
+    G (Watercolour    ) → "Joker — Style G: Painted Smile"
+    H (Noir           ) → "Joker — Style H: Joker Shadow"
+    I (Geometric      ) → "Joker — Style I: Smile Geometry"
+    J (Street Art     ) → "Joker — Style J: Joker Stencil"
+
+Jules Winnfield
+  theme: Pulp Fiction / Ezekiel 25:17 / jheri curl
+    A (Neon Glow      ) → "Jules Winnfield — Style A: Jules Glow"
+    B (Minimalist Cool) → "Jules Winnfield — Style B: Jheri Minimal"
+    C (Retro Vibes    ) → "Jules Winnfield — Style C: Pulp 94"
+    D (Pixel Art      ) → "Jules Winnfield — Style D: Eight-Bit Jules"
+    E (Abstract Burst ) → "Jules Winnfield — Style E: Ezekiel Burst"
+    F (Pop Art        ) → "Jules Winnfield — Style F: Jules Pop"
+    G (Watercolour    ) → "Jules Winnfield — Style G: Painted Jules"
+    H (Noir           ) → "Jules Winnfield — Style H: Diner Shadow"
+    I (Geometric      ) → "Jules Winnfield — Style I: Wallet Geometry"
+    J (Street Art     ) → "Jules Winnfield — Style J: Jules Stencil"
+
+Kylo Ren
+  theme: First Order / cross-guard saber / mask
+    A (Neon Glow      ) → "Kylo Ren — Style A: Ren Glow"
+    B (Minimalist Cool) → "Kylo Ren — Style B: Mask Minimal"
+    C (Retro Vibes    ) → "Kylo Ren — Style C: First Order Era"
+    D (Pixel Art      ) → "Kylo Ren — Style D: Eight-Bit Ren"
+    E (Abstract Burst ) → "Kylo Ren — Style E: Sith Burst"
+    F (Pop Art        ) → "Kylo Ren — Style F: Ren Pop"
+    G (Watercolour    ) → "Kylo Ren — Style G: Painted Knight"
+    H (Noir           ) → "Kylo Ren — Style H: Ren Shadow"
+    I (Geometric      ) → "Kylo Ren — Style I: Cross Geometry"
+    J (Street Art     ) → "Kylo Ren — Style J: Ren Stencil"
+
+Leatherface
+  theme: Texas Chainsaw / mask / dance
+    A (Neon Glow      ) → "Leatherface — Style A: Saw Glow"
+    B (Minimalist Cool) → "Leatherface — Style B: Mask Minimal"
+    C (Retro Vibes    ) → "Leatherface — Style C: Texas 74"
+    D (Pixel Art      ) → "Leatherface — Style D: Eight-Bit Saw"
+    E (Abstract Burst ) → "Leatherface — Style E: Saw Burst"
+    F (Pop Art        ) → "Leatherface — Style F: Mask Pop"
+    G (Watercolour    ) → "Leatherface — Style G: Painted Mask"
+    H (Noir           ) → "Leatherface — Style H: Saw Shadow"
+    I (Geometric      ) → "Leatherface — Style I: Chain Geometry"
+    J (Street Art     ) → "Leatherface — Style J: Saw Stencil"
+
+Luke Skywalker
+  theme: Jedi / Tatooine farmboy / hero
+    A (Neon Glow      ) → "Luke Skywalker — Style A: Jedi Glow"
+    B (Minimalist Cool) → "Luke Skywalker — Style B: Skywalker Minimal"
+    C (Retro Vibes    ) → "Luke Skywalker — Style C: Yavin 77"
+    D (Pixel Art      ) → "Luke Skywalker — Style D: Eight-Bit Luke"
+    E (Abstract Burst ) → "Luke Skywalker — Style E: Force Burst"
+    F (Pop Art        ) → "Luke Skywalker — Style F: Jedi Pop"
+    G (Watercolour    ) → "Luke Skywalker — Style G: Painted Farmboy"
+    H (Noir           ) → "Luke Skywalker — Style H: Jedi Shadow"
+    I (Geometric      ) → "Luke Skywalker — Style I: Saber Geometry"
+    J (Street Art     ) → "Luke Skywalker — Style J: Luke Stencil"
+
+Marty McFly
+  theme: Hill Valley / DeLorean / 1985
+    A (Neon Glow      ) → "Marty McFly — Style A: Flux Glow"
+    B (Minimalist Cool) → "Marty McFly — Style B: Hill Valley Minimal"
+    C (Retro Vibes    ) → "Marty McFly — Style C: Hill Valley 85"
+    D (Pixel Art      ) → "Marty McFly — Style D: Eight-Bit Marty"
+    E (Abstract Burst ) → "Marty McFly — Style E: Flux Burst"
+    F (Pop Art        ) → "Marty McFly — Style F: Marty Pop"
+    G (Watercolour    ) → "Marty McFly — Style G: Painted Marty"
+    H (Noir           ) → "Marty McFly — Style H: Hill Valley Shadow"
+    I (Geometric      ) → "Marty McFly — Style I: Flux Geometry"
+    J (Street Art     ) → "Marty McFly — Style J: Marty Stencil"
+
+Michael Myers
+  theme: Haddonfield / mask / Halloween
+    A (Neon Glow      ) → "Michael Myers — Style A: Myers Glow"
+    B (Minimalist Cool) → "Michael Myers — Style B: Mask Minimal"
+    C (Retro Vibes    ) → "Michael Myers — Style C: Haddonfield 78"
+    D (Pixel Art      ) → "Michael Myers — Style D: Eight-Bit Myers"
+    E (Abstract Burst ) → "Michael Myers — Style E: Boogeyman Burst"
+    F (Pop Art        ) → "Michael Myers — Style F: Mask Pop"
+    G (Watercolour    ) → "Michael Myers — Style G: Painted Boogeyman"
+    H (Noir           ) → "Michael Myers — Style H: Myers Shadow"
+    I (Geometric      ) → "Michael Myers — Style I: Mask Geometry"
+    J (Street Art     ) → "Michael Myers — Style J: Myers Stencil"
+
+Obi-Wan Kenobi
+  theme: Negotiator / Jedi master / desert exile
+    A (Neon Glow      ) → "Obi-Wan Kenobi — Style A: Kenobi Glow"
+    B (Minimalist Cool) → "Obi-Wan Kenobi — Style B: Robe Minimal"
+    C (Retro Vibes    ) → "Obi-Wan Kenobi — Style C: Tatooine Exile"
+    D (Pixel Art      ) → "Obi-Wan Kenobi — Style D: Eight-Bit Obi"
+    E (Abstract Burst ) → "Obi-Wan Kenobi — Style E: Force Burst"
+    F (Pop Art        ) → "Obi-Wan Kenobi — Style F: Kenobi Pop"
+    G (Watercolour    ) → "Obi-Wan Kenobi — Style G: Painted Master"
+    H (Noir           ) → "Obi-Wan Kenobi — Style H: Kenobi Shadow"
+    I (Geometric      ) → "Obi-Wan Kenobi — Style I: Saber Geometry"
+    J (Street Art     ) → "Obi-Wan Kenobi — Style J: Kenobi Stencil"
+
+Pennywise
+  theme: Derry / red balloon / clown
+    A (Neon Glow      ) → "Pennywise — Style A: Balloon Glow"
+    B (Minimalist Cool) → "Pennywise — Style B: Clown Minimal"
+    C (Retro Vibes    ) → "Pennywise — Style C: Derry 89"
+    D (Pixel Art      ) → "Pennywise — Style D: Eight-Bit IT"
+    E (Abstract Burst ) → "Pennywise — Style E: Balloon Burst"
+    F (Pop Art        ) → "Pennywise — Style F: Clown Pop"
+    G (Watercolour    ) → "Pennywise — Style G: Painted Clown"
+    H (Noir           ) → "Pennywise — Style H: Sewer Shadow"
+    I (Geometric      ) → "Pennywise — Style I: Balloon Geometry"
+    J (Street Art     ) → "Pennywise — Style J: IT Stencil"
+
+Princess Leia
+  theme: Rebellion / Alderaan / royal
+    A (Neon Glow      ) → "Princess Leia — Style A: Leia Glow"
+    B (Minimalist Cool) → "Princess Leia — Style B: Buns Minimal"
+    C (Retro Vibes    ) → "Princess Leia — Style C: Alderaan Era"
+    D (Pixel Art      ) → "Princess Leia — Style D: Eight-Bit Leia"
+    E (Abstract Burst ) → "Princess Leia — Style E: Rebel Burst"
+    F (Pop Art        ) → "Princess Leia — Style F: Leia Pop"
+    G (Watercolour    ) → "Princess Leia — Style G: Painted Princess"
+    H (Noir           ) → "Princess Leia — Style H: Rebel Shadow"
+    I (Geometric      ) → "Princess Leia — Style I: Buns Geometry"
+    J (Street Art     ) → "Princess Leia — Style J: Leia Stencil"
+
+R2-D2
+  theme: Astromech / blue and white / loyal droid
+    A (Neon Glow      ) → "R2-D2 — Style A: Droid Glow"
+    B (Minimalist Cool) → "R2-D2 — Style B: Dome Minimal"
+    C (Retro Vibes    ) → "R2-D2 — Style C: Astromech 77"
+    D (Pixel Art      ) → "R2-D2 — Style D: Eight-Bit R2"
+    E (Abstract Burst ) → "R2-D2 — Style E: Beep Burst"
+    F (Pop Art        ) → "R2-D2 — Style F: Droid Pop"
+    G (Watercolour    ) → "R2-D2 — Style G: Painted Astromech"
+    H (Noir           ) → "R2-D2 — Style H: Dome Shadow"
+    I (Geometric      ) → "R2-D2 — Style I: Dome Geometry"
+    J (Street Art     ) → "R2-D2 — Style J: R2 Stencil"
+
+Rey
+  theme: Jakku scavenger / staff / new hope
+    A (Neon Glow      ) → "Rey — Style A: Rey Glow"
+    B (Minimalist Cool) → "Rey — Style B: Scavenger Minimal"
+    C (Retro Vibes    ) → "Rey — Style C: Jakku Era"
+    D (Pixel Art      ) → "Rey — Style D: Eight-Bit Rey"
+    E (Abstract Burst ) → "Rey — Style E: Force Burst"
+    F (Pop Art        ) → "Rey — Style F: Rey Pop"
+    G (Watercolour    ) → "Rey — Style G: Painted Scavenger"
+    H (Noir           ) → "Rey — Style H: Rey Shadow"
+    I (Geometric      ) → "Rey — Style I: Staff Geometry"
+    J (Street Art     ) → "Rey — Style J: Rey Stencil"
+
+Snake Plissken
+  theme: Escape from NY / eyepatch / antihero
+    A (Neon Glow      ) → "Snake Plissken — Style A: Snake Glow"
+    B (Minimalist Cool) → "Snake Plissken — Style B: Patch Minimal"
+    C (Retro Vibes    ) → "Snake Plissken — Style C: Escape 81"
+    D (Pixel Art      ) → "Snake Plissken — Style D: Eight-Bit Snake"
+    E (Abstract Burst ) → "Snake Plissken — Style E: Snake Burst"
+    F (Pop Art        ) → "Snake Plissken — Style F: Patch Pop"
+    G (Watercolour    ) → "Snake Plissken — Style G: Painted Snake"
+    H (Noir           ) → "Snake Plissken — Style H: Manhattan Shadow"
+    I (Geometric      ) → "Snake Plissken — Style I: Patch Geometry"
+    J (Street Art     ) → "Snake Plissken — Style J: Snake Stencil"
+
+Spider-Man
+  theme: Queens / web-slinger / red and blue
+    A (Neon Glow      ) → "Spider-Man — Style A: Web Glow"
+    B (Minimalist Cool) → "Spider-Man — Style B: Mask Minimal"
+    C (Retro Vibes    ) → "Spider-Man — Style C: Queens 62"
+    D (Pixel Art      ) → "Spider-Man — Style D: Eight-Bit Spidey"
+    E (Abstract Burst ) → "Spider-Man — Style E: Web Burst"
+    F (Pop Art        ) → "Spider-Man — Style F: Spidey Pop"
+    G (Watercolour    ) → "Spider-Man — Style G: Painted Web"
+    H (Noir           ) → "Spider-Man — Style H: Web Shadow"
+    I (Geometric      ) → "Spider-Man — Style I: Web Geometry"
+    J (Street Art     ) → "Spider-Man — Style J: Spidey Stencil"
+
+Stormtrooper
+  theme: Imperial / white armour / blaster
+    A (Neon Glow      ) → "Stormtrooper — Style A: Trooper Glow"
+    B (Minimalist Cool) → "Stormtrooper — Style B: Helm Minimal"
+    C (Retro Vibes    ) → "Stormtrooper — Style C: Imperial 77"
+    D (Pixel Art      ) → "Stormtrooper — Style D: Eight-Bit Trooper"
+    E (Abstract Burst ) → "Stormtrooper — Style E: Blaster Burst"
+    F (Pop Art        ) → "Stormtrooper — Style F: Trooper Pop"
+    G (Watercolour    ) → "Stormtrooper — Style G: Painted Trooper"
+    H (Noir           ) → "Stormtrooper — Style H: Helm Shadow"
+    I (Geometric      ) → "Stormtrooper — Style I: Plate Geometry"
+    J (Street Art     ) → "Stormtrooper — Style J: Trooper Stencil"
+
+Superman
+  theme: Krypton / cape / Metropolis
+    A (Neon Glow      ) → "Superman — Style A: Krypton Glow"
+    B (Minimalist Cool) → "Superman — Style B: Cape Minimal"
+    C (Retro Vibes    ) → "Superman — Style C: Metropolis 38"
+    D (Pixel Art      ) → "Superman — Style D: Eight-Bit Supes"
+    E (Abstract Burst ) → "Superman — Style E: Krypton Burst"
+    F (Pop Art        ) → "Superman — Style F: Supes Pop"
+    G (Watercolour    ) → "Superman — Style G: Painted Cape"
+    H (Noir           ) → "Superman — Style H: Cape Shadow"
+    I (Geometric      ) → "Superman — Style I: Crest Geometry"
+    J (Street Art     ) → "Superman — Style J: Supes Stencil"
+
+The Dude
+  theme: Big Lebowski / bowling / White Russian
+    A (Neon Glow      ) → "The Dude — Style A: Dude Glow"
+    B (Minimalist Cool) → "The Dude — Style B: Robe Minimal"
+    C (Retro Vibes    ) → "The Dude — Style C: Lebowski 98"
+    D (Pixel Art      ) → "The Dude — Style D: Eight-Bit Dude"
+    E (Abstract Burst ) → "The Dude — Style E: Bowling Burst"
+    F (Pop Art        ) → "The Dude — Style F: Dude Pop"
+    G (Watercolour    ) → "The Dude — Style G: Painted Dude"
+    H (Noir           ) → "The Dude — Style H: Bowling Shadow"
+    I (Geometric      ) → "The Dude — Style I: Lane Geometry"
+    J (Street Art     ) → "The Dude — Style J: Dude Stencil"
+
+The Godfather
+  theme: Corleone / Sicily / family
+    A (Neon Glow      ) → "The Godfather — Style A: Don Glow"
+    B (Minimalist Cool) → "The Godfather — Style B: Don Minimal"
+    C (Retro Vibes    ) → "The Godfather — Style C: Corleone 72"
+    D (Pixel Art      ) → "The Godfather — Style D: Eight-Bit Don"
+    E (Abstract Burst ) → "The Godfather — Style E: Family Burst"
+    F (Pop Art        ) → "The Godfather — Style F: Don Pop"
+    G (Watercolour    ) → "The Godfather — Style G: Painted Don"
+    H (Noir           ) → "The Godfather — Style H: Don Shadow"
+    I (Geometric      ) → "The Godfather — Style I: Don Geometry"
+    J (Street Art     ) → "The Godfather — Style J: Don Stencil"
+
+The Incredible Hulk
+  theme: Bruce Banner / smash / green
+    A (Neon Glow      ) → "The Incredible Hulk — Style A: Smash Glow"
+    B (Minimalist Cool) → "The Incredible Hulk — Style B: Hulk Minimal"
+    C (Retro Vibes    ) → "The Incredible Hulk — Style C: Gamma 62"
+    D (Pixel Art      ) → "The Incredible Hulk — Style D: Eight-Bit Hulk"
+    E (Abstract Burst ) → "The Incredible Hulk — Style E: Smash Burst"
+    F (Pop Art        ) → "The Incredible Hulk — Style F: Hulk Pop"
+    G (Watercolour    ) → "The Incredible Hulk — Style G: Painted Smash"
+    H (Noir           ) → "The Incredible Hulk — Style H: Banner Shadow"
+    I (Geometric      ) → "The Incredible Hulk — Style I: Smash Geometry"
+    J (Street Art     ) → "The Incredible Hulk — Style J: Hulk Stencil"
+
+The Mandalorian
+  theme: Beskar / Mandalore / way
+    A (Neon Glow      ) → "The Mandalorian — Style A: Beskar Glow"
+    B (Minimalist Cool) → "The Mandalorian — Style B: Helm Minimal"
+    C (Retro Vibes    ) → "The Mandalorian — Style C: Mando 19"
+    D (Pixel Art      ) → "The Mandalorian — Style D: Eight-Bit Mando"
+    E (Abstract Burst ) → "The Mandalorian — Style E: Beskar Burst"
+    F (Pop Art        ) → "The Mandalorian — Style F: Mando Pop"
+    G (Watercolour    ) → "The Mandalorian — Style G: Painted Mando"
+    H (Noir           ) → "The Mandalorian — Style H: Mando Shadow"
+    I (Geometric      ) → "The Mandalorian — Style I: Beskar Geometry"
+    J (Street Art     ) → "The Mandalorian — Style J: Mando Stencil"
+
+Tony Montana
+  theme: Scarface / Miami / little friend
+    A (Neon Glow      ) → "Tony Montana — Style A: Miami Glow"
+    B (Minimalist Cool) → "Tony Montana — Style B: Tony Minimal"
+    C (Retro Vibes    ) → "Tony Montana — Style C: Miami 83"
+    D (Pixel Art      ) → "Tony Montana — Style D: Eight-Bit Tony"
+    E (Abstract Burst ) → "Tony Montana — Style E: Montana Burst"
+    F (Pop Art        ) → "Tony Montana — Style F: Tony Pop"
+    G (Watercolour    ) → "Tony Montana — Style G: Painted Tony"
+    H (Noir           ) → "Tony Montana — Style H: Mansion Shadow"
+    I (Geometric      ) → "Tony Montana — Style I: Cuban Geometry"
+    J (Street Art     ) → "Tony Montana — Style J: Tony Stencil"
+
+Tusken Raider
+  theme: Sand People / Tatooine / gaffi stick
+    A (Neon Glow      ) → "Tusken Raider — Style A: Tusken Glow"
+    B (Minimalist Cool) → "Tusken Raider — Style B: Raider Minimal"
+    C (Retro Vibes    ) → "Tusken Raider — Style C: Tatooine 77"
+    D (Pixel Art      ) → "Tusken Raider — Style D: Eight-Bit Tusken"
+    E (Abstract Burst ) → "Tusken Raider — Style E: Gaffi Burst"
+    F (Pop Art        ) → "Tusken Raider — Style F: Tusken Pop"
+    G (Watercolour    ) → "Tusken Raider — Style G: Painted Raider"
+    H (Noir           ) → "Tusken Raider — Style H: Dune Shadow"
+    I (Geometric      ) → "Tusken Raider — Style I: Gaffi Geometry"
+    J (Street Art     ) → "Tusken Raider — Style J: Tusken Stencil"
+
+Tyler Durden
+  theme: Fight Club / soap / rules
+    A (Neon Glow      ) → "Tyler Durden — Style A: Tyler Glow"
+    B (Minimalist Cool) → "Tyler Durden — Style B: Soap Minimal"
+    C (Retro Vibes    ) → "Tyler Durden — Style C: Fight Club 99"
+    D (Pixel Art      ) → "Tyler Durden — Style D: Eight-Bit Tyler"
+    E (Abstract Burst ) → "Tyler Durden — Style E: Riot Burst"
+    F (Pop Art        ) → "Tyler Durden — Style F: Tyler Pop"
+    G (Watercolour    ) → "Tyler Durden — Style G: Painted Tyler"
+    H (Noir           ) → "Tyler Durden — Style H: Basement Shadow"
+    I (Geometric      ) → "Tyler Durden — Style I: Rule Geometry"
+    J (Street Art     ) → "Tyler Durden — Style J: Tyler Stencil"
+
+Wicket
+  theme: Ewok / Endor / forest moon
+    A (Neon Glow      ) → "Wicket — Style A: Ewok Glow"
+    B (Minimalist Cool) → "Wicket — Style B: Hood Minimal"
+    C (Retro Vibes    ) → "Wicket — Style C: Endor 83"
+    D (Pixel Art      ) → "Wicket — Style D: Eight-Bit Wicket"
+    E (Abstract Burst ) → "Wicket — Style E: Forest Burst"
+    F (Pop Art        ) → "Wicket — Style F: Ewok Pop"
+    G (Watercolour    ) → "Wicket — Style G: Painted Ewok"
+    H (Noir           ) → "Wicket — Style H: Forest Shadow"
+    I (Geometric      ) → "Wicket — Style I: Hood Geometry"
+    J (Street Art     ) → "Wicket — Style J: Ewok Stencil"
+
+Wolverine
+  theme: Adamantium / claws / Logan
+    A (Neon Glow      ) → "Wolverine — Style A: Logan Glow"
+    B (Minimalist Cool) → "Wolverine — Style B: Claw Minimal"
+    C (Retro Vibes    ) → "Wolverine — Style C: Weapon X"
+    D (Pixel Art      ) → "Wolverine — Style D: Eight-Bit Wolvie"
+    E (Abstract Burst ) → "Wolverine — Style E: Claw Burst"
+    F (Pop Art        ) → "Wolverine — Style F: Wolvie Pop"
+    G (Watercolour    ) → "Wolverine — Style G: Painted Logan"
+    H (Noir           ) → "Wolverine — Style H: Logan Shadow"
+    I (Geometric      ) → "Wolverine — Style I: Claw Geometry"
+    J (Street Art     ) → "Wolverine — Style J: Logan Stencil"
+
+Yoda
+  theme: Jedi master / Dagobah / wisdom
+    A (Neon Glow      ) → "Yoda — Style A: Yoda Glow"
+    B (Minimalist Cool) → "Yoda — Style B: Sage Minimal"
+    C (Retro Vibes    ) → "Yoda — Style C: Dagobah Era"
+    D (Pixel Art      ) → "Yoda — Style D: Eight-Bit Yoda"
+    E (Abstract Burst ) → "Yoda — Style E: Force Burst"
+    F (Pop Art        ) → "Yoda — Style F: Sage Pop"
+    G (Watercolour    ) → "Yoda — Style G: Painted Sage"
+    H (Noir           ) → "Yoda — Style H: Yoda Shadow"
+    I (Geometric      ) → "Yoda — Style I: Saber Geometry"
+    J (Street Art     ) → "Yoda — Style J: Yoda Stencil"
+
+================================================================================
+CATEGORY: ANIMATIONS  (33 characters, 330 products)
+================================================================================
+
+Bart Simpson
+  theme: Skateboard / chalkboard / Springfield
+    A (Neon Glow      ) → "Bart Simpson — Style A: Bart Glow"
+    B (Minimalist Cool) → "Bart Simpson — Style B: Bart Minimal"
+    C (Retro Vibes    ) → "Bart Simpson — Style C: Springfield 89"
+    D (Pixel Art      ) → "Bart Simpson — Style D: Eight-Bit Bart"
+    E (Abstract Burst ) → "Bart Simpson — Style E: Skater Burst"
+    F (Pop Art        ) → "Bart Simpson — Style F: Bart Pop"
+    G (Watercolour    ) → "Bart Simpson — Style G: Painted Bart"
+    H (Noir           ) → "Bart Simpson — Style H: Bart Shadow"
+    I (Geometric      ) → "Bart Simpson — Style I: Skater Geometry"
+    J (Street Art     ) → "Bart Simpson — Style J: Bart Stencil"
+
+Bugs Bunny
+  theme: Carrot / Looney Tunes / Brooklyn rabbit
+    A (Neon Glow      ) → "Bugs Bunny — Style A: Bugs Glow"
+    B (Minimalist Cool) → "Bugs Bunny — Style B: Bugs Minimal"
+    C (Retro Vibes    ) → "Bugs Bunny — Style C: Looney 40"
+    D (Pixel Art      ) → "Bugs Bunny — Style D: Eight-Bit Bugs"
+    E (Abstract Burst ) → "Bugs Bunny — Style E: Carrot Burst"
+    F (Pop Art        ) → "Bugs Bunny — Style F: Bugs Pop"
+    G (Watercolour    ) → "Bugs Bunny — Style G: Painted Bugs"
+    H (Noir           ) → "Bugs Bunny — Style H: Burrow Shadow"
+    I (Geometric      ) → "Bugs Bunny — Style I: Carrot Geometry"
+    J (Street Art     ) → "Bugs Bunny — Style J: Bugs Stencil"
+
+Charlie Brown
+  theme: Peanuts / zigzag / Snoopy
+    A (Neon Glow      ) → "Charlie Brown — Style A: Charlie Glow"
+    B (Minimalist Cool) → "Charlie Brown — Style B: Zigzag Minimal"
+    C (Retro Vibes    ) → "Charlie Brown — Style C: Peanuts 50"
+    D (Pixel Art      ) → "Charlie Brown — Style D: Eight-Bit Charlie"
+    E (Abstract Burst ) → "Charlie Brown — Style E: Peanuts Burst"
+    F (Pop Art        ) → "Charlie Brown — Style F: Charlie Pop"
+    G (Watercolour    ) → "Charlie Brown — Style G: Painted Charlie"
+    H (Noir           ) → "Charlie Brown — Style H: Peanuts Shadow"
+    I (Geometric      ) → "Charlie Brown — Style I: Zigzag Geometry"
+    J (Street Art     ) → "Charlie Brown — Style J: Charlie Stencil"
+
+Daffy Duck
+  theme: Looney Tunes / lisp / despicable
+    A (Neon Glow      ) → "Daffy Duck — Style A: Daffy Glow"
+    B (Minimalist Cool) → "Daffy Duck — Style B: Daffy Minimal"
+    C (Retro Vibes    ) → "Daffy Duck — Style C: Looney 37"
+    D (Pixel Art      ) → "Daffy Duck — Style D: Eight-Bit Daffy"
+    E (Abstract Burst ) → "Daffy Duck — Style E: Daffy Burst"
+    F (Pop Art        ) → "Daffy Duck — Style F: Daffy Pop"
+    G (Watercolour    ) → "Daffy Duck — Style G: Painted Daffy"
+    H (Noir           ) → "Daffy Duck — Style H: Daffy Shadow"
+    I (Geometric      ) → "Daffy Duck — Style I: Daffy Geometry"
+    J (Street Art     ) → "Daffy Duck — Style J: Daffy Stencil"
+
+Donald Duck
+  theme: Disney / sailor / temper
+    A (Neon Glow      ) → "Donald Duck — Style A: Donald Glow"
+    B (Minimalist Cool) → "Donald Duck — Style B: Sailor Minimal"
+    C (Retro Vibes    ) → "Donald Duck — Style C: Disney 34"
+    D (Pixel Art      ) → "Donald Duck — Style D: Eight-Bit Donald"
+    E (Abstract Burst ) → "Donald Duck — Style E: Quack Burst"
+    F (Pop Art        ) → "Donald Duck — Style F: Donald Pop"
+    G (Watercolour    ) → "Donald Duck — Style G: Painted Donald"
+    H (Noir           ) → "Donald Duck — Style H: Donald Shadow"
+    I (Geometric      ) → "Donald Duck — Style I: Sailor Geometry"
+    J (Street Art     ) → "Donald Duck — Style J: Donald Stencil"
+
+Eeyore
+  theme: Hundred Acre Wood / gloomy / donkey
+    A (Neon Glow      ) → "Eeyore — Style A: Eeyore Glow"
+    B (Minimalist Cool) → "Eeyore — Style B: Eeyore Minimal"
+    C (Retro Vibes    ) → "Eeyore — Style C: Acre Wood 26"
+    D (Pixel Art      ) → "Eeyore — Style D: Eight-Bit Eeyore"
+    E (Abstract Burst ) → "Eeyore — Style E: Eeyore Burst"
+    F (Pop Art        ) → "Eeyore — Style F: Eeyore Pop"
+    G (Watercolour    ) → "Eeyore — Style G: Painted Eeyore"
+    H (Noir           ) → "Eeyore — Style H: Eeyore Shadow"
+    I (Geometric      ) → "Eeyore — Style I: Tail Geometry"
+    J (Street Art     ) → "Eeyore — Style J: Eeyore Stencil"
+
+Garfield
+  theme: Lasagna / Monday / orange cat
+    A (Neon Glow      ) → "Garfield — Style A: Garfield Glow"
+    B (Minimalist Cool) → "Garfield — Style B: Cat Minimal"
+    C (Retro Vibes    ) → "Garfield — Style C: Comic Strip 78"
+    D (Pixel Art      ) → "Garfield — Style D: Eight-Bit Garfield"
+    E (Abstract Burst ) → "Garfield — Style E: Lasagna Burst"
+    F (Pop Art        ) → "Garfield — Style F: Garfield Pop"
+    G (Watercolour    ) → "Garfield — Style G: Painted Garfield"
+    H (Noir           ) → "Garfield — Style H: Lasagna Shadow"
+    I (Geometric      ) → "Garfield — Style I: Stripe Geometry"
+    J (Street Art     ) → "Garfield — Style J: Garfield Stencil"
+
+Goofy
+  theme: Disney / yuk / hat
+    A (Neon Glow      ) → "Goofy — Style A: Goofy Glow"
+    B (Minimalist Cool) → "Goofy — Style B: Goofy Minimal"
+    C (Retro Vibes    ) → "Goofy — Style C: Disney 32"
+    D (Pixel Art      ) → "Goofy — Style D: Eight-Bit Goofy"
+    E (Abstract Burst ) → "Goofy — Style E: Yuk Burst"
+    F (Pop Art        ) → "Goofy — Style F: Goofy Pop"
+    G (Watercolour    ) → "Goofy — Style G: Painted Goofy"
+    H (Noir           ) → "Goofy — Style H: Goofy Shadow"
+    I (Geometric      ) → "Goofy — Style I: Hat Geometry"
+    J (Street Art     ) → "Goofy — Style J: Goofy Stencil"
+
+Kermit the Frog
+  theme: Muppets / banjo / Rainbow Connection
+    A (Neon Glow      ) → "Kermit the Frog — Style A: Kermit Glow"
+    B (Minimalist Cool) → "Kermit the Frog — Style B: Frog Minimal"
+    C (Retro Vibes    ) → "Kermit the Frog — Style C: Muppet 55"
+    D (Pixel Art      ) → "Kermit the Frog — Style D: Eight-Bit Kermit"
+    E (Abstract Burst ) → "Kermit the Frog — Style E: Banjo Burst"
+    F (Pop Art        ) → "Kermit the Frog — Style F: Kermit Pop"
+    G (Watercolour    ) → "Kermit the Frog — Style G: Painted Frog"
+    H (Noir           ) → "Kermit the Frog — Style H: Frog Shadow"
+    I (Geometric      ) → "Kermit the Frog — Style I: Banjo Geometry"
+    J (Street Art     ) → "Kermit the Frog — Style J: Kermit Stencil"
+
+Mickey Mouse
+  theme: Disney / ears / Steamboat
+    A (Neon Glow      ) → "Mickey Mouse — Style A: Mickey Glow"
+    B (Minimalist Cool) → "Mickey Mouse — Style B: Ears Minimal"
+    C (Retro Vibes    ) → "Mickey Mouse — Style C: Steamboat 28"
+    D (Pixel Art      ) → "Mickey Mouse — Style D: Eight-Bit Mickey"
+    E (Abstract Burst ) → "Mickey Mouse — Style E: Mickey Burst"
+    F (Pop Art        ) → "Mickey Mouse — Style F: Mickey Pop"
+    G (Watercolour    ) → "Mickey Mouse — Style G: Painted Mickey"
+    H (Noir           ) → "Mickey Mouse — Style H: Mickey Shadow"
+    I (Geometric      ) → "Mickey Mouse — Style I: Ears Geometry"
+    J (Street Art     ) → "Mickey Mouse — Style J: Mickey Stencil"
+
+Optimus Prime
+  theme: Autobot / leader / transform
+    A (Neon Glow      ) → "Optimus Prime — Style A: Prime Glow"
+    B (Minimalist Cool) → "Optimus Prime — Style B: Autobot Minimal"
+    C (Retro Vibes    ) → "Optimus Prime — Style C: Cybertron 84"
+    D (Pixel Art      ) → "Optimus Prime — Style D: Eight-Bit Prime"
+    E (Abstract Burst ) → "Optimus Prime — Style E: Autobot Burst"
+    F (Pop Art        ) → "Optimus Prime — Style F: Prime Pop"
+    G (Watercolour    ) → "Optimus Prime — Style G: Painted Prime"
+    H (Noir           ) → "Optimus Prime — Style H: Cybertron Shadow"
+    I (Geometric      ) → "Optimus Prime — Style I: Autobot Geometry"
+    J (Street Art     ) → "Optimus Prime — Style J: Prime Stencil"
+
+Paddington
+  theme: Peru / marmalade / duffel coat
+    A (Neon Glow      ) → "Paddington — Style A: Paddington Glow"
+    B (Minimalist Cool) → "Paddington — Style B: Marmalade Minimal"
+    C (Retro Vibes    ) → "Paddington — Style C: Peru 58"
+    D (Pixel Art      ) → "Paddington — Style D: Eight-Bit Paddington"
+    E (Abstract Burst ) → "Paddington — Style E: Marmalade Burst"
+    F (Pop Art        ) → "Paddington — Style F: Paddington Pop"
+    G (Watercolour    ) → "Paddington — Style G: Painted Bear"
+    H (Noir           ) → "Paddington — Style H: Station Shadow"
+    I (Geometric      ) → "Paddington — Style I: Coat Geometry"
+    J (Street Art     ) → "Paddington — Style J: Paddington Stencil"
+
+Patrick Star
+  theme: Bikini Bottom / starfish / rock
+    A (Neon Glow      ) → "Patrick Star — Style A: Patrick Glow"
+    B (Minimalist Cool) → "Patrick Star — Style B: Patrick Minimal"
+    C (Retro Vibes    ) → "Patrick Star — Style C: Bikini 99"
+    D (Pixel Art      ) → "Patrick Star — Style D: Eight-Bit Patrick"
+    E (Abstract Burst ) → "Patrick Star — Style E: Patrick Burst"
+    F (Pop Art        ) → "Patrick Star — Style F: Patrick Pop"
+    G (Watercolour    ) → "Patrick Star — Style G: Painted Star"
+    H (Noir           ) → "Patrick Star — Style H: Rock Shadow"
+    I (Geometric      ) → "Patrick Star — Style I: Star Geometry"
+    J (Street Art     ) → "Patrick Star — Style J: Patrick Stencil"
+
+Pikachu
+  theme: Pokemon / electric / yellow
+    A (Neon Glow      ) → "Pikachu — Style A: Pika Glow"
+    B (Minimalist Cool) → "Pikachu — Style B: Pika Minimal"
+    C (Retro Vibes    ) → "Pikachu — Style C: Kanto 96"
+    D (Pixel Art      ) → "Pikachu — Style D: Eight-Bit Pika"
+    E (Abstract Burst ) → "Pikachu — Style E: Bolt Burst"
+    F (Pop Art        ) → "Pikachu — Style F: Pika Pop"
+    G (Watercolour    ) → "Pikachu — Style G: Painted Pika"
+    H (Noir           ) → "Pikachu — Style H: Bolt Shadow"
+    I (Geometric      ) → "Pikachu — Style I: Bolt Geometry"
+    J (Street Art     ) → "Pikachu — Style J: Pika Stencil"
+
+Pluto
+  theme: Disney / dog / loyal pup
+    A (Neon Glow      ) → "Pluto — Style A: Pluto Glow"
+    B (Minimalist Cool) → "Pluto — Style B: Pluto Minimal"
+    C (Retro Vibes    ) → "Pluto — Style C: Disney 30"
+    D (Pixel Art      ) → "Pluto — Style D: Eight-Bit Pluto"
+    E (Abstract Burst ) → "Pluto — Style E: Pluto Burst"
+    F (Pop Art        ) → "Pluto — Style F: Pluto Pop"
+    G (Watercolour    ) → "Pluto — Style G: Painted Pluto"
+    H (Noir           ) → "Pluto — Style H: Pluto Shadow"
+    I (Geometric      ) → "Pluto — Style I: Bone Geometry"
+    J (Street Art     ) → "Pluto — Style J: Pluto Stencil"
+
+Popeye
+  theme: Spinach / sailor / Olive
+    A (Neon Glow      ) → "Popeye — Style A: Popeye Glow"
+    B (Minimalist Cool) → "Popeye — Style B: Sailor Minimal"
+    C (Retro Vibes    ) → "Popeye — Style C: Sailor 29"
+    D (Pixel Art      ) → "Popeye — Style D: Eight-Bit Popeye"
+    E (Abstract Burst ) → "Popeye — Style E: Spinach Burst"
+    F (Pop Art        ) → "Popeye — Style F: Popeye Pop"
+    G (Watercolour    ) → "Popeye — Style G: Painted Sailor"
+    H (Noir           ) → "Popeye — Style H: Sailor Shadow"
+    I (Geometric      ) → "Popeye — Style I: Anchor Geometry"
+    J (Street Art     ) → "Popeye — Style J: Popeye Stencil"
+
+Scooby Doo
+  theme: Mystery Inc / Scooby Snacks / Great Dane
+    A (Neon Glow      ) → "Scooby Doo — Style A: Scooby Glow"
+    B (Minimalist Cool) → "Scooby Doo — Style B: Scooby Minimal"
+    C (Retro Vibes    ) → "Scooby Doo — Style C: Mystery 69"
+    D (Pixel Art      ) → "Scooby Doo — Style D: Eight-Bit Scooby"
+    E (Abstract Burst ) → "Scooby Doo — Style E: Snack Burst"
+    F (Pop Art        ) → "Scooby Doo — Style F: Scooby Pop"
+    G (Watercolour    ) → "Scooby Doo — Style G: Painted Scooby"
+    H (Noir           ) → "Scooby Doo — Style H: Mystery Shadow"
+    I (Geometric      ) → "Scooby Doo — Style I: Collar Geometry"
+    J (Street Art     ) → "Scooby Doo — Style J: Scooby Stencil"
+
+Shaggy
+  theme: Mystery Inc / Zoinks / Scooby's pal
+    A (Neon Glow      ) → "Shaggy — Style A: Shaggy Glow"
+    B (Minimalist Cool) → "Shaggy — Style B: Shaggy Minimal"
+    C (Retro Vibes    ) → "Shaggy — Style C: Mystery 69"
+    D (Pixel Art      ) → "Shaggy — Style D: Eight-Bit Shaggy"
+    E (Abstract Burst ) → "Shaggy — Style E: Zoinks Burst"
+    F (Pop Art        ) → "Shaggy — Style F: Shaggy Pop"
+    G (Watercolour    ) → "Shaggy — Style G: Painted Shaggy"
+    H (Noir           ) → "Shaggy — Style H: Mystery Shadow"
+    I (Geometric      ) → "Shaggy — Style I: Van Geometry"
+    J (Street Art     ) → "Shaggy — Style J: Shaggy Stencil"
+
+Snoopy
+  theme: Peanuts / beagle / doghouse
+    A (Neon Glow      ) → "Snoopy — Style A: Snoopy Glow"
+    B (Minimalist Cool) → "Snoopy — Style B: Snoopy Minimal"
+    C (Retro Vibes    ) → "Snoopy — Style C: Peanuts 50"
+    D (Pixel Art      ) → "Snoopy — Style D: Eight-Bit Snoopy"
+    E (Abstract Burst ) → "Snoopy — Style E: Snoopy Burst"
+    F (Pop Art        ) → "Snoopy — Style F: Snoopy Pop"
+    G (Watercolour    ) → "Snoopy — Style G: Painted Beagle"
+    H (Noir           ) → "Snoopy — Style H: Doghouse Shadow"
+    I (Geometric      ) → "Snoopy — Style I: House Geometry"
+    J (Street Art     ) → "Snoopy — Style J: Snoopy Stencil"
+
+Sonic the Hedgehog
+  theme: Sega / gotta go fast / rings
+    A (Neon Glow      ) → "Sonic the Hedgehog — Style A: Sonic Glow"
+    B (Minimalist Cool) → "Sonic the Hedgehog — Style B: Sonic Minimal"
+    C (Retro Vibes    ) → "Sonic the Hedgehog — Style C: Sega 91"
+    D (Pixel Art      ) → "Sonic the Hedgehog — Style D: Eight-Bit Sonic"
+    E (Abstract Burst ) → "Sonic the Hedgehog — Style E: Speed Burst"
+    F (Pop Art        ) → "Sonic the Hedgehog — Style F: Sonic Pop"
+    G (Watercolour    ) → "Sonic the Hedgehog — Style G: Painted Sonic"
+    H (Noir           ) → "Sonic the Hedgehog — Style H: Sonic Shadow"
+    I (Geometric      ) → "Sonic the Hedgehog — Style I: Ring Geometry"
+    J (Street Art     ) → "Sonic the Hedgehog — Style J: Sonic Stencil"
+
+SpongeBob SquarePants
+  theme: Bikini Bottom / Krabby Patty / sponge
+    A (Neon Glow      ) → "SpongeBob SquarePants — Style A: Sponge Glow"
+    B (Minimalist Cool) → "SpongeBob SquarePants — Style B: Sponge Minimal"
+    C (Retro Vibes    ) → "SpongeBob SquarePants — Style C: Bikini 99"
+    D (Pixel Art      ) → "SpongeBob SquarePants — Style D: Eight-Bit Sponge"
+    E (Abstract Burst ) → "SpongeBob SquarePants — Style E: Krabby Burst"
+    F (Pop Art        ) → "SpongeBob SquarePants — Style F: Sponge Pop"
+    G (Watercolour    ) → "SpongeBob SquarePants — Style G: Painted Sponge"
+    H (Noir           ) → "SpongeBob SquarePants — Style H: Sponge Shadow"
+    I (Geometric      ) → "SpongeBob SquarePants — Style I: Square Geometry"
+    J (Street Art     ) → "SpongeBob SquarePants — Style J: Sponge Stencil"
+
+Squidward Tentacles
+  theme: Bikini Bottom / clarinet / grumpy neighbour
+    A (Neon Glow      ) → "Squidward Tentacles — Style A: Squid Glow"
+    B (Minimalist Cool) → "Squidward Tentacles — Style B: Squid Minimal"
+    C (Retro Vibes    ) → "Squidward Tentacles — Style C: Bikini 99"
+    D (Pixel Art      ) → "Squidward Tentacles — Style D: Eight-Bit Squid"
+    E (Abstract Burst ) → "Squidward Tentacles — Style E: Clarinet Burst"
+    F (Pop Art        ) → "Squidward Tentacles — Style F: Squid Pop"
+    G (Watercolour    ) → "Squidward Tentacles — Style G: Painted Squid"
+    H (Noir           ) → "Squidward Tentacles — Style H: Squid Shadow"
+    I (Geometric      ) → "Squidward Tentacles — Style I: Clarinet Geometry"
+    J (Street Art     ) → "Squidward Tentacles — Style J: Squid Stencil"
+
+Stewie Griffin
+  theme: Family Guy / British baby / Quahog
+    A (Neon Glow      ) → "Stewie Griffin — Style A: Stewie Glow"
+    B (Minimalist Cool) → "Stewie Griffin — Style B: Stewie Minimal"
+    C (Retro Vibes    ) → "Stewie Griffin — Style C: Quahog 99"
+    D (Pixel Art      ) → "Stewie Griffin — Style D: Eight-Bit Stewie"
+    E (Abstract Burst ) → "Stewie Griffin — Style E: Stewie Burst"
+    F (Pop Art        ) → "Stewie Griffin — Style F: Stewie Pop"
+    G (Watercolour    ) → "Stewie Griffin — Style G: Painted Stewie"
+    H (Noir           ) → "Stewie Griffin — Style H: Quahog Shadow"
+    I (Geometric      ) → "Stewie Griffin — Style I: Ray Geometry"
+    J (Street Art     ) → "Stewie Griffin — Style J: Stewie Stencil"
+
+Stitch
+  theme: Ohana / experiment 626 / blue alien
+    A (Neon Glow      ) → "Stitch — Style A: Stitch Glow"
+    B (Minimalist Cool) → "Stitch — Style B: Ohana Minimal"
+    C (Retro Vibes    ) → "Stitch — Style C: Hawaii 02"
+    D (Pixel Art      ) → "Stitch — Style D: Eight-Bit Stitch"
+    E (Abstract Burst ) → "Stitch — Style E: Ohana Burst"
+    F (Pop Art        ) → "Stitch — Style F: Stitch Pop"
+    G (Watercolour    ) → "Stitch — Style G: Painted Ohana"
+    H (Noir           ) → "Stitch — Style H: Ohana Shadow"
+    I (Geometric      ) → "Stitch — Style I: Ear Geometry"
+    J (Street Art     ) → "Stitch — Style J: Stitch Stencil"
+
+Sylvester the Cat
+  theme: Looney Tunes / Tweety chase / suffering succotash
+    A (Neon Glow      ) → "Sylvester the Cat — Style A: Sylvester Glow"
+    B (Minimalist Cool) → "Sylvester the Cat — Style B: Cat Minimal"
+    C (Retro Vibes    ) → "Sylvester the Cat — Style C: Looney 45"
+    D (Pixel Art      ) → "Sylvester the Cat — Style D: Eight-Bit Sylvester"
+    E (Abstract Burst ) → "Sylvester the Cat — Style E: Chase Burst"
+    F (Pop Art        ) → "Sylvester the Cat — Style F: Sylvester Pop"
+    G (Watercolour    ) → "Sylvester the Cat — Style G: Painted Sylvester"
+    H (Noir           ) → "Sylvester the Cat — Style H: Sylvester Shadow"
+    I (Geometric      ) → "Sylvester the Cat — Style I: Tail Geometry"
+    J (Street Art     ) → "Sylvester the Cat — Style J: Sylvester Stencil"
+
+The Pink Panther
+  theme: Pink / cool cat / saxophone
+    A (Neon Glow      ) → "The Pink Panther — Style A: Pink Glow"
+    B (Minimalist Cool) → "The Pink Panther — Style B: Panther Minimal"
+    C (Retro Vibes    ) → "The Pink Panther — Style C: Pink 63"
+    D (Pixel Art      ) → "The Pink Panther — Style D: Eight-Bit Panther"
+    E (Abstract Burst ) → "The Pink Panther — Style E: Pink Burst"
+    F (Pop Art        ) → "The Pink Panther — Style F: Panther Pop"
+    G (Watercolour    ) → "The Pink Panther — Style G: Painted Panther"
+    H (Noir           ) → "The Pink Panther — Style H: Panther Shadow"
+    I (Geometric      ) → "The Pink Panther — Style I: Sax Geometry"
+    J (Street Art     ) → "The Pink Panther — Style J: Panther Stencil"
+
+The Roadrunner
+  theme: Looney Tunes / desert / meep meep
+    A (Neon Glow      ) → "The Roadrunner — Style A: Runner Glow"
+    B (Minimalist Cool) → "The Roadrunner — Style B: Runner Minimal"
+    C (Retro Vibes    ) → "The Roadrunner — Style C: Desert 49"
+    D (Pixel Art      ) → "The Roadrunner — Style D: Eight-Bit Runner"
+    E (Abstract Burst ) → "The Roadrunner — Style E: Speed Burst"
+    F (Pop Art        ) → "The Roadrunner — Style F: Runner Pop"
+    G (Watercolour    ) → "The Roadrunner — Style G: Painted Runner"
+    H (Noir           ) → "The Roadrunner — Style H: Desert Shadow"
+    I (Geometric      ) → "The Roadrunner — Style I: Mesa Geometry"
+    J (Street Art     ) → "The Roadrunner — Style J: Runner Stencil"
+
+Tigger
+  theme: Hundred Acre Wood / bouncing / wonderful thing
+    A (Neon Glow      ) → "Tigger — Style A: Tigger Glow"
+    B (Minimalist Cool) → "Tigger — Style B: Stripe Minimal"
+    C (Retro Vibes    ) → "Tigger — Style C: Acre Wood 68"
+    D (Pixel Art      ) → "Tigger — Style D: Eight-Bit Tigger"
+    E (Abstract Burst ) → "Tigger — Style E: Bounce Burst"
+    F (Pop Art        ) → "Tigger — Style F: Tigger Pop"
+    G (Watercolour    ) → "Tigger — Style G: Painted Tigger"
+    H (Noir           ) → "Tigger — Style H: Tigger Shadow"
+    I (Geometric      ) → "Tigger — Style I: Stripe Geometry"
+    J (Street Art     ) → "Tigger — Style J: Tigger Stencil"
+
+Tom and Jerry
+  theme: Cat and mouse chase / Hanna-Barbera
+    A (Neon Glow      ) → "Tom and Jerry — Style A: Chase Glow"
+    B (Minimalist Cool) → "Tom and Jerry — Style B: Chase Minimal"
+    C (Retro Vibes    ) → "Tom and Jerry — Style C: Hanna 40"
+    D (Pixel Art      ) → "Tom and Jerry — Style D: Eight-Bit Duo"
+    E (Abstract Burst ) → "Tom and Jerry — Style E: Chase Burst"
+    F (Pop Art        ) → "Tom and Jerry — Style F: Duo Pop"
+    G (Watercolour    ) → "Tom and Jerry — Style G: Painted Duo"
+    H (Noir           ) → "Tom and Jerry — Style H: Chase Shadow"
+    I (Geometric      ) → "Tom and Jerry — Style I: Chase Geometry"
+    J (Street Art     ) → "Tom and Jerry — Style J: Duo Stencil"
+
+Tweety Pie
+  theme: Looney Tunes / canary / I tawt I taw
+    A (Neon Glow      ) → "Tweety Pie — Style A: Tweety Glow"
+    B (Minimalist Cool) → "Tweety Pie — Style B: Tweety Minimal"
+    C (Retro Vibes    ) → "Tweety Pie — Style C: Looney 42"
+    D (Pixel Art      ) → "Tweety Pie — Style D: Eight-Bit Tweety"
+    E (Abstract Burst ) → "Tweety Pie — Style E: Tweety Burst"
+    F (Pop Art        ) → "Tweety Pie — Style F: Tweety Pop"
+    G (Watercolour    ) → "Tweety Pie — Style G: Painted Tweety"
+    H (Noir           ) → "Tweety Pie — Style H: Cage Shadow"
+    I (Geometric      ) → "Tweety Pie — Style I: Cage Geometry"
+    J (Street Art     ) → "Tweety Pie — Style J: Tweety Stencil"
+
+Wile E Coyote
+  theme: Roadrunner chase / Acme / desert
+    A (Neon Glow      ) → "Wile E Coyote — Style A: Wile Glow"
+    B (Minimalist Cool) → "Wile E Coyote — Style B: Coyote Minimal"
+    C (Retro Vibes    ) → "Wile E Coyote — Style C: Acme 49"
+    D (Pixel Art      ) → "Wile E Coyote — Style D: Eight-Bit Wile"
+    E (Abstract Burst ) → "Wile E Coyote — Style E: Acme Burst"
+    F (Pop Art        ) → "Wile E Coyote — Style F: Coyote Pop"
+    G (Watercolour    ) → "Wile E Coyote — Style G: Painted Coyote"
+    H (Noir           ) → "Wile E Coyote — Style H: Desert Shadow"
+    I (Geometric      ) → "Wile E Coyote — Style I: Acme Geometry"
+    J (Street Art     ) → "Wile E Coyote — Style J: Coyote Stencil"
+
+Winnie the Pooh
+  theme: Hundred Acre Wood / honey / bear
+    A (Neon Glow      ) → "Winnie the Pooh — Style A: Pooh Glow"
+    B (Minimalist Cool) → "Winnie the Pooh — Style B: Honey Minimal"
+    C (Retro Vibes    ) → "Winnie the Pooh — Style C: Acre Wood 26"
+    D (Pixel Art      ) → "Winnie the Pooh — Style D: Eight-Bit Pooh"
+    E (Abstract Burst ) → "Winnie the Pooh — Style E: Honey Burst"
+    F (Pop Art        ) → "Winnie the Pooh — Style F: Pooh Pop"
+    G (Watercolour    ) → "Winnie the Pooh — Style G: Painted Pooh"
+    H (Noir           ) → "Winnie the Pooh — Style H: Honey Shadow"
+    I (Geometric      ) → "Winnie the Pooh — Style I: Pot Geometry"
+    J (Street Art     ) → "Winnie the Pooh — Style J: Pooh Stencil"
+
+Yosemite Sam
+  theme: Looney Tunes / red moustache / cowboy
+    A (Neon Glow      ) → "Yosemite Sam — Style A: Sam Glow"
+    B (Minimalist Cool) → "Yosemite Sam — Style B: Sam Minimal"
+    C (Retro Vibes    ) → "Yosemite Sam — Style C: Looney 45"
+    D (Pixel Art      ) → "Yosemite Sam — Style D: Eight-Bit Sam"
+    E (Abstract Burst ) → "Yosemite Sam — Style E: Sam Burst"
+    F (Pop Art        ) → "Yosemite Sam — Style F: Sam Pop"
+    G (Watercolour    ) → "Yosemite Sam — Style G: Painted Sam"
+    H (Noir           ) → "Yosemite Sam — Style H: Sam Shadow"
+    I (Geometric      ) → "Yosemite Sam — Style I: Pistol Geometry"
+    J (Street Art     ) → "Yosemite Sam — Style J: Sam Stencil"
+
+================================================================================
+CATEGORY: MUSIC  (10 characters, 100 products)
+================================================================================
+
+Billie Eilish
+  theme: Bad Guy / dark pop / green hair era
+    A (Neon Glow      ) → "Billie Eilish — Style A: Billie Glow"
+    B (Minimalist Cool) → "Billie Eilish — Style B: Bad Guy Minimal"
+    C (Retro Vibes    ) → "Billie Eilish — Style C: Bad Guy 19"
+    D (Pixel Art      ) → "Billie Eilish — Style D: Eight-Bit Billie"
+    E (Abstract Burst ) → "Billie Eilish — Style E: Bad Burst"
+    F (Pop Art        ) → "Billie Eilish — Style F: Billie Pop"
+    G (Watercolour    ) → "Billie Eilish — Style G: Painted Billie"
+    H (Noir           ) → "Billie Eilish — Style H: Ocean Shadow"
+    I (Geometric      ) → "Billie Eilish — Style I: Bad Geometry"
+    J (Street Art     ) → "Billie Eilish — Style J: Billie Stencil"
+
+Bob Marley
+  theme: Reggae / Jamaica / one love
+    A (Neon Glow      ) → "Bob Marley — Style A: Roots Glow"
+    B (Minimalist Cool) → "Bob Marley — Style B: Roots Minimal"
+    C (Retro Vibes    ) → "Bob Marley — Style C: Trenchtown 76"
+    D (Pixel Art      ) → "Bob Marley — Style D: Eight-Bit Marley"
+    E (Abstract Burst ) → "Bob Marley — Style E: Roots Burst"
+    F (Pop Art        ) → "Bob Marley — Style F: Marley Pop"
+    G (Watercolour    ) → "Bob Marley — Style G: Painted Marley"
+    H (Noir           ) → "Bob Marley — Style H: Roots Shadow"
+    I (Geometric      ) → "Bob Marley — Style I: Roots Geometry"
+    J (Street Art     ) → "Bob Marley — Style J: Marley Stencil"
+
+Elvis
+  theme: King of Rock / Graceland / jumpsuit
+    A (Neon Glow      ) → "Elvis — Style A: King Glow"
+    B (Minimalist Cool) → "Elvis — Style B: King Minimal"
+    C (Retro Vibes    ) → "Elvis — Style C: Graceland 56"
+    D (Pixel Art      ) → "Elvis — Style D: Eight-Bit Elvis"
+    E (Abstract Burst ) → "Elvis — Style E: King Burst"
+    F (Pop Art        ) → "Elvis — Style F: King Pop"
+    G (Watercolour    ) → "Elvis — Style G: Painted King"
+    H (Noir           ) → "Elvis — Style H: Graceland Shadow"
+    I (Geometric      ) → "Elvis — Style I: Quiff Geometry"
+    J (Street Art     ) → "Elvis — Style J: King Stencil"
+
+Eminem
+  theme: Detroit / Slim Shady / 8 Mile
+    A (Neon Glow      ) → "Eminem — Style A: Detroit Glow"
+    B (Minimalist Cool) → "Eminem — Style B: Slim Minimal"
+    C (Retro Vibes    ) → "Eminem — Style C: Detroit 99"
+    D (Pixel Art      ) → "Eminem — Style D: Eight-Bit Em"
+    E (Abstract Burst ) → "Eminem — Style E: Mic Burst"
+    F (Pop Art        ) → "Eminem — Style F: Slim Pop"
+    G (Watercolour    ) → "Eminem — Style G: Painted Slim"
+    H (Noir           ) → "Eminem — Style H: Mile Shadow"
+    I (Geometric      ) → "Eminem — Style I: Mic Geometry"
+    J (Street Art     ) → "Eminem — Style J: Em Stencil"
+
+Jimi Hendrix
+  theme: Strat / Woodstock / Purple Haze
+    A (Neon Glow      ) → "Jimi Hendrix — Style A: Haze Glow"
+    B (Minimalist Cool) → "Jimi Hendrix — Style B: Strat Minimal"
+    C (Retro Vibes    ) → "Jimi Hendrix — Style C: Woodstock 69"
+    D (Pixel Art      ) → "Jimi Hendrix — Style D: Eight-Bit Jimi"
+    E (Abstract Burst ) → "Jimi Hendrix — Style E: Haze Burst"
+    F (Pop Art        ) → "Jimi Hendrix — Style F: Jimi Pop"
+    G (Watercolour    ) → "Jimi Hendrix — Style G: Painted Jimi"
+    H (Noir           ) → "Jimi Hendrix — Style H: Haze Shadow"
+    I (Geometric      ) → "Jimi Hendrix — Style I: Strat Geometry"
+    J (Street Art     ) → "Jimi Hendrix — Style J: Jimi Stencil"
+
+John Lennon
+  theme: Beatle / Imagine / round glasses
+    A (Neon Glow      ) → "John Lennon — Style A: Lennon Glow"
+    B (Minimalist Cool) → "John Lennon — Style B: Imagine Minimal"
+    C (Retro Vibes    ) → "John Lennon — Style C: Liverpool 64"
+    D (Pixel Art      ) → "John Lennon — Style D: Eight-Bit Lennon"
+    E (Abstract Burst ) → "John Lennon — Style E: Imagine Burst"
+    F (Pop Art        ) → "John Lennon — Style F: Lennon Pop"
+    G (Watercolour    ) → "John Lennon — Style G: Painted Lennon"
+    H (Noir           ) → "John Lennon — Style H: Imagine Shadow"
+    I (Geometric      ) → "John Lennon — Style I: Round Geometry"
+    J (Street Art     ) → "John Lennon — Style J: Lennon Stencil"
+
+Kurt Cobain
+  theme: Nirvana / Seattle / grunge
+    A (Neon Glow      ) → "Kurt Cobain — Style A: Kurt Glow"
+    B (Minimalist Cool) → "Kurt Cobain — Style B: Grunge Minimal"
+    C (Retro Vibes    ) → "Kurt Cobain — Style C: Seattle 91"
+    D (Pixel Art      ) → "Kurt Cobain — Style D: Eight-Bit Kurt"
+    E (Abstract Burst ) → "Kurt Cobain — Style E: Smells Burst"
+    F (Pop Art        ) → "Kurt Cobain — Style F: Kurt Pop"
+    G (Watercolour    ) → "Kurt Cobain — Style G: Painted Kurt"
+    H (Noir           ) → "Kurt Cobain — Style H: Cardigan Shadow"
+    I (Geometric      ) → "Kurt Cobain — Style I: Strat Geometry"
+    J (Street Art     ) → "Kurt Cobain — Style J: Kurt Stencil"
+
+Michael Jackson
+  theme: King of Pop / moonwalk / glove
+    A (Neon Glow      ) → "Michael Jackson — Style A: MJ Glow"
+    B (Minimalist Cool) → "Michael Jackson — Style B: Glove Minimal"
+    C (Retro Vibes    ) → "Michael Jackson — Style C: Thriller 82"
+    D (Pixel Art      ) → "Michael Jackson — Style D: Eight-Bit MJ"
+    E (Abstract Burst ) → "Michael Jackson — Style E: Moon Burst"
+    F (Pop Art        ) → "Michael Jackson — Style F: MJ Pop"
+    G (Watercolour    ) → "Michael Jackson — Style G: Painted MJ"
+    H (Noir           ) → "Michael Jackson — Style H: Moonwalk Shadow"
+    I (Geometric      ) → "Michael Jackson — Style I: Glove Geometry"
+    J (Street Art     ) → "Michael Jackson — Style J: MJ Stencil"
+
+Prince
+  theme: Purple Rain / Minneapolis / symbol
+    A (Neon Glow      ) → "Prince — Style A: Prince Glow"
+    B (Minimalist Cool) → "Prince — Style B: Purple Minimal"
+    C (Retro Vibes    ) → "Prince — Style C: Purple 84"
+    D (Pixel Art      ) → "Prince — Style D: Eight-Bit Prince"
+    E (Abstract Burst ) → "Prince — Style E: Purple Burst"
+    F (Pop Art        ) → "Prince — Style F: Prince Pop"
+    G (Watercolour    ) → "Prince — Style G: Painted Prince"
+    H (Noir           ) → "Prince — Style H: Purple Shadow"
+    I (Geometric      ) → "Prince — Style I: Symbol Geometry"
+    J (Street Art     ) → "Prince — Style J: Prince Stencil"
+
+Snoop Dogg
+  theme: Long Beach / Doggystyle / G-funk
+    A (Neon Glow      ) → "Snoop Dogg — Style A: Snoop Glow"
+    B (Minimalist Cool) → "Snoop Dogg — Style B: Snoop Minimal"
+    C (Retro Vibes    ) → "Snoop Dogg — Style C: Long Beach 93"
+    D (Pixel Art      ) → "Snoop Dogg — Style D: Eight-Bit Snoop"
+    E (Abstract Burst ) → "Snoop Dogg — Style E: G-Funk Burst"
+    F (Pop Art        ) → "Snoop Dogg — Style F: Snoop Pop"
+    G (Watercolour    ) → "Snoop Dogg — Style G: Painted Snoop"
+    H (Noir           ) → "Snoop Dogg — Style H: Doggy Shadow"
+    I (Geometric      ) → "Snoop Dogg — Style I: G Geometry"
+    J (Street Art     ) → "Snoop Dogg — Style J: Snoop Stencil"
+
+================================================================================
+CATEGORY: SPORT  (2 characters, 20 products)
+================================================================================
+
+Michael Jordan
+  theme: Bulls / Air Jordan / 23
+    A (Neon Glow      ) → "Michael Jordan — Style A: Air Glow"
+    B (Minimalist Cool) → "Michael Jordan — Style B: 23 Minimal"
+    C (Retro Vibes    ) → "Michael Jordan — Style C: Chicago 96"
+    D (Pixel Art      ) → "Michael Jordan — Style D: Eight-Bit MJ"
+    E (Abstract Burst ) → "Michael Jordan — Style E: Jumpman Burst"
+    F (Pop Art        ) → "Michael Jordan — Style F: Jordan Pop"
+    G (Watercolour    ) → "Michael Jordan — Style G: Painted Jordan"
+    H (Noir           ) → "Michael Jordan — Style H: Jordan Shadow"
+    I (Geometric      ) → "Michael Jordan — Style I: Jumpman Geometry"
+    J (Street Art     ) → "Michael Jordan — Style J: Air Stencil"
+
+Muhammad Ali
+  theme: Boxing / float like a butterfly / greatest
+    A (Neon Glow      ) → "Muhammad Ali — Style A: Ali Glow"
+    B (Minimalist Cool) → "Muhammad Ali — Style B: Greatest Minimal"
+    C (Retro Vibes    ) → "Muhammad Ali — Style C: Kinshasa 74"
+    D (Pixel Art      ) → "Muhammad Ali — Style D: Eight-Bit Ali"
+    E (Abstract Burst ) → "Muhammad Ali — Style E: Float Burst"
+    F (Pop Art        ) → "Muhammad Ali — Style F: Ali Pop"
+    G (Watercolour    ) → "Muhammad Ali — Style G: Painted Ali"
+    H (Noir           ) → "Muhammad Ali — Style H: Ali Shadow"
+    I (Geometric      ) → "Muhammad Ali — Style I: Glove Geometry"
+    J (Street Art     ) → "Muhammad Ali — Style J: Ali Stencil"
+
+================================================================================
+CATEGORY: MISCELLANEOUS  (1 characters, 10 products)
+================================================================================
+
+Albert Einstein
+  theme: Physics / E=mc2 / wild hair
+    A (Neon Glow      ) → "Albert Einstein — Style A: Einstein Glow"
+    B (Minimalist Cool) → "Albert Einstein — Style B: Theory Minimal"
+    C (Retro Vibes    ) → "Albert Einstein — Style C: Princeton 50"
+    D (Pixel Art      ) → "Albert Einstein — Style D: Eight-Bit Einstein"
+    E (Abstract Burst ) → "Albert Einstein — Style E: Cosmic Burst"
+    F (Pop Art        ) → "Albert Einstein — Style F: Einstein Pop"
+    G (Watercolour    ) → "Albert Einstein — Style G: Painted Genius"
+    H (Noir           ) → "Albert Einstein — Style H: Theory Shadow"
+    I (Geometric      ) → "Albert Einstein — Style I: Theory Geometry"
+    J (Street Art     ) → "Albert Einstein — Style J: Einstein Stencil"
+
+================================================================================
+END OF PREVIEW
+================================================================================
