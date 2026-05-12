@@ -13,7 +13,6 @@ try {
   const [productsResult, categoriesResult, servicesResult] = await Promise.all([
     sanityClient.fetch(allProductsQuery),
     sanityClient.fetch(allCategoriesQuery),
-    // Fetch service hero images so Personalised products can borrow them
     sanityClient.fetch(`
       *[_type == "service"]{
         "slug": slug.current,
@@ -25,7 +24,6 @@ try {
   products = productsResult;
   categories = categoriesResult;
 
-  // Build a slug -> heroUrl map from services
   serviceHeroMap = (servicesResult || []).reduce((acc: any, svc: any) => {
     if (svc.slug && svc.heroUrl) acc[svc.slug] = svc.heroUrl;
     return acc;
@@ -35,7 +33,6 @@ try {
   categories = CATEGORIES.map((c) => ({ ...c, productCount: 0 }));
 }
 
-// Attach serviceHeroUrl to personalised products so the card can render the image
 products = products.map((p: any) => {
   if (p.category === 'personalised' && typeof p.slug === 'string') {
     const svcSlug = p.slug.replace(/^personalised-/, '');
@@ -43,11 +40,18 @@ products = products.map((p: any) => {
   }
   return p;
 });
+
+// Map STYLES[] to short "Option A".."Option J" labels, preserving the colour dot.
+const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+const optionPills = STYLES.map((s: any, i: number) => ({
+  ...s,
+  shortLabel: `Option ${OPTION_LETTERS[i] || s.label}`,
+}));
 ---
 
 <BaseLayout
   title="Shop Wall Art | Pixel8 Multimedia"
-  description="Browse 980+ pop culture wall art designs across 10 unique styles and 6 categories. Canvas prints and poster prints made to order in the UK."
+  description="Browse 1,000+ pop culture wall art designs across 10 unique options and 6 categories. Canvas prints and poster prints made to order in the UK."
 >
   <!-- Hero -->
   <section class="bg-bg-secondary py-16 border-b border-edge-line">
@@ -55,14 +59,14 @@ products = products.map((p: any) => {
       <span class="font-mono text-xs text-pop-orange uppercase tracking-widest">Our Way</span>
       <h1 class="section-heading mt-2 mb-4">Shop</h1>
       <p class="font-dm text-mid-grey text-lg max-w-2xl mx-auto">
-        Pop culture wall art across 10 original styles. Every piece made to order — poster prints, standard canvas, and gallery canvas.
+        Pop culture wall art across 10 original options. Every piece made to order — poster prints, standard canvas, and gallery canvas.
       </p>
       <div class="flex justify-center gap-4 mt-6 text-sm font-dm text-mid-grey">
         <span><strong class="text-off-white">{products.length}</strong> Products</span>
         <span>·</span>
         <span><strong class="text-off-white">{categories.length || 6}</strong> Categories</span>
         <span>·</span>
-        <span><strong class="text-off-white">10</strong> Styles</span>
+        <span><strong class="text-off-white">10</strong> Options</span>
         <span>·</span>
         <span><strong class="text-off-white">3</strong> Formats</span>
       </div>
@@ -87,22 +91,24 @@ products = products.map((p: any) => {
         <span class="text-xs text-deep-grey font-dm ml-auto" id="product-count">{products.length} products</span>
       </div>
 
+      <!-- Category pills -->
       <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" id="category-filters">
-        <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-off-white bg-pop-orange whitespace-nowrap transition-all" data-type="category" data-value="all">All</button>
+        <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-pop-orange text-off-white bg-pop-orange whitespace-nowrap transition-all" data-type="category" data-value="all">All</button>
         {(categories.length > 0 ? categories : CATEGORIES).map((cat: any) => (
-          <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:text-pop-orange hover:border-pop-orange whitespace-nowrap transition-all" data-type="category" data-value={cat.slug}>
+          <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:bg-bg-secondary hover:text-off-white hover:border-pop-orange whitespace-nowrap transition-all" data-type="category" data-value={cat.slug}>
             {cat.name}
             {cat.productCount != null && <span class="ml-1 opacity-60">({cat.productCount})</span>}
           </button>
         ))}
       </div>
 
+      <!-- Option pills -->
       <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" id="style-filters">
-        <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-off-white bg-pop-orange whitespace-nowrap transition-all" data-type="style" data-value="all">All Styles</button>
-        {STYLES.map((s) => (
-          <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:border-pop-orange whitespace-nowrap transition-all flex items-center gap-1.5" data-type="style" data-value={s.value}>
+        <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-pop-orange text-off-white bg-pop-orange whitespace-nowrap transition-all" data-type="style" data-value="all">All Options</button>
+        {optionPills.map((s: any) => (
+          <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:bg-bg-secondary hover:text-off-white hover:border-pop-orange whitespace-nowrap transition-all flex items-center gap-1.5" data-type="style" data-value={s.value}>
             <span class="w-2 h-2 rounded-full flex-shrink-0" style={`background:${s.color}`}></span>
-            {s.label}
+            {s.shortLabel}
           </button>
         ))}
       </div>
@@ -140,26 +146,26 @@ products = products.map((p: any) => {
 
   function activateCategoryTab(value: string) {
     document.querySelectorAll('[data-type="category"]').forEach((b) => {
-      b.classList.remove('active', 'bg-pop-orange', 'text-off-white');
-      b.classList.add('bg-transparent', 'text-mid-grey');
+      b.classList.remove('active', 'bg-pop-orange', 'text-off-white', 'border-pop-orange');
+      b.classList.add('bg-transparent', 'text-mid-grey', 'border-edge-line');
     });
     const target = document.querySelector(`[data-type="category"][data-value="${value}"]`);
     if (target) {
-      target.classList.add('active', 'bg-pop-orange', 'text-off-white');
-      target.classList.remove('bg-transparent', 'text-mid-grey');
+      target.classList.add('active', 'bg-pop-orange', 'text-off-white', 'border-pop-orange');
+      target.classList.remove('bg-transparent', 'text-mid-grey', 'border-edge-line');
     }
     activeCategory = value;
   }
 
   function activateStyleTab(value: string) {
     document.querySelectorAll('[data-type="style"]').forEach((b) => {
-      b.classList.remove('active', 'bg-pop-orange', 'text-off-white');
-      b.classList.add('bg-transparent', 'text-mid-grey');
+      b.classList.remove('active', 'bg-pop-orange', 'text-off-white', 'border-pop-orange');
+      b.classList.add('bg-transparent', 'text-mid-grey', 'border-edge-line');
     });
     const target = document.querySelector(`[data-type="style"][data-value="${value}"]`);
     if (target) {
-      target.classList.add('active', 'bg-pop-orange', 'text-off-white');
-      target.classList.remove('bg-transparent', 'text-mid-grey');
+      target.classList.add('active', 'bg-pop-orange', 'text-off-white', 'border-pop-orange');
+      target.classList.remove('bg-transparent', 'text-mid-grey', 'border-edge-line');
     }
     activeStyle = value;
   }
@@ -203,12 +209,15 @@ products = products.map((p: any) => {
     if (countEl) countEl.textContent = `${visible.length} product${visible.length !== 1 ? 's' : ''}`;
   }
 
+  // Read filter state from URL on page load.
+  // URL key for the option filter is `option` (was `style` prior to the Option rename).
+  // We still read `style` as a legacy fallback so old bookmarks/links keep working.
   const params = new URLSearchParams(window.location.search);
   const urlCategory = params.get('category');
-  const urlStyle = params.get('style');
+  const urlOption = params.get('option') || params.get('style');
 
   if (urlCategory) activateCategoryTab(urlCategory);
-  if (urlStyle) activateStyleTab(urlStyle);
+  if (urlOption) activateStyleTab(urlOption);
 
   applyFilters();
 
@@ -229,7 +238,13 @@ products = products.map((p: any) => {
       activateStyleTab(value);
       applyFilters();
       const url = new URL(window.location.href);
-      if (value === 'all') { url.searchParams.delete('style'); } else { url.searchParams.set('style', value); }
+      // Always remove the legacy `style` key when writing, so the URL stays clean.
+      url.searchParams.delete('style');
+      if (value === 'all') {
+        url.searchParams.delete('option');
+      } else {
+        url.searchParams.set('option', value);
+      }
       history.replaceState(null, '', url.toString());
     });
   });

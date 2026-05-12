@@ -18,7 +18,12 @@ const {
   jsonLd,
 } = Astro.props;
 const fullTitle = title.includes('Pixel8') ? title : `${title} | Pixel8 Multimedia`;
-const canonicalURL = Astro.url.href;
+// Build canonical/og URLs against the production domain (Astro.site in astro.config.mjs).
+// Falls back to Astro.url.origin if site isn't set, but it IS set for this project.
+const siteOrigin = (Astro.site?.toString() || Astro.url.origin).replace(/\/$/, '');
+const canonicalURL = `${siteOrigin}${Astro.url.pathname}`;
+// Resolve og:image to an absolute URL — Facebook/Twitter ignore relative paths.
+const ogImageAbsolute = ogImage.startsWith('http') ? ogImage : `${siteOrigin}${ogImage.startsWith('/') ? ogImage : '/' + ogImage}`;
 ---
 <!doctype html>
 <html lang="en-GB">
@@ -31,7 +36,7 @@ const canonicalURL = Astro.url.href;
     <link rel="canonical" href={canonicalURL} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={ogImage} />
+    <meta property="og:image" content={ogImageAbsolute} />
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:site_name" content="Pixel8 Multimedia" />
@@ -39,7 +44,7 @@ const canonicalURL = Astro.url.href;
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image" content={ogImageAbsolute} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="theme-color" content="#0D0D0D" />
     <meta name="robots" content="index, follow" />
