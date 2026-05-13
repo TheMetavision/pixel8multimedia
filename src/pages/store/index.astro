@@ -8,37 +8,16 @@ import { CATEGORIES, STYLES } from '../../data/products';
 
 let characters: any[] = [];
 let categories: any[] = [];
-let personalisedRows: any[] = [];
 let featuredDrops: any[] = [];
-let serviceHeroMap: Record<string, string> = {};
 
 try {
   const [
     charactersResult,
     categoriesResult,
-    personalisedResult,
-    servicesResult,
     featuredResult,
   ] = await Promise.all([
     sanityClient.fetch(allCharactersForListingQuery),
     sanityClient.fetch(allCategoriesQuery),
-    sanityClient.fetch(`
-      *[_type == "product" && category == "personalised"] | order(title asc) {
-        _id,
-        title,
-        "slug": slug.current,
-        category,
-        prices,
-        accentColor,
-        images[] { asset-> { _id, url }, alt }
-      }
-    `),
-    sanityClient.fetch(`
-      *[_type == "service"]{
-        "slug": slug.current,
-        "heroUrl": heroImage.asset->url
-      }
-    `),
     // Featured products for the hero strip. Order by sortOrder so editors
     // can control which one shows first.
     sanityClient.fetch(`
@@ -57,29 +36,16 @@ try {
 
   characters = charactersResult || [];
   categories = categoriesResult || [];
-  personalisedRows = personalisedResult || [];
   featuredDrops = featuredResult || [];
-
-  serviceHeroMap = (servicesResult || []).reduce((acc: any, svc: any) => {
-    if (svc.slug && svc.heroUrl) acc[svc.slug] = svc.heroUrl;
-    return acc;
-  }, {});
 } catch (e) {
   console.warn('Sanity fetch failed for store page', e);
   categories = CATEGORIES.map((c) => ({ ...c, productCount: 0 }));
 }
 
-// Decorate personalised products with their matching service hero image.
-personalisedRows = personalisedRows.map((p: any) => {
-  if (typeof p.slug === 'string') {
-    const svcSlug = p.slug.replace(/^personalised-/, '');
-    return { ...p, serviceHeroUrl: serviceHeroMap[svcSlug] || null };
-  }
-  return p;
-});
-
-// One unified list: characters + personalised rows.
-const listingRows = [...characters, ...personalisedRows];
+// Personalised products are no longer listed in the store.
+// They are handled by the dedicated commission workflow on /services/[slug].
+// The personalised category is also filtered out of the category bar below.
+const listingRows = [...characters];
 
 // Map STYLES[] to short "Option A".."Option J" labels with colour dots.
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -149,11 +115,13 @@ const optionPills = STYLES.map((s: any, i: number) => ({
       <!-- Row 2: category pills (always visible — primary filter) -->
       <div class="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4" id="category-filters">
         <button class="filter-pill active font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-pop-orange text-off-white bg-pop-orange whitespace-nowrap transition-all" data-type="category" data-value="all">All</button>
-        {(categories.length > 0 ? categories : CATEGORIES).map((cat: any) => (
-          <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:bg-bg-secondary hover:text-off-white hover:border-pop-orange whitespace-nowrap transition-all" data-type="category" data-value={cat.slug}>
-            {cat.name}
-          </button>
-        ))}
+        {(categories.length > 0 ? categories : CATEGORIES)
+          .filter((cat: any) => cat.slug !== 'personalised')
+          .map((cat: any) => (
+            <button class="filter-pill font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:bg-bg-secondary hover:text-off-white hover:border-pop-orange whitespace-nowrap transition-all" data-type="category" data-value={cat.slug}>
+              {cat.name}
+            </button>
+          ))}
       </div>
 
       <!-- Drawer: option/style pills (hidden by default) -->
