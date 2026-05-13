@@ -5,7 +5,7 @@ import FAQAccordion from '../components/FAQAccordion.astro';
 import TestimonialCarousel from '../components/TestimonialCarousel.astro';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
 import { sanityClient, urlFor } from '../lib/sanity';
-import { featuredProductsQuery, allCategoriesQuery, testimonialsQuery, faqsByPageQuery } from '../lib/queries';
+import { featuredProductsQuery, allCategoriesQuery, testimonialsQuery, homepageFaqsQuery } from '../lib/queries';
 import { PRICES, CATEGORIES, STYLES } from '../data/products';
 
 let featuredProducts: any[] = [];
@@ -18,7 +18,7 @@ try {
     sanityClient.fetch(featuredProductsQuery),
     sanityClient.fetch(allCategoriesQuery),
     sanityClient.fetch(testimonialsQuery),
-    sanityClient.fetch(faqsByPageQuery, { page: 'store' }),
+    sanityClient.fetch(homepageFaqsQuery),
   ]);
 } catch (e) {
   console.warn('Sanity fetch failed, using fallback data');

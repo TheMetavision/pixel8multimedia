@@ -239,6 +239,21 @@ const jsonLd = {
                 </button>
               ))}
             </div>
+
+            <!-- Canvas wrap notice (hidden unless a canvas format is selected) -->
+            <div
+              id="canvas-wrap-notice"
+              class="hidden mt-3 px-3 py-2.5 bg-pixel-cyan/5 border border-pixel-cyan/20 rounded text-xs text-mid-grey font-dm leading-relaxed flex items-start gap-2"
+            >
+              <svg class="w-4 h-4 text-pixel-cyan flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span>
+                <strong class="text-off-white font-medium">Full design preserved.</strong>
+                Canvas edges use a complementary block colour wrap sampled from your artwork — the design isn't wrapped around the frame, so nothing is cropped or hidden.
+                <a href="/faqs#canvas-wrap" class="text-pixel-cyan underline hover:no-underline">Learn more</a>
+              </span>
+            </div>
           </div>
 
           <!-- Size Selector -->
@@ -449,6 +464,13 @@ const jsonLd = {
   });
 
   // Format buttons
+  function updateCanvasNotice() {
+    const notice = document.getElementById('canvas-wrap-notice');
+    if (!notice) return;
+    const isCanvas = selectedFormat === 'canvasStandard' || selectedFormat === 'canvasGallery';
+    notice.classList.toggle('hidden', !isCanvas);
+  }
+
   document.querySelectorAll<HTMLElement>('.format-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.format-btn').forEach((b) => {
@@ -458,6 +480,7 @@ const jsonLd = {
       btn.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
       btn.classList.remove('border-edge-line', 'text-mid-grey');
       selectedFormat = (btn.dataset.format as any) || 'poster';
+      updateCanvasNotice();
       paintPrice();
     });
   });

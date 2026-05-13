@@ -1,7 +1,7 @@
-﻿// GROQ queries for Pixel8 Multimedia
-// Rewired: collection (reference) â†’ category + style (string fields)
+// GROQ queries for Pixel8 Multimedia
+// Rewired: collection (reference) → category + style (string fields)
 
-// â”€â”€â”€ Categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Categories ─────────────────────────────────────────────────────────────
 
 export const allCategoriesQuery = `
   *[_type == "category"] | order(sortOrder asc) {
@@ -36,7 +36,7 @@ export const categoryBySlugQuery = `
   }
 `;
 
-// â”€â”€â”€ Products â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Products ───────────────────────────────────────────────────────────────
 
 export const allProductsQuery = `
   *[_type == "product"] | order(sortOrder asc, title asc) {
@@ -134,7 +134,7 @@ export const featuredProductsQuery = `
   }
 `;
 
-// â”€â”€â”€ Blog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Blog ───────────────────────────────────────────────────────────────────
 
 export const allBlogPostsQuery = `
   *[_type == "blogPost"] | order(publishedAt desc) {
@@ -189,7 +189,7 @@ export const blogPostBySlugQuery = `
   }
 `;
 
-// â”€â”€â”€ Testimonials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Testimonials ───────────────────────────────────────────────────────────
 
 export const testimonialsQuery = `
   *[_type == "testimonial" && featured == true] | order(_createdAt desc) {
@@ -202,18 +202,68 @@ export const testimonialsQuery = `
   }
 `;
 
-// â”€â”€â”€ FAQs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── FAQs ───────────────────────────────────────────────────────────────────
+//
+// The faq schema uses `category` (not `page`) and `displayOrder` (not
+// `sortOrder`). These queries reflect that. `answer` is a plain string.
 
-export const faqsByPageQuery = `
-  *[_type == "faq" && (page == $page || page == "both")] | order(sortOrder asc) {
+// Filter FAQs by category — used by category-specific FAQ pages.
+export const faqsByCategoryQuery = `
+  *[_type == "faq" && category == $category] | order(displayOrder asc) {
     _id,
     question,
     answer,
-    sortOrder
+    category,
+    displayOrder
   }
 `;
 
-// â”€â”€â”€ Site Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Legacy alias — old call sites pass a $page param. Map common values to
+// categories so existing usage doesn't break.
+//   "store"          → product-info + ordering + shipping (curated for homepage)
+//   "services"       → custom-services
+//   "<any category>" → that category
+// Falls back to the top 8 FAQs by displayOrder if nothing matches.
+export const faqsByPageQuery = `
+  *[_type == "faq" &&
+    (
+      ($page == "store"    && category in ["product-info", "ordering", "shipping"]) ||
+      ($page == "services" && category == "custom-services") ||
+      category == $page
+    )
+  ] | order(displayOrder asc) {
+    _id,
+    question,
+    answer,
+    category,
+    displayOrder
+  }
+`;
+
+// Curated "best of" FAQs for the homepage. Top 8 by displayOrder, across
+// all categories. Editors curate by adjusting displayOrder in Studio.
+export const homepageFaqsQuery = `
+  *[_type == "faq"] | order(displayOrder asc)[0...8] {
+    _id,
+    question,
+    answer,
+    category,
+    displayOrder
+  }
+`;
+
+// All FAQs (for a dedicated /faqs page if you build one) grouped by category.
+export const allFaqsQuery = `
+  *[_type == "faq"] | order(category asc, displayOrder asc) {
+    _id,
+    question,
+    answer,
+    category,
+    displayOrder
+  }
+`;
+
+// ─── Site Settings ──────────────────────────────────────────────────────────
 
 export const siteSettingsQuery = `
   *[_type == "siteSettings"][0] {
@@ -226,7 +276,7 @@ export const siteSettingsQuery = `
   }
 `;
 
-// â”€â”€â”€ Services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Services ───────────────────────────────────────────────────────────────
 
 export const allServicesQuery = `
   *[_type == "service"] | order(sortOrder asc) {
@@ -277,7 +327,7 @@ export const serviceBySlugQuery = `
 `;
 
 
-// --- Character variants (one character ? all style variants) ----------------
+// --- Character variants (one character → all style variants) ----------------
 
 // Returns every product whose slug starts with `<characterSlug>-style-`.
 // Used by the character-driven PDP at /store/[character] to load
@@ -339,7 +389,7 @@ export const relatedCharactersQuery = `
   }
 `;
 
-// â”€â”€â”€ Shop listing (one row per character) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Shop listing (one row per character) ──────────────────────────────────
 
 // Returns one row per character with all 10 variants grouped in.
 // Each row uses the Option A variant as the canonical title/price/image,
