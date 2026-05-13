@@ -42,10 +42,12 @@ try {
   categories = CATEGORIES.map((c) => ({ ...c, productCount: 0 }));
 }
 
-// Personalised products are no longer listed in the store.
-// They are handled by the dedicated commission workflow on /services/[slug].
-// The personalised category is also filtered out of the category bar below.
-const listingRows = [...characters];
+// Personalised products are no longer listed in the store. They're handled by
+// the commission workflow at /services/[slug]. Filter them out at the listing
+// layer regardless of what allCharactersForListingQuery returns — this is a
+// safety net until the underlying query is updated to exclude personalised
+// in src/lib/queries.ts.
+const listingRows = [...characters].filter((c: any) => c.category !== 'personalised');
 
 // Map STYLES[] to short "Option A".."Option J" labels with colour dots.
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];

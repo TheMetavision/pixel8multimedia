@@ -19,7 +19,6 @@ interface Props {
     prices?: any;
     images?: any[];
     variants?: Variant[];
-    serviceHeroUrl?: string; // passed through for personalised products
   };
   // When the listing has an Option filter active, the card shows that variant
   // and links to /store/<character>?option=<letter>.
@@ -28,11 +27,7 @@ interface Props {
 
 const { product, activeLetter = null } = Astro.props;
 
-// Personalised products link to the matching service page (unchanged)
-const isPersonalised = product.category === 'personalised';
-const serviceSlug = isPersonalised ? product.slug.replace(/^personalised-/, '') : null;
-
-// Character slug for non-personalised products (e.g. "bart-simpson-style-a" → "bart-simpson")
+// Character slug (e.g. "bart-simpson-style-a" → "bart-simpson")
 const characterSlug = product.characterSlug || product.slug.replace(/-style-[a-j]$/, '');
 
 // Pick the variant to display based on activeLetter (if set + exists), else default to Option A
@@ -42,23 +37,18 @@ const variantForLetter = activeLetter && product.variants
 const displayVariant = variantForLetter || (product.variants?.[0]) || null;
 
 // Build the card link
-let href;
-if (isPersonalised) {
-  href = `/services/${serviceSlug}`;
-} else if (activeLetter && variantForLetter) {
-  href = `/store/${characterSlug}?option=${activeLetter}`;
-} else {
-  href = `/store/${characterSlug}`;
-}
+const href = (activeLetter && variantForLetter)
+  ? `/store/${characterSlug}?option=${activeLetter}`
+  : `/store/${characterSlug}`;
 
-// Image: use the variant's image when filtering, else product's own image, else service hero
+// Image: square crop at the CDN — preserves the 1:1 source art exactly.
 const variantImageUrl = displayVariant?.images?.asset
-  ? urlFor(displayVariant.images).width(600).height(800).url()
+  ? urlFor(displayVariant.images).width(800).height(800).url()
   : null;
 const productImageUrl = product.images?.[0]?.asset
-  ? urlFor(product.images[0]).width(600).height(800).url()
+  ? urlFor(product.images[0]).width(800).height(800).url()
   : null;
-const imageUrl = variantImageUrl || productImageUrl || product.serviceHeroUrl || null;
+const imageUrl = variantImageUrl || productImageUrl || null;
 
 const lowestPrice = product.prices?.poster?.small || PRICES.poster.small;
 const accent = product.accentColor || '#F07828';
@@ -70,9 +60,6 @@ const displayTitle = (product.title || '').split(' — ')[0] || product.title;
 // Variant count for the corner badge (e.g. "10 designs")
 const variantCount = product.variants?.length || 1;
 
-// CTA label differs for personalised
-const ctaLabel = isPersonalised ? 'Commission' : 'View Designs';
-
 // All-options data for the hover strip: letter + URL pairs
 const variantStrip = (product.variants || [])
   .filter((v) => /^style-[a-j]$/.test(v.style || ''))
@@ -83,7 +70,7 @@ const variantStrip = (product.variants || [])
 ---
 
 <a href={href} class="product-card group block" data-category={product.category} data-character={characterSlug} data-title={displayTitle?.toLowerCase()} data-variants={(product.variants || []).map((v) => v.style).join(',')}>
-  <div class="aspect-[3/4] relative overflow-hidden">
+  <div class="aspect-square relative overflow-hidden">
     {imageUrl ? (
       <img src={imageUrl} alt={displayTitle} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
     ) : (
@@ -92,20 +79,14 @@ const variantStrip = (product.variants || [])
       </div>
     )}
 
-    {isPersonalised && (
-      <span class="absolute top-2 left-2 bg-pixel-cyan/90 backdrop-blur-sm text-xs font-montserrat font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full text-black">
-        Bespoke
-      </span>
-    )}
-
-    {!isPersonalised && variantCount > 1 && (
+    {variantCount > 1 && (
       <span class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm text-xs font-montserrat font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full text-off-white">
         {variantCount} designs
       </span>
     )}
 
     <!-- Variant strip preview on hover -->
-    {!isPersonalised && variantStrip.length > 0 && (
+    {variantStrip.length > 0 && (
       <div class="absolute inset-x-0 bottom-0 px-2 pb-2 pt-6 bg-gradient-to-t from-black/90 via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         <div class="grid grid-cols-10 gap-1">
           {variantStrip.map((v) => (
@@ -123,7 +104,7 @@ const variantStrip = (product.variants || [])
 
     <!-- Centre CTA overlay -->
     <div class="absolute inset-0 bg-bg-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[1px] pointer-events-none">
-      <span class="font-montserrat text-xs font-bold uppercase tracking-widest text-off-white border border-off-white/50 px-4 py-2 rounded bg-black/40">{ctaLabel}</span>
+      <span class="font-montserrat text-xs font-bold uppercase tracking-widest text-off-white border border-off-white/50 px-4 py-2 rounded bg-black/40">View Designs</span>
     </div>
   </div>
 
