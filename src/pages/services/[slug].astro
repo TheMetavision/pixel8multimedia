@@ -1,12 +1,13 @@
 ---
 // src/pages/services/[slug].astro
-// Dynamic service page — fetches from Sanity, renders hero, gallery, steps, commission form
+// Dynamic service page — fetches from Sanity, renders hero, gallery, steps,
+// and the commission wizard (Phase 2 — replaces legacy single-form CommissionForm).
 export const prerender = false;
 
 import { sanityClient } from '../../lib/sanity';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import CommissionForm from '../../components/CommissionForm.jsx';
-import '../../styles/commission-form.css';
+import CommissionWorkflow from '../../components/CommissionWorkflow.jsx';
+import '../../styles/commission-workflow.css';
 
 const { slug } = Astro.params;
 
@@ -20,6 +21,9 @@ const service = await sanityClient.fetch(
     slug,
     steps,
     price,
+    printUpcharges,
+    commissionEnabled,
+    briefingFields,
     hasFileUpload,
     hasDigitalDelivery,
     hasPrintOrder,
@@ -57,10 +61,6 @@ const extParagraphs = service.extendedDescription
   ? service.extendedDescription.split(/\n\n+/).filter(Boolean)
   : [];
 
-// Coming Soon pages — hide commission form, show banner instead
-const comingSoonSlugs = ['stills-to-reels'];
-const isComingSoon = comingSoonSlugs.includes(slug);
-
 // Helper: split images into original (first with tag "Original") and the rest
 function splitOriginal(images = []) {
   const valid = images.filter((img) => img.url);
@@ -72,6 +72,24 @@ function splitOriginal(images = []) {
   }
   return { original: null, rest: valid };
 }
+
+// Should the commission wizard be shown?
+//  - Must be enabled in Sanity (commissionEnabled !== false)
+//  - Must have at least one briefing field configured
+const showCommissionWorkflow =
+  service.commissionEnabled !== false &&
+  Array.isArray(service.briefingFields) &&
+  service.briefingFields.length > 0;
+
+// Shape the service object passed to the React island — only fields the
+// component actually needs, to keep the serialised props tight.
+const serviceForWizard = {
+  slug: service.slug.current,
+  title: service.title,
+  price: service.price,
+  printUpcharges: service.printUpcharges,
+  briefingFields: service.briefingFields,
+};
 ---
 
 <BaseLayout title={seoTitle} description={seoDesc}>
@@ -91,6 +109,11 @@ function splitOriginal(images = []) {
       <div class="service-page__hero-content">
         <h1 class="service-page__title">{service.title}</h1>
         <p class="service-page__description">{service.description}</p>
+        {service.price && (
+          <p class="service-page__price">
+            From <strong>£{service.price.toFixed(2)}</strong>
+          </p>
+        )}
       </div>
     </section>
 
@@ -223,33 +246,20 @@ function splitOriginal(images = []) {
       </aside>
     )}
 
-    <!-- Coming Soon Banner -->
-    {isComingSoon && (
-      <section class="coming-soon">
-        <div class="coming-soon__inner">
-          <span class="coming-soon__icon">🚀</span>
-          <h2 class="coming-soon__title">Coming Soon</h2>
-          <p class="coming-soon__text">
-            We're putting the finishing touches on {service.title}. Want to be notified when it launches?
-          </p>
-          <a href="/contact" class="coming-soon__cta">Register Your Interest →</a>
-        </div>
-      </section>
-    )}
-
-    <!-- Commission Form (hidden on Coming Soon pages) -->
-    {!isComingSoon && (
+    <!-- Commission Workflow -->
+    {showCommissionWorkflow ? (
       <section class="service-page__commission" id="commission">
-        <CommissionForm
-          client:visible
-          service={{
-            slug: service.slug.current,
-            title: service.title,
-            hasFileUpload: service.hasFileUpload,
-            hasDigitalDelivery: service.hasDigitalDelivery,
-            hasPrintOrder: service.hasPrintOrder,
-          }}
-        />
+        <CommissionWorkflow client:load service={serviceForWizard} />
+      </section>
+    ) : (
+      <section class="service-page__commission" id="commission">
+        <div class="commission-paused">
+          <h2>Commissions paused</h2>
+          <p>
+            We're not currently accepting new <strong>{service.title}</strong> commissions.
+            Please <a href="/contact">get in touch</a> if you'd like to be notified when bookings reopen.
+          </p>
+        </div>
       </section>
     )}
   </div>
@@ -298,6 +308,19 @@ function splitOriginal(images = []) {
     margin: 0 auto;
   }
 
+  .service-page__price {
+    margin: 1.25rem 0 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    color: var(--text-muted, #a1a1aa);
+  }
+
+  .service-page__price strong {
+    color: #F07828;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
   .service-page__extended {
     max-width: 700px;
     margin: 0 auto 2.5rem;
@@ -311,33 +334,30 @@ function splitOriginal(images = []) {
     margin: 0 0 1rem;
   }
 
-  .service-page__extended p:last-child {
-    margin-bottom: 0;
-  }
-
   /* ── Section titles ─────────────────────── */
   .service-page__section-title {
-    text-align: center;
+    font-family: 'Montserrat', sans-serif;
     font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0 0 2rem;
-    letter-spacing: -0.02em;
+    font-weight: 800;
+    text-align: center;
+    margin: 0 0 1.75rem;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
   }
 
-  /* ── Gallery Examples ───────────────────── */
+  /* ── Gallery / examples ─────────────────── */
   .service-page__gallery {
     margin-bottom: 3rem;
   }
 
   .example-block {
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
     padding-bottom: 2.5rem;
     border-bottom: 1px solid var(--border, #27272a);
   }
 
   .example-block:last-child {
     border-bottom: none;
-    margin-bottom: 0;
     padding-bottom: 0;
   }
 
@@ -349,7 +369,6 @@ function splitOriginal(images = []) {
     color: var(--text, #fafafa);
   }
 
-  /* Centred Original image */
   .example-block__original {
     display: flex;
     justify-content: center;
@@ -361,7 +380,6 @@ function splitOriginal(images = []) {
     width: 100%;
   }
 
-  /* Images grid */
   .example-block__images {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -409,7 +427,6 @@ function splitOriginal(images = []) {
     z-index: 1;
   }
 
-  /* Videos grid */
   .example-block__videos {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -447,7 +464,6 @@ function splitOriginal(images = []) {
     font-weight: 500;
   }
 
-  /* Audio tracks */
   .example-block__audio-list {
     display: flex;
     flex-direction: column;
@@ -551,78 +567,33 @@ function splitOriginal(images = []) {
     color: #f59e0b;
   }
 
-  /* ── Coming Soon Banner ─────────────────── */
-  .coming-soon {
-    margin: 2rem 0 3rem;
-  }
-
-  .coming-soon__inner {
-    max-width: 700px;
-    margin: 0 auto;
+  /* ── Commissions Paused fallback ────────── */
+  .commission-paused {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem 2.5rem;
     text-align: center;
-    padding: 3.5rem 2.5rem;
-    background: linear-gradient(135deg, rgba(240, 120, 40, 0.08) 0%, rgba(0, 188, 212, 0.08) 100%);
-    border: 2px solid rgba(240, 120, 40, 0.25);
-    border-radius: 16px;
-    position: relative;
-    overflow: hidden;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
   }
 
-  .coming-soon__inner::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #F07828, #00BCD4, #E91E7B);
-  }
-
-  .coming-soon__icon {
-    font-size: 3rem;
-    display: block;
-    margin-bottom: 1rem;
-  }
-
-  .coming-soon__title {
+  .commission-paused h2 {
     font-family: 'Montserrat', sans-serif;
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-size: 1.25rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: -0.02em;
-    margin: 0 0 1rem;
-    background: linear-gradient(135deg, #F07828, #00BCD4);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    margin: 0 0 0.75rem;
   }
 
-  .coming-soon__text {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 1.125rem;
+  .commission-paused p {
+    margin: 0;
+    color: var(--text-muted, #a1a1aa);
     line-height: 1.6;
-    color: #8A8A8E;
-    max-width: 480px;
-    margin: 0 auto 2rem;
   }
 
-  .coming-soon__cta {
-    display: inline-block;
-    padding: 0.875rem 2.5rem;
-    background: #F07828;
-    color: #000;
-    text-decoration: none;
-    font-family: 'Montserrat', sans-serif;
-    font-weight: 700;
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    transition: transform 200ms ease, box-shadow 200ms ease;
-  }
-
-  .coming-soon__cta:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 24px rgba(240, 120, 40, 0.3);
+  .commission-paused a {
+    color: #F07828;
   }
 
   /* ── Responsive ─────────────────────────── */
@@ -645,10 +616,6 @@ function splitOriginal(images = []) {
 
     .example-block__audio-player {
       width: 100%;
-    }
-
-    .coming-soon__inner {
-      padding: 2.5rem 1.5rem;
     }
   }
 </style>
