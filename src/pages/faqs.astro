@@ -1,0 +1,209 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { sanityClient } from '../lib/sanity';
+import { allFaqsQuery } from '../lib/queries';
+
+let faqs: Array<{
+  _id: string;
+  question: string;
+  answer: string;
+  category: string;
+  displayOrder: number;
+}> = [];
+
+try {
+  faqs = await sanityClient.fetch(allFaqsQuery) || [];
+} catch (e) {
+  console.warn('Sanity fetch failed for FAQs page', e);
+}
+
+// ── Group FAQs by category ───────────────────────────────────────────────────
+const CATEGORY_LABELS: Record<string, { title: string; tagline: string }> = {
+  ordering:         { title: 'Ordering',          tagline: 'Placing orders, products, and styles' },
+  shipping:         { title: 'Shipping',          tagline: 'Delivery, timing, and packaging' },
+  returns:          { title: 'Returns',           tagline: 'Returns policy and damaged orders' },
+  'product-info':   { title: 'Product Info',      tagline: 'Materials, sizes, finishes, and printing' },
+  'custom-services':{ title: 'Custom Services',   tagline: 'Personalised commissions and bespoke work' },
+};
+
+// Order categories deliberately — most common first
+const CATEGORY_ORDER = ['ordering', 'product-info', 'shipping', 'returns', 'custom-services'];
+
+const grouped: Record<string, typeof faqs> = {};
+for (const cat of CATEGORY_ORDER) grouped[cat] = [];
+for (const faq of faqs) {
+  if (!grouped[faq.category]) grouped[faq.category] = [];
+  grouped[faq.category].push(faq);
+}
+
+// Sort each group by displayOrder
+for (const cat of Object.keys(grouped)) {
+  grouped[cat].sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+}
+
+// Slugify a question into a stable anchor ID.
+// Strips punctuation, lowercases, replaces spaces with hyphens.
+// e.g. "Will any of my design be lost...?" → "will-any-of-my-design-be-lost"
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')      // strip punctuation
+    .replace(/\s+/g, '-')          // spaces → hyphens
+    .replace(/-+/g, '-')           // collapse repeated hyphens
+    .replace(/^-|-$/g, '')         // trim leading/trailing hyphens
+    .substring(0, 80);             // sane length cap
+}
+
+// Special-case anchor overrides for stable URLs that get linked from elsewhere
+// in the site. The canvas-wrap FAQ is linked from PDPs as #canvas-wrap.
+const ANCHOR_OVERRIDES: Record<string, string> = {
+  'faq-canvas-wrap-design-preserved': 'canvas-wrap',
+};
+
+function anchorFor(faq: { _id: string; question: string }): string {
+  return ANCHOR_OVERRIDES[faq._id] || slugify(faq.question);
+}
+
+// SEO
+const seoTitle = 'Frequently Asked Questions | Pixel8 Multimedia';
+const seoDesc = 'Everything you need to know about Pixel8 Multimedia — ordering, shipping, returns, product details, and bespoke commissions.';
+
+// JSON-LD FAQ schema for SEO (Google likes this)
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((faq) => ({
+    '@type': 'Question',
+    name: faq.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: faq.answer,
+    },
+  })),
+};
+---
+
+<BaseLayout title={seoTitle} description={seoDesc} jsonLd={jsonLd}>
+
+  <!-- ── Hero ─────────────────────────────────────────────────────────── -->
+  <section class="bg-bg-primary border-b border-edge-line py-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <span class="font-mono text-xs text-pop-orange uppercase tracking-widest mb-4 block">Support</span>
+      <h1 class="font-montserrat text-4xl md:text-5xl lg:text-6xl font-bold text-off-white mb-4">
+        Frequently Asked Questions
+      </h1>
+      <p class="font-dm text-lg text-mid-grey leading-relaxed max-w-2xl mx-auto">
+        Everything you need to know about ordering, shipping, products, and our bespoke commission services.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Category jump-nav ─────────────────────────────────────────────── -->
+  <section class="bg-bg-secondary border-b border-edge-line sticky top-40 z-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div class="flex gap-2 overflow-x-auto pb-1">
+        {CATEGORY_ORDER.filter((cat) => grouped[cat] && grouped[cat].length > 0).map((cat) => (
+          <a
+            href={`#${cat}`}
+            class="font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-full border border-edge-line text-mid-grey bg-transparent hover:bg-bg-tertiary hover:text-off-white hover:border-pop-orange whitespace-nowrap transition-all"
+          >
+            {CATEGORY_LABELS[cat]?.title || cat}
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FAQ Groups ────────────────────────────────────────────────────── -->
+  <section class="bg-bg-primary py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+      {CATEGORY_ORDER.filter((cat) => grouped[cat] && grouped[cat].length > 0).map((cat) => (
+        <div id={cat} class="scroll-mt-44">
+          <header class="mb-8 border-b border-edge-line pb-4">
+            <h2 class="font-montserrat text-2xl md:text-3xl font-bold text-off-white">
+              {CATEGORY_LABELS[cat]?.title || cat}
+            </h2>
+            {CATEGORY_LABELS[cat]?.tagline && (
+              <p class="font-dm text-sm text-deep-grey mt-1">{CATEGORY_LABELS[cat].tagline}</p>
+            )}
+          </header>
+
+          <div class="space-y-3">
+            {grouped[cat].map((faq) => {
+              const anchor = anchorFor(faq);
+              return (
+                <details
+                  id={anchor}
+                  class="faq-item scroll-mt-44 group bg-bg-secondary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange/50 transition-colors"
+                >
+                  <summary class="cursor-pointer list-none px-5 py-4 flex items-start justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                      <h3 class="font-montserrat text-base font-semibold text-off-white group-hover:text-pop-orange transition-colors">
+                        {faq.question}
+                      </h3>
+                    </div>
+                    <svg
+                      class="w-5 h-5 text-mid-grey flex-shrink-0 mt-0.5 transition-transform group-open:rotate-180"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </summary>
+                  <div class="px-5 pb-5 -mt-1">
+                    <div class="font-dm text-mid-grey leading-relaxed whitespace-pre-line">
+                      {faq.answer}
+                    </div>
+                    <a
+                      href={`#${anchor}`}
+                      class="inline-block mt-3 font-mono text-xs text-deep-grey hover:text-pop-orange transition-colors"
+                      aria-label="Permalink to this question"
+                    >
+                      🔗 #{anchor}
+                    </a>
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {faqs.length === 0 && (
+        <div class="text-center py-20">
+          <p class="font-montserrat text-xl text-mid-grey">No FAQs yet — check back soon.</p>
+        </div>
+      )}
+    </div>
+  </section>
+
+  <!-- ── Contact CTA ───────────────────────────────────────────────────── -->
+  <section class="colour-block-magenta py-16 border-t border-edge-line">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="font-montserrat text-3xl md:text-4xl font-bold mb-4">Still got questions?</h2>
+      <p class="font-dm text-base mb-6 opacity-90">
+        We're a small UK-based team and we answer every message personally.
+      </p>
+      <a href="/contact" class="inline-block bg-black text-hot-magenta font-montserrat font-bold text-sm uppercase tracking-wider px-8 py-3 hover:bg-bg-secondary transition-colors">
+        Get in Touch →
+      </a>
+    </div>
+  </section>
+
+</BaseLayout>
+
+<script>
+  // On page load, if URL has a hash, open the matching <details> element
+  // so the deep link from a PDP "Learn more" or a category-jump anchor
+  // actually shows the answer rather than just scrolling to the question.
+  const hash = window.location.hash.replace('#', '');
+  if (hash) {
+    const target = document.getElementById(hash);
+    if (target instanceof HTMLDetailsElement) {
+      target.open = true;
+      // Re-scroll after a tick to account for the now-expanded content
+      setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+  }
+</script>
