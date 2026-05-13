@@ -73,13 +73,54 @@ export default defineType({
     }),
 
     // ── Customer Brief ─────────────────────────
+    // Free-text brief (legacy / fallback for services without structured fields)
     defineField({
       name: 'brief',
       title: 'Brief / Description',
       type: 'text',
       group: 'brief',
       rows: 6,
+      description: 'Free-text brief — used as a catch-all summary. Structured per-service answers live in "Brief Data" below.',
     }),
+
+    // Structured per-service brief data (Option B — key/value pairs matching the service's briefingFields)
+    defineField({
+      name: 'briefData',
+      title: 'Brief Data (Structured)',
+      type: 'array',
+      group: 'brief',
+      description: 'Per-service brief field answers, populated from the commission workflow on the service page.',
+      of: [{
+        type: 'object',
+        name: 'briefAnswer',
+        fields: [
+          { name: 'key', title: 'Field Key', type: 'string', readOnly: true },
+          { name: 'label', title: 'Label', type: 'string', readOnly: true },
+          { name: 'value', title: 'Answer', type: 'text', rows: 2 },
+        ],
+        preview: {
+          select: { title: 'label', subtitle: 'value' },
+          prepare({ title, subtitle }) {
+            return {
+              title: title || 'Unlabelled field',
+              subtitle: subtitle ? subtitle.substring(0, 120) : '(empty)',
+            };
+          },
+        },
+      }],
+    }),
+
+    // Format choice — what the customer ordered (e.g. "digital", "digital+canvasGallery-medium")
+    defineField({
+      name: 'formatChoice',
+      title: 'Format Choice',
+      type: 'string',
+      group: 'brief',
+      readOnly: true,
+      description: 'Set by the checkout flow. E.g. "digital", "digital+poster-large", "digital+canvasGallery-medium".',
+    }),
+
+    // Legacy compat fields — still populated for backwards compat with old commission docs
     defineField({
       name: 'deliveryType',
       title: 'Delivery Type',
@@ -166,11 +207,33 @@ export default defineType({
       readOnly: true,
     }),
     defineField({
+      name: 'stripeSessionId',
+      title: 'Stripe Checkout Session ID',
+      type: 'string',
+      group: 'payment',
+      readOnly: true,
+      description: 'Used to look up the order if a webhook fires before payment confirmation arrives.',
+    }),
+    defineField({
       name: 'amount',
-      title: 'Amount (£)',
+      title: 'Amount Paid (£)',
       type: 'number',
       group: 'payment',
       readOnly: true,
+    }),
+    defineField({
+      name: 'priceBreakdown',
+      title: 'Price Breakdown',
+      type: 'object',
+      group: 'payment',
+      readOnly: true,
+      description: 'Snapshot of how the total was calculated at checkout time.',
+      fields: [
+        { name: 'digitalBase', title: 'Digital Base (£)', type: 'number' },
+        { name: 'printUpcharge', title: 'Print Upcharge (£)', type: 'number' },
+        { name: 'printFormatLabel', title: 'Print Format Label', type: 'string', description: 'E.g. "Canvas Gallery — Medium"' },
+        { name: 'total', title: 'Total (£)', type: 'number' },
+      ],
     }),
     defineField({
       name: 'paidAt',
