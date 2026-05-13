@@ -1,0 +1,222 @@
+---
+/**
+ * FeaturedDrop.astro
+ * Hero strip for the shop page. Shows a rotating set of products marked
+ * `featured: true` in Sanity. If none are featured, falls back gracefully
+ * to a curated set (top of listingRows passed in as `fallback`).
+ *
+ * Props:
+ *   - featured: array of products (from Sanity, already filtered featured == true)
+ *   - fallback: array of products to use if featured is empty (optional)
+ */
+
+interface FeaturedProduct {
+  _id?: string;
+  title?: string;
+  slug?: string;
+  category?: string;
+  accentColor?: string;
+  prices?: {
+    poster?: { small?: number };
+  };
+  images?: Array<{ asset?: { url?: string }; alt?: string }>;
+  imageUrl?: string;
+}
+
+interface Props {
+  featured?: FeaturedProduct[];
+  fallback?: FeaturedProduct[];
+}
+
+const { featured = [], fallback = [] } = Astro.props;
+
+// Choose what to show: featured first, otherwise fall back to first 3 of fallback.
+const source = featured.length > 0 ? featured : fallback.slice(0, 3);
+
+// Normalise to a consistent shape so the template doesn't have to branch.
+const drops = source.map((p) => {
+  const imageUrl =
+    p.imageUrl ||
+    p.images?.[0]?.asset?.url ||
+    null;
+  const fromPrice = p.prices?.poster?.small ?? 9.99;
+  const accent = p.accentColor || '#FF6B35'; // pop-orange fallback
+  // Strip the trailing "— Option X" from the title for cleaner hero display.
+  const cleanTitle = (p.title || '').replace(/\s*[—-]\s*Option\s+[A-J]\s*$/, '');
+  return {
+    id: p._id,
+    title: cleanTitle || p.title || 'Featured drop',
+    slug: p.slug,
+    category: p.category,
+    accent,
+    imageUrl,
+    fromPrice,
+  };
+});
+
+const hasDrops = drops.length > 0;
+const rotates = drops.length > 1;
+---
+
+{hasDrops ? (
+  <section
+    class="featured-drop bg-bg-primary border-b border-edge-line overflow-hidden"
+    aria-label="Featured drop"
+  >
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      <div class="featured-drop__carousel relative" data-rotates={rotates ? 'true' : 'false'}>
+        {drops.map((d, i) => (
+          <a
+            href={d.slug ? `/store/${d.slug}` : '/store'}
+            class="featured-drop__slide group"
+            data-slide={i}
+            data-active={i === 0 ? 'true' : 'false'}
+            style={`--accent:${d.accent};`}
+          >
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] items-center gap-4 md:gap-8">
+              <div class="order-2 md:order-1">
+                <span class="font-mono text-xs uppercase tracking-widest" style="color:var(--accent)">
+                  Featured this week
+                </span>
+                <h2 class="font-montserrat text-xl md:text-2xl lg:text-3xl font-bold text-off-white mt-1.5 mb-1.5 leading-tight">
+                  {d.title}
+                </h2>
+                <p class="font-dm text-mid-grey text-sm">
+                  From £{d.fromPrice.toFixed(2)} · Poster, Canvas Standard, Canvas Gallery
+                </p>
+                <span
+                  class="featured-drop__cta inline-block mt-3 font-montserrat text-xs font-semibold uppercase tracking-wider px-4 py-2 rounded-md text-bg-primary group-hover:opacity-90 transition-opacity"
+                  style="background:var(--accent)"
+                >
+                  Shop this drop →
+                </span>
+              </div>
+              <div class="order-1 md:order-2 flex-shrink-0">
+                {d.imageUrl ? (
+                  <img
+                    src={d.imageUrl}
+                    alt={d.title}
+                    width="200"
+                    height="200"
+                    loading="eager"
+                    decoding="async"
+                    class="featured-drop__image w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 object-cover rounded-md border border-edge-line"
+                  />
+                ) : (
+                  <div class="featured-drop__image w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 bg-bg-secondary rounded-md border border-edge-line" />
+                )}
+              </div>
+            </div>
+          </a>
+        ))}
+        {rotates && (
+          <div class="featured-drop__dots flex gap-1.5 mt-4 justify-center md:justify-start">
+            {drops.map((_, i) => (
+              <button
+                type="button"
+                class="featured-drop__dot w-2 h-2 rounded-full bg-mid-grey/30 hover:bg-mid-grey transition-colors"
+                data-dot={i}
+                data-active={i === 0 ? 'true' : 'false'}
+                aria-label={`Show featured drop ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  </section>
+) : (
+  <section class="bg-bg-primary border-b border-edge-line">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] items-center gap-4 md:gap-8">
+        <div>
+          <span class="font-mono text-xs uppercase tracking-widest text-pop-orange">
+            The collection
+          </span>
+          <h2 class="font-montserrat text-xl md:text-2xl lg:text-3xl font-bold text-off-white mt-1.5 mb-1.5 leading-tight">
+            Pop art for walls that don't apologise
+          </h2>
+          <p class="font-dm text-mid-grey text-sm max-w-xl">
+            1,000+ pop culture characters across 10 original design options. Poster, Canvas Standard, Canvas Gallery — made to order in the UK.
+          </p>
+        </div>
+        <div class="hidden md:block w-40 h-40 lg:w-48 lg:h-48 rounded-md border border-edge-line bg-bg-secondary" />
+      </div>
+    </div>
+  </section>
+)}
+
+<style>
+  .featured-drop__slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+  }
+  .featured-drop__slide[data-active='true'] {
+    opacity: 1;
+    pointer-events: auto;
+    position: relative;
+  }
+  .featured-drop__dot[data-active='true'] {
+    background-color: var(--pop-orange, #FF6B35);
+    width: 1.5rem;
+    border-radius: 9999px;
+  }
+  .featured-drop__image {
+    transition: transform 0.4s ease;
+  }
+  .featured-drop__slide:hover .featured-drop__image {
+    transform: scale(1.03);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .featured-drop__slide,
+    .featured-drop__image {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  // Auto-rotate the featured strip every 7s; pause on hover.
+  const carousel = document.querySelector('.featured-drop__carousel') as HTMLElement | null;
+  if (carousel && carousel.dataset.rotates === 'true') {
+    const slides = Array.from(carousel.querySelectorAll<HTMLElement>('.featured-drop__slide'));
+    const dots = Array.from(carousel.querySelectorAll<HTMLButtonElement>('.featured-drop__dot'));
+    let idx = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let paused = false;
+
+    function go(next: number) {
+      slides.forEach((s, i) => s.dataset.active = i === next ? 'true' : 'false');
+      dots.forEach((d, i) => d.dataset.active = i === next ? 'true' : 'false');
+      idx = next;
+    }
+    function start() {
+      stop();
+      timer = setInterval(() => {
+        if (paused) return;
+        go((idx + 1) % slides.length);
+      }, 7000);
+    }
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    dots.forEach((d, i) => d.addEventListener('click', (e) => {
+      e.preventDefault();
+      go(i);
+      start();
+    }));
+    carousel.addEventListener('mouseenter', () => { paused = true; });
+    carousel.addEventListener('mouseleave', () => { paused = false; });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop(); else start();
+    });
+
+    // Respect prefers-reduced-motion: don't auto-rotate.
+    const motionOK = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (motionOK) start();
+  }
+</script>
