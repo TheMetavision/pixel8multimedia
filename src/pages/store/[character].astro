@@ -11,6 +11,7 @@ import {
   PRICES,
   FORMAT_LABELS,
   SIZE_LABELS,
+  SIZE_DIMENSIONS,
   FORMATS,
   SIZES,
   CATEGORY_LABELS,
@@ -54,7 +55,7 @@ const activeVariant =
 const productPrices = activeVariant.prices || PRICES;
 const basePrice = productPrices.poster?.small || PRICES.poster.small;
 const accent = activeVariant.accentColor || '#F07828';
-const sizes = activeVariant.sizes || { small: '12x8', medium: '16x12', large: '24x16' };
+const sizes = activeVariant.sizes || SIZE_DIMENSIONS;
 
 const categoryLabel =
   CATEGORY_LABELS[activeVariant.category] || activeVariant.category || 'Collection';
@@ -152,7 +153,7 @@ const jsonLd = {
       <div class="grid lg:grid-cols-2 gap-12">
         <!-- Images -->
         <div>
-          <div class="aspect-[3/4] bg-bg-secondary rounded-lg overflow-hidden border border-edge-line" id="main-image-container">
+          <div class="aspect-square bg-bg-secondary rounded-lg overflow-hidden border border-edge-line" id="main-image-container">
             {mainImageUrl ? (
               <img id="main-image" src={mainImageUrl} alt={`${characterDisplayName} — ${optionBadge}`} class="w-full h-full object-cover" />
             ) : (
@@ -250,7 +251,7 @@ const jsonLd = {
                   data-size={size}
                 >
                   {SIZE_LABELS[size].split(' (')[0]}
-                  <span class="block text-xs text-deep-grey mt-0.5">{sizes[size] || SIZE_LABELS[size].match(/\((.+)\)/)?.[1]}</span>
+                  <span class="block text-xs text-deep-grey mt-0.5">{sizes[size] || SIZE_DIMENSIONS[size]}</span>
                 </button>
               ))}
             </div>

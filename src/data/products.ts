@@ -10,9 +10,16 @@ export const FORMAT_LABELS: Record<ProductFormat, string> = {
 };
 
 export const SIZE_LABELS: Record<ProductSize, string> = {
-  small: 'Small (12×8" / 12×12")',
-  medium: 'Medium (16×12" / 16×16")',
-  large: 'Large (24×16" / 20×20")',
+  small: 'Small (12×12")',
+  medium: 'Medium (16×16")',
+  large: 'Large (20×20")',
+};
+
+// Inch dimensions per size — used as a fallback when Sanity product.sizes is missing.
+export const SIZE_DIMENSIONS: Record<ProductSize, string> = {
+  small: '12x12',
+  medium: '16x16',
+  large: '20x20',
 };
 
 export const SIZES: ProductSize[] = ['small', 'medium', 'large'];
