@@ -10,8 +10,12 @@ try {
 }
 
 const serviceChildren = sanityServices.length > 0
-  ? sanityServices.map((s: any) => ({ label: s.title, href: `/services/${s.slug}` }))
+  ? [
+      { label: 'All Services', href: '/services' },
+      ...sanityServices.map((s: any) => ({ label: s.title, href: `/services/${s.slug}` })),
+    ]
   : [
+      { label: 'All Services', href: '/services' },
       { label: 'Cartoonify Me!', href: '/services/cartoonify-me' },
       { label: 'Stills to Reels', href: '/services/stills-to-reels' },
       { label: 'The Missing Moment', href: '/services/the-missing-moment' },
