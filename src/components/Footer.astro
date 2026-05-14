@@ -71,14 +71,21 @@ const currentYear = new Date().getFullYear();
       <div>
         <h4 class="font-montserrat font-bold text-sm text-off-white uppercase tracking-wider mb-4">Stay in the Loop</h4>
         <p class="font-dm text-sm text-mid-grey mb-4">New drops, exclusive collections, and pop culture inspiration — straight to your inbox.</p>
-        <form class="flex flex-col gap-2" onsubmit="return false;">
+        <form
+          class="newsletter-form flex flex-col gap-2"
+          data-source="footer"
+          novalidate
+        >
           <input
             type="email"
+            name="email"
             placeholder="your@email.com"
-            class="bg-bg-secondary border border-edge-line text-off-white font-dm text-sm px-4 py-2.5 focus:outline-none focus:border-pop-orange transition-colors rounded"
+            required
+            class="newsletter-input bg-bg-secondary border border-edge-line text-off-white font-dm text-sm px-4 py-2.5 focus:outline-none focus:border-pop-orange transition-colors rounded"
             aria-label="Email address"
           />
-          <button type="submit" class="btn-primary text-xs py-2.5">Subscribe</button>
+          <button type="submit" class="newsletter-submit btn-primary text-xs py-2.5">Subscribe</button>
+          <p class="newsletter-feedback font-dm text-xs mt-1 hidden" role="status" aria-live="polite"></p>
         </form>
         <p class="font-dm text-xs text-deep-grey mt-2">No spam, ever. Unsubscribe any time.</p>
       </div>
@@ -96,3 +103,72 @@ const currentYear = new Date().getFullYear();
     </div>
   </div>
 </footer>
+
+<script>
+  // Shared newsletter signup handler — wires up every form with class
+  // "newsletter-form" anywhere on the page. The form's data-source attribute
+  // identifies which form fired (footer, join-the-gallery, etc.) for analytics.
+  //
+  // This script runs once globally because Footer renders on every page.
+
+  function setFeedback(form: HTMLFormElement, message: string, kind: 'success' | 'error') {
+    // Feedback element may be inside the form OR immediately after it.
+    let fb = form.querySelector('.newsletter-feedback') as HTMLElement | null;
+    if (!fb && form.parentElement) {
+      fb = form.parentElement.querySelector('.newsletter-feedback') as HTMLElement | null;
+    }
+    if (!fb) return;
+    fb.textContent = message;
+    fb.classList.remove('hidden', 'text-pop-orange', 'text-red-400');
+    fb.classList.add(kind === 'success' ? 'text-pop-orange' : 'text-red-400');
+  }
+
+  function lockForm(form: HTMLFormElement, locked: boolean) {
+    const input = form.querySelector('.newsletter-input') as HTMLInputElement | null;
+    const btn = form.querySelector('.newsletter-submit') as HTMLButtonElement | null;
+    if (input) input.disabled = locked;
+    if (btn) {
+      btn.disabled = locked;
+      btn.textContent = locked ? 'Subscribing…' : 'Subscribe';
+    }
+  }
+
+  document.querySelectorAll<HTMLFormElement>('.newsletter-form').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const input = form.querySelector('.newsletter-input') as HTMLInputElement | null;
+      const email = (input?.value || '').trim();
+      const source = form.dataset.source || 'unknown';
+
+      if (!email) {
+        setFeedback(form, 'Please enter your email.', 'error');
+        return;
+      }
+
+      lockForm(form, true);
+
+      try {
+        const res = await fetch('/api/newsletter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, source }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.success) {
+          setFeedback(form, data.message || 'Thanks for subscribing!', 'success');
+          if (input) input.value = '';
+        } else {
+          setFeedback(form, data.error || 'Could not subscribe. Please try again.', 'error');
+        }
+      } catch (err) {
+        console.error('Newsletter submit error:', err);
+        setFeedback(form, 'Could not subscribe. Please try again.', 'error');
+      } finally {
+        lockForm(form, false);
+      }
+    });
+  });
+</script>

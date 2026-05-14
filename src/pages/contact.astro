@@ -39,7 +39,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             style="max-width: 140px; width: 100%; height: auto;"
           />
         </div>
-        <form id="contact-form" class="space-y-6">
+        <form id="contact-form" class="space-y-6" novalidate>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label class="block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2">Name *</label>
@@ -86,12 +86,28 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               placeholder="Tell us everything..."
             ></textarea>
           </div>
-          <div>
-            <button type="submit" class="btn-primary text-xl">SEND MESSAGE</button>
+
+          <!-- Honeypot — hidden from real users, bots fill it in -->
+          <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+            <label>Leave this field empty
+              <input type="text" name="website" tabindex="-1" autocomplete="off" />
+            </label>
           </div>
+
+          <div>
+            <button id="contact-submit" type="submit" class="btn-primary text-xl">SEND MESSAGE</button>
+          </div>
+
+          <!-- Success message -->
           <div id="contact-success" class="hidden bg-bg-secondary border-4 border-pop-orange p-4" style="box-shadow: 3px 3px 0 rgba(255,242,0,0.3);">
             <p class="font-montserrat font-semibold text-pop-orange uppercase tracking-wide text-sm">Message sent!</p>
-            <p class="font-dm text-gray-300 text-sm mt-1">We'll get back to you within 24-48 hours.</p>
+            <p class="font-dm text-gray-300 text-sm mt-1" id="contact-success-detail">We'll get back to you within 24-48 hours.</p>
+          </div>
+
+          <!-- Error message -->
+          <div id="contact-error" class="hidden bg-bg-secondary border-4 border-red-500 p-4" style="box-shadow: 3px 3px 0 rgba(239,68,68,0.3);">
+            <p class="font-montserrat font-semibold text-red-400 uppercase tracking-wide text-sm">Something went wrong</p>
+            <p class="font-dm text-gray-300 text-sm mt-1" id="contact-error-detail">Please try again, or email us directly at hello@pixel8multimedia.co.uk.</p>
           </div>
         </form>
       </div>
@@ -183,15 +199,95 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   </div>
 
   <script>
-    const form = document.getElementById('contact-form') as HTMLFormElement;
-    const success = document.getElementById('contact-success');
+    const form = document.getElementById('contact-form') as HTMLFormElement | null;
+    const submitBtn = document.getElementById('contact-submit') as HTMLButtonElement | null;
+    const successBox = document.getElementById('contact-success');
+    const successDetail = document.getElementById('contact-success-detail');
+    const errorBox = document.getElementById('contact-error');
+    const errorDetail = document.getElementById('contact-error-detail');
 
-    form?.addEventListener('submit', (e) => {
+    function hideMessages() {
+      successBox?.classList.add('hidden');
+      errorBox?.classList.add('hidden');
+    }
+
+    function showSuccess(message: string) {
+      hideMessages();
+      if (successDetail) successDetail.textContent = message;
+      successBox?.classList.remove('hidden');
+      successBox?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function showError(message: string) {
+      hideMessages();
+      if (errorDetail) errorDetail.textContent = message;
+      errorBox?.classList.remove('hidden');
+      errorBox?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function lockForm(locked: boolean) {
+      if (!form) return;
+      const inputs = form.querySelectorAll('input, select, textarea, button');
+      inputs.forEach((el) => {
+        (el as HTMLInputElement | HTMLButtonElement).disabled = locked;
+      });
+      if (submitBtn) {
+        submitBtn.textContent = locked ? 'SENDING…' : 'SEND MESSAGE';
+      }
+    }
+
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
-      btn.textContent = 'SENT!';
-      btn.disabled = true;
-      success?.classList.remove('hidden');
+      hideMessages();
+
+      if (!form) return;
+
+      const fd = new FormData(form);
+      const payload = {
+        name: (fd.get('name') || '').toString().trim(),
+        email: (fd.get('email') || '').toString().trim(),
+        subject: (fd.get('subject') || '').toString().trim(),
+        message: (fd.get('message') || '').toString().trim(),
+        website: (fd.get('website') || '').toString().trim(), // honeypot
+      };
+
+      // Basic client-side validation
+      if (!payload.name || !payload.email || !payload.subject || !payload.message) {
+        showError('Please fill in all required fields.');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+        showError('Please enter a valid email address.');
+        return;
+      }
+
+      lockForm(true);
+
+      try {
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.success) {
+          form.reset();
+          showSuccess(
+            data.refCode
+              ? `${data.message} Your reference is ${data.refCode}.`
+              : data.message || `We'll get back to you within 24-48 hours.`
+          );
+        } else {
+          showError(data.error || 'Could not send your message. Please try again.');
+        }
+      } catch (err) {
+        console.error('Contact submit error:', err);
+        showError('Could not send your message. Please try again, or email us directly at hello@pixel8multimedia.co.uk.');
+      } finally {
+        lockForm(false);
+      }
     });
   </script>
 </BaseLayout>
