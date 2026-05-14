@@ -17,7 +17,7 @@ const sanity = createClient({
   projectId: 'bqb4w421',
   dataset: 'production',
   apiVersion: '2024-12-01',
-  token: process.env.SANITY_TOKEN,
+  token: process.env.SANITY_API_TOKEN,
   useCdn: false,
 });
 
