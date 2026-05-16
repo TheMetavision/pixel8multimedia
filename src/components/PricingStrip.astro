@@ -1,0 +1,216 @@
+---
+// src/components/PricingStrip.astro
+// Displays a three-card pricing summary above the "How It Works" section
+// on a service page. Mirrors the three paths in the commission wizard:
+//   - Digital Bundle (flat price for all styles)
+//   - Single Print (from cheapest print price)
+//   - Bundle + Prints (from digital + cheapest shop price)
+//
+// Only renders if service.digitalPrice is set — services not yet migrated
+// to the new pricing model will not show this strip.
+
+interface Props {
+  service: {
+    digitalPrice?: number;
+    printUpcharges?: {
+      poster?: { small?: number; medium?: number; large?: number };
+      canvasStandard?: { small?: number; medium?: number; large?: number };
+      canvasGallery?: { small?: number; medium?: number; large?: number };
+    };
+    styleOptions?: Array<{ key: string; label: string }>;
+  };
+}
+
+const { service } = Astro.props;
+
+const ARTWORK_FEE = 5.0;
+const digitalPrice = Number(service.digitalPrice) || 0;
+const hasDigital = digitalPrice > 0;
+const styleCount = (service.styleOptions || []).length;
+
+// Compute the cheapest standalone-print price across all formats/sizes
+function cheapestStandalonePrintPrice(upcharges: any): number | null {
+  if (!upcharges) return null;
+  const all: number[] = [];
+  ['poster', 'canvasStandard', 'canvasGallery'].forEach((fmt) => {
+    ['small', 'medium', 'large'].forEach((size) => {
+      const p = Number(upcharges?.[fmt]?.[size]);
+      if (p > 0) all.push(p);
+    });
+  });
+  return all.length > 0 ? Math.min(...all) : null;
+}
+
+const cheapestPrint = cheapestStandalonePrintPrice(service.printUpcharges);
+const hasPrint = cheapestPrint !== null;
+
+// Bundle starting price = digital + (cheapest standalone − £5 artwork fee)
+const cheapestBundle =
+  hasDigital && hasPrint
+    ? digitalPrice + Math.max(0, (cheapestPrint as number) - ARTWORK_FEE)
+    : null;
+
+// Skip rendering if nothing useful to show
+const shouldRender = hasDigital;
+
+function priceLabel(p: number | null): string {
+  if (p == null) return '—';
+  return `£${p.toFixed(2)}`;
+}
+---
+
+{shouldRender && (
+  <section class="pricing-strip" aria-label="Pricing options">
+    <h2 class="pricing-strip__title">Choose Your Order Type</h2>
+    <div class="pricing-strip__cards">
+      <div class="pricing-strip__card">
+        <span class="pricing-strip__card-title">Digital Bundle</span>
+        <span class="pricing-strip__card-price">{priceLabel(digitalPrice)}</span>
+        <span class="pricing-strip__card-desc">
+          {styleCount > 0
+            ? `All ${styleCount} styles delivered as digital files. No physical print.`
+            : 'Digital file delivered to your inbox. No physical print.'}
+        </span>
+      </div>
+
+      {hasPrint && (
+        <div class="pricing-strip__card">
+          <span class="pricing-strip__card-title">Single Print</span>
+          <span class="pricing-strip__card-price">from {priceLabel(cheapestPrint)}</span>
+          <span class="pricing-strip__card-desc">
+            One physical print in your chosen style. Includes the digital file for that style.
+          </span>
+        </div>
+      )}
+
+      {hasPrint && (
+        <div class="pricing-strip__card pricing-strip__card--best">
+          <span class="pricing-strip__card-badge">Best Value</span>
+          <span class="pricing-strip__card-title">Bundle + Prints</span>
+          <span class="pricing-strip__card-price">from {priceLabel(cheapestBundle)}</span>
+          <span class="pricing-strip__card-desc">
+            Digital bundle plus any number of prints. £5 artwork fee waived on every print.
+          </span>
+        </div>
+      )}
+    </div>
+    <p class="pricing-strip__cta">
+      Scroll down to <a href="#commission">start your commission</a> →
+    </p>
+  </section>
+)}
+
+<style>
+  .pricing-strip {
+    max-width: 960px;
+    margin: 0 auto 3rem;
+    padding: 2rem 1.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+  }
+
+  .pricing-strip__title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-align: center;
+    margin: 0 0 1.75rem;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    color: var(--text, #fafafa);
+  }
+
+  .pricing-strip__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .pricing-strip__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.75rem 1.25rem 1.5rem;
+    background: rgba(0, 0, 0, 0.35);
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    transition: border-color 200ms ease, transform 200ms ease;
+  }
+
+  .pricing-strip__card:hover {
+    border-color: rgba(240, 120, 40, 0.5);
+    transform: translateY(-2px);
+  }
+
+  .pricing-strip__card--best {
+    background: linear-gradient(135deg, rgba(240, 120, 40, 0.08), rgba(233, 30, 123, 0.06));
+    border-color: rgba(240, 120, 40, 0.3);
+  }
+
+  .pricing-strip__card-badge {
+    position: absolute;
+    top: -10px;
+    right: 12px;
+    padding: 0.25rem 0.625rem;
+    background: #F07828;
+    color: #000;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.625rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 999px;
+  }
+
+  .pricing-strip__card-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text, #fafafa);
+  }
+
+  .pricing-strip__card-price {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #F07828;
+  }
+
+  .pricing-strip__card-desc {
+    font-size: 0.875rem;
+    color: var(--text-muted, #a1a1aa);
+    line-height: 1.5;
+    margin-top: auto;
+  }
+
+  .pricing-strip__cta {
+    margin: 1.5rem 0 0;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-muted, #a1a1aa);
+  }
+
+  .pricing-strip__cta a {
+    color: #F07828;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .pricing-strip__cta a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 640px) {
+    .pricing-strip {
+      padding: 1.5rem 1rem;
+    }
+
+    .pricing-strip__cards {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

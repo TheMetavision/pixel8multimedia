@@ -7,6 +7,7 @@ export const prerender = false;
 import { sanityClient } from '../../lib/sanity';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CommissionWorkflow from '../../components/CommissionWorkflow.jsx';
+import PricingStrip from '../../components/PricingStrip.astro';
 import '../../styles/commission-workflow.css';
 
 const { slug } = Astro.params;
@@ -21,7 +22,9 @@ const service = await sanityClient.fetch(
     slug,
     steps,
     price,
+    digitalPrice,
     printUpcharges,
+    styleOptions[]{ key, label, helperText },
     commissionEnabled,
     briefingFields,
     hasFileUpload,
@@ -87,6 +90,8 @@ const serviceForWizard = {
   slug: service.slug.current,
   title: service.title,
   price: service.price,
+  digitalPrice: service.digitalPrice,
+  styleOptions: service.styleOptions,
   printUpcharges: service.printUpcharges,
   briefingFields: service.briefingFields,
 };
@@ -109,7 +114,13 @@ const serviceForWizard = {
       <div class="service-page__hero-content">
         <h1 class="service-page__title">{service.title}</h1>
         <p class="service-page__description">{service.description}</p>
-        {service.price && (
+        {/*
+          Legacy "From £X.XX" hero price removed in favour of the PricingStrip
+          component below — which shows all three pricing paths clearly.
+          For services not yet migrated (no digitalPrice), the strip won't
+          render and we may want to add a hero price fallback here later.
+        */}
+        {service.price && !service.digitalPrice && (
           <p class="service-page__price">
             From <strong>£{service.price.toFixed(2)}</strong>
           </p>
@@ -224,6 +235,9 @@ const serviceForWizard = {
         })}
       </section>
     )}
+
+    <!-- Pricing Strip — shows three pricing paths (only renders when service.digitalPrice is set) -->
+    <PricingStrip service={serviceForWizard} />
 
     <!-- How It Works -->
     {service.steps?.length > 0 && (
