@@ -109,18 +109,64 @@ export default defineType({
     // ── Pricing ─────────────────────────────────────────────────────
     defineField({
       name: 'price',
-      title: 'Digital Base Price (£)',
+      title: 'Digital Base Price (£) — LEGACY',
       type: 'number',
       group: 'pricing',
-      description: 'What the customer pays for the digital deliverable. Print formats add an upcharge on top.',
+      description: 'Legacy field — use Digital Bundle Price below. Kept for backward compatibility with services not yet migrated to the new pricing model.',
       validation: (Rule) => Rule.min(0),
     }),
     defineField({
+      name: 'digitalPrice',
+      title: 'Digital Bundle Price (£)',
+      type: 'number',
+      group: 'pricing',
+      description: 'Flat price for the all-styles digital download bundle. Customer receives every style as a digital file. Leave blank or set to 0 if this service does not offer a digital option (e.g. print-only restoration).',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'styleOptions',
+      title: 'Available Styles',
+      type: 'array',
+      group: 'pricing',
+      description: 'Named styles available for this service. Customer picks per-print, or gets all styles via the digital bundle. Leave empty for services with no style choice (e.g. Past Perfect, photo restoration).',
+      of: [
+        {
+          type: 'object',
+          name: 'styleOption',
+          fields: [
+            {
+              name: 'key',
+              title: 'Internal Key',
+              type: 'string',
+              description: 'Short slug, lowercase, hyphenated. E.g. "simpsons", "rick-morty".',
+              validation: (Rule) => Rule.required().regex(/^[a-z0-9-]+$/, { name: 'lowercase-hyphenated' }),
+            },
+            {
+              name: 'label',
+              title: 'Display Name',
+              type: 'string',
+              description: 'What the customer sees, e.g. "The Simpsons".',
+              validation: (Rule) => Rule.required(),
+            },
+            {
+              name: 'helperText',
+              title: 'Description',
+              type: 'string',
+              description: 'One-line description shown beneath the style label.',
+            },
+          ],
+          preview: {
+            select: { title: 'label', subtitle: 'key' },
+          },
+        },
+      ],
+    }),
+    defineField({
       name: 'printUpcharges',
-      title: 'Print Format Upcharges (£)',
+      title: 'Print Prices (£)',
       type: 'object',
       group: 'pricing',
-      description: 'Added to the digital base price when the customer selects a print format.',
+      description: 'Standalone print prices = shop product price + £5 artwork creation fee. Bundle orders (digital + print at same checkout) get the £5 waived per print, calculated automatically.',
       fields: [
         {
           name: 'poster',
@@ -200,7 +246,7 @@ export default defineType({
                 { title: 'Email', value: 'email' },
                 { title: 'Phone', value: 'phone' },
                 { title: 'Select — dropdown', value: 'select' },
-                { title: 'Style Swatch — Option A–J picker', value: 'styleSwatch' },
+                { title: 'Style Picker — uses service.styleOptions (or A–J fallback)', value: 'styleSwatch' },
                 { title: 'Photo — single upload', value: 'photo' },
                 { title: 'Photos — multiple uploads', value: 'photos' },
               ],

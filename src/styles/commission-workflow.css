@@ -522,3 +522,262 @@
 .cw__terms a:hover {
   text-decoration: underline;
 }
+
+/* ── Path picker cards (Step 0) ─────────────────────────────────────────── */
+.cw__path-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.875rem;
+}
+
+.cw__path-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.5rem 1.25rem 1.25rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: var(--text, #F0EDE6);
+  text-align: left;
+  cursor: pointer;
+  transition: all 200ms ease;
+  font-family: inherit;
+}
+
+.cw__path-card:hover {
+  border-color: rgba(240, 120, 40, 0.5);
+  transform: translateY(-2px);
+}
+
+.cw__path-card--selected {
+  border-color: #F07828;
+  background: rgba(240, 120, 40, 0.1);
+}
+
+.cw__path-card--best {
+  background: linear-gradient(135deg, rgba(240, 120, 40, 0.08), rgba(233, 30, 123, 0.06));
+}
+
+.cw__path-badge {
+  position: absolute;
+  top: -10px;
+  right: 12px;
+  padding: 0.25rem 0.625rem;
+  background: #F07828;
+  color: #000;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 999px;
+}
+
+.cw__path-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cw__path-price {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #F07828;
+}
+
+.cw__path-desc {
+  font-size: 0.8125rem;
+  color: var(--text-muted, #a1a1aa);
+  line-height: 1.5;
+  margin-top: auto;
+}
+
+/* ── Named style grid (Step 1 / Step 2) ─────────────────────────────────── */
+.cw__style-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.625rem;
+}
+
+.cw__style-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: var(--text, #F0EDE6);
+  text-align: left;
+  cursor: pointer;
+  transition: all 200ms ease;
+  font-family: inherit;
+}
+
+.cw__style-card:hover {
+  border-color: rgba(240, 120, 40, 0.5);
+}
+
+.cw__style-card--active {
+  border-color: #F07828;
+  background: rgba(240, 120, 40, 0.12);
+}
+
+.cw__style-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.cw__style-helper {
+  font-size: 0.75rem;
+  color: var(--text-muted, #8A8A8E);
+  line-height: 1.45;
+  font-style: italic;
+}
+
+/* ── Print rows (Step 2) ────────────────────────────────────────────────── */
+.cw__print-row {
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cw__print-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cw__print-header strong {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #F07828;
+}
+
+.cw__print-remove {
+  padding: 0.25rem 0.625rem;
+  background: rgba(220, 38, 38, 0.15);
+  color: #fecaca;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 6px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.cw__print-remove:hover {
+  background: rgba(220, 38, 38, 0.25);
+}
+
+.cw__print-price {
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  background: rgba(240, 120, 40, 0.08);
+  border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #F07828;
+}
+
+.cw__print-savings {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted, #a1a1aa);
+  font-style: italic;
+}
+
+.cw__btn--add {
+  align-self: flex-start;
+  padding: 0.625rem 1.25rem;
+  background: rgba(240, 120, 40, 0.1);
+  border: 1px dashed rgba(240, 120, 40, 0.5);
+  color: #F07828;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.cw__btn--add:hover {
+  background: rgba(240, 120, 40, 0.2);
+  border-style: solid;
+}
+
+/* ── Line items (Step 3) ────────────────────────────────────────────────── */
+.cw__line-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+}
+
+.cw__line-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.875rem;
+}
+
+.cw__line-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.cw__line-item--savings {
+  color: #76FF03;
+}
+
+.cw__line-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.cw__line-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--text-muted, #8A8A8E);
+  font-style: italic;
+}
+
+.cw__line-amount {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: #F07828;
+}
+
+.cw__line-item--savings .cw__line-amount {
+  color: #76FF03;
+}

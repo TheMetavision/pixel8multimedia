@@ -1,40 +1,58 @@
 // src/components/CommissionWorkflow.jsx
-// Three-step commission wizard mounted on each /services/[slug] page.
+// Commission wizard — supports three order types with dynamic pricing:
 //
-// Stage 1: Brief — dynamically renders the service's briefingFields
-// Stage 2: Format — Digital only / Digital + Print, with price calc
-// Stage 3: Review & Pay — summary + redirect to Stripe checkout
+//   Stage 0: Path picker — Digital Bundle / Single Print / Bundle + Prints
+//            (skipped if only one path is available)
+//   Stage 1: Brief — dynamically renders service.briefingFields
+//            (style picker hidden for digital and singlePrint paths; style is
+//             chosen per-print for those, or implicitly "all" for the bundle)
+//   Stage 2: Prints config — only for singlePrint and bundle paths
+//            (multi-print rows for bundle, single row for singlePrint)
+//   Stage 3: Review & Pay — summary, line-item breakdown, redirect to Stripe
 //
-// Replaces the legacy single-form CommissionForm.jsx. Backend at
-// /.netlify/functions/commission-checkout is backwards compatible.
+// Pricing logic:
+//   Digital path:       service.digitalPrice (e.g. £14.99 for all styles)
+//   Single print:       service.printUpcharges[format][size] (= shop + £5)
+//   Bundle + prints:    service.digitalPrice + Σ(shop price per print)
+//                       (i.e. £5 artwork fee waived because digital pays for it)
+//
+// Backwards compatible: if a service has no digitalPrice and no styleOptions,
+// it falls back to the legacy single-style single-print flow.
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 
-// ── Constants ────────────────────────────────────────────────────────────────
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+// ─── Constants ──────────────────────────────────────────────────────────────
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const CLIENT_RESIZE_MAX_PX = 3000;
 const CLIENT_RESIZE_QUALITY = 0.9;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
-// Option A-J colour swatches — mirrors the values in src/data/products.ts
-// (kept inline so we don't pull a heavy import). Adjust if your palette differs.
-const STYLE_SWATCHES = [
-  { letter: 'A', label: 'Option A', color: '#FF00FF' },
-  { letter: 'B', label: 'Option B', color: '#FFFFFF' },
-  { letter: 'C', label: 'Option C', color: '#FF6B35' },
-  { letter: 'D', label: 'Option D', color: '#00BCD4' },
-  { letter: 'E', label: 'Option E', color: '#FFEB3B' },
-  { letter: 'F', label: 'Option F', color: '#E91E7B' },
-  { letter: 'G', label: 'Option G', color: '#76FF03' },
-  { letter: 'H', label: 'Option H', color: '#9E9E9E' },
-  { letter: 'I', label: 'Option I', color: '#7C4DFF' },
-  { letter: 'J', label: 'Option J', color: '#FF5252' },
+const LEGACY_AJ_SWATCHES = [
+  { key: 'A', color: '#FF00FF' },
+  { key: 'B', color: '#FFFFFF' },
+  { key: 'C', color: '#FF6B35' },
+  { key: 'D', color: '#00BCD4' },
+  { key: 'E', color: '#FFEB3B' },
+  { key: 'F', color: '#E91E7B' },
+  { key: 'G', color: '#76FF03' },
+  { key: 'H', color: '#9E9E9E' },
+  { key: 'I', color: '#7C4DFF' },
+  { key: 'J', color: '#FF5252' },
 ];
 
-const SIZE_LABELS = { small: 'Small', medium: 'Medium', large: 'Large' };
+const SIZE_LABELS = {
+  small: 'Small (12×12")',
+  medium: 'Medium (16×16")',
+  large: 'Large (20×20")',
+};
+const FORMAT_LABELS = {
+  poster: 'Poster Print',
+  'canvas-standard': 'Canvas Standard',
+  'canvas-gallery': 'Canvas Gallery',
+};
+const ARTWORK_FEE = 5.0;
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
+// ─── Helpers ────────────────────────────────────────────────────────────────
 function formatBytes(bytes) {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
@@ -42,17 +60,18 @@ function formatBytes(bytes) {
 }
 
 function priceLabel(p) {
-  if (p == null) return '—';
+  if (p == null || isNaN(p)) return '—';
   return `£${Number(p).toFixed(2)}`;
 }
 
-// Resize an image client-side using a canvas. Keeps the long side at most
-// CLIENT_RESIZE_MAX_PX, encodes to JPEG quality 0.9. Falls back to original
-// blob on unsupported types (HEIC etc.).
+function formatToSanityKey(f) {
+  if (f === 'canvas-standard') return 'canvasStandard';
+  if (f === 'canvas-gallery') return 'canvasGallery';
+  return 'poster';
+}
+
 async function resizeImage(file) {
-  if (file.type === 'image/heic' || !file.type.startsWith('image/')) {
-    return file; // can't resize, send original (still <10MB enforced upstream)
-  }
+  if (file.type === 'image/heic' || !file.type.startsWith('image/')) return file;
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -60,45 +79,28 @@ async function resizeImage(file) {
       URL.revokeObjectURL(url);
       const { width, height } = img;
       const longSide = Math.max(width, height);
-      if (longSide <= CLIENT_RESIZE_MAX_PX) {
-        // Already small enough — just return original
-        resolve(file);
-        return;
-      }
+      if (longSide <= CLIENT_RESIZE_MAX_PX) { resolve(file); return; }
       const scale = CLIENT_RESIZE_MAX_PX / longSide;
       const newW = Math.round(width * scale);
       const newH = Math.round(height * scale);
       const canvas = document.createElement('canvas');
-      canvas.width = newW;
-      canvas.height = newH;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, newW, newH);
+      canvas.width = newW; canvas.height = newH;
+      canvas.getContext('2d').drawImage(img, 0, 0, newW, newH);
       canvas.toBlob(
         (blob) => {
-          if (!blob) {
-            resolve(file); // fallback
-            return;
-          }
-          // Wrap blob as File so name + type carry through
-          const resized = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
-            type: 'image/jpeg',
-          });
-          resolve(resized);
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
         },
-        'image/jpeg',
-        CLIENT_RESIZE_QUALITY
+        'image/jpeg', CLIENT_RESIZE_QUALITY
       );
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(file);
-    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
     img.src = url;
   });
 }
 
-// ── Brief field renderer ─────────────────────────────────────────────────────
-function BriefField({ field, value, onChange, files, onFilesChange }) {
+// ─── Brief field renderer ───────────────────────────────────────────────────
+function BriefField({ field, value, onChange, files, onFilesChange, styleOptions }) {
   const { key, label, fieldType, helperText, required, options, minPhotos, maxPhotos } = field;
   const labelEl = (
     <span className="cw__label">
@@ -108,161 +110,120 @@ function BriefField({ field, value, onChange, files, onFilesChange }) {
   );
   const helperEl = helperText ? <span className="cw__helper">{helperText}</span> : null;
 
-  // Photo upload (single)
   if (fieldType === 'photo') {
-    const photoFiles = files[key] || [];
     return (
-      <div className="cw__field">
-        {labelEl}
-        {helperEl}
-        <PhotoDropzone
-          fieldKey={key}
-          multiple={false}
-          maxFiles={1}
-          files={photoFiles}
-          onChange={(f) => onFilesChange(key, f)}
-        />
+      <div className="cw__field">{labelEl}{helperEl}
+        <PhotoDropzone fieldKey={key} multiple={false} maxFiles={1}
+          files={files[key] || []} onChange={(f) => onFilesChange(key, f)} />
       </div>
     );
   }
 
-  // Photos upload (multi)
   if (fieldType === 'photos') {
-    const photoFiles = files[key] || [];
     return (
-      <div className="cw__field">
-        {labelEl}
-        {helperEl}
-        <PhotoDropzone
-          fieldKey={key}
-          multiple={true}
-          minFiles={minPhotos || 1}
-          maxFiles={maxPhotos || 10}
-          files={photoFiles}
-          onChange={(f) => onFilesChange(key, f)}
-        />
+      <div className="cw__field">{labelEl}{helperEl}
+        <PhotoDropzone fieldKey={key} multiple minFiles={minPhotos || 1} maxFiles={maxPhotos || 10}
+          files={files[key] || []} onChange={(f) => onFilesChange(key, f)} />
       </div>
     );
   }
 
-  // Select
   if (fieldType === 'select') {
     return (
-      <label className="cw__field">
-        {labelEl}
-        {helperEl}
-        <select
-          className="cw__select"
-          required={required}
-          value={value || ''}
-          onChange={(e) => onChange(key, e.target.value)}
-        >
+      <label className="cw__field">{labelEl}{helperEl}
+        <select className="cw__select" required={required} value={value || ''}
+          onChange={(e) => onChange(key, e.target.value)}>
           <option value="">Select…</option>
-          {(options || []).map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
+          {(options || []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
         </select>
       </label>
     );
   }
 
-  // Style swatch — Option A-J picker
+  // Style picker — uses service.styleOptions if available, falls back to A-J
   if (fieldType === 'styleSwatch') {
+    const useNamed = Array.isArray(styleOptions) && styleOptions.length > 0;
+
     return (
-      <div className="cw__field">
-        {labelEl}
-        {helperEl}
-        <div className="cw__swatches">
-          {STYLE_SWATCHES.map((s) => {
-            const active = value === s.letter;
-            return (
-              <button
-                type="button"
-                key={s.letter}
-                className={`cw__swatch${active ? ' cw__swatch--active' : ''}`}
-                onClick={() => onChange(key, s.letter)}
-                aria-pressed={active}
-                title={s.label}
-              >
-                <span className="cw__swatch-dot" style={{ background: s.color }} />
-                <span className="cw__swatch-letter">{s.letter}</span>
-              </button>
-            );
-          })}
-        </div>
+      <div className="cw__field">{labelEl}{helperEl}
+        {useNamed ? (
+          <div className="cw__style-grid">
+            {styleOptions.map((s) => {
+              const active = value === s.key;
+              return (
+                <button type="button" key={s.key}
+                  className={`cw__style-card${active ? ' cw__style-card--active' : ''}`}
+                  onClick={() => onChange(key, s.key)}
+                  aria-pressed={active}>
+                  <span className="cw__style-label">{s.label}</span>
+                  {s.helperText && <span className="cw__style-helper">{s.helperText}</span>}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="cw__swatches">
+            {LEGACY_AJ_SWATCHES.map((s) => {
+              const active = value === s.key;
+              return (
+                <button type="button" key={s.key}
+                  className={`cw__swatch${active ? ' cw__swatch--active' : ''}`}
+                  onClick={() => onChange(key, s.key)}
+                  aria-pressed={active}>
+                  <span className="cw__swatch-dot" style={{ background: s.color }} />
+                  <span className="cw__swatch-letter">{s.key}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }
 
-  // Textarea
   if (fieldType === 'textarea') {
     return (
-      <label className="cw__field">
-        {labelEl}
-        {helperEl}
-        <textarea
-          className="cw__textarea"
-          required={required}
-          rows={4}
-          value={value || ''}
-          onChange={(e) => onChange(key, e.target.value)}
-        />
+      <label className="cw__field">{labelEl}{helperEl}
+        <textarea className="cw__textarea" required={required} rows={4}
+          value={value || ''} onChange={(e) => onChange(key, e.target.value)} />
       </label>
     );
   }
 
-  // Default: text / email / phone
   const inputType = fieldType === 'email' ? 'email' : fieldType === 'phone' ? 'tel' : 'text';
   return (
-    <label className="cw__field">
-      {labelEl}
-      {helperEl}
-      <input
-        type={inputType}
-        className="cw__input"
-        required={required}
-        value={value || ''}
-        onChange={(e) => onChange(key, e.target.value)}
-      />
+    <label className="cw__field">{labelEl}{helperEl}
+      <input type={inputType} className="cw__input" required={required}
+        value={value || ''} onChange={(e) => onChange(key, e.target.value)} />
     </label>
   );
 }
 
-// ── Photo dropzone ────────────────────────────────────────────────────────────
+// ─── Photo dropzone ────────────────────────────────────────────────────────
 function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, files, onChange }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
   const [resizingCount, setResizingCount] = useState(0);
 
   function handleDrag(e) {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true);
     else if (e.type === 'dragleave') setDragActive(false);
   }
 
   async function addFiles(incoming) {
-    const accepted = [];
-    for (const f of incoming) {
-      if (!ALLOWED_TYPES.includes(f.type)) continue;
-      if (f.size > MAX_FILE_SIZE) continue;
-      accepted.push(f);
-    }
+    const accepted = incoming.filter((f) => ALLOWED_TYPES.includes(f.type) && f.size <= MAX_FILE_SIZE);
     if (accepted.length === 0) return;
-
     setResizingCount(accepted.length);
     const resized = await Promise.all(accepted.map(resizeImage));
     setResizingCount(0);
-
     let combined = multiple ? [...files, ...resized] : [resized[0]];
     if (multiple && combined.length > maxFiles) combined = combined.slice(0, maxFiles);
     onChange(combined);
   }
 
   function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
+    e.preventDefault(); e.stopPropagation(); setDragActive(false);
     if (e.dataTransfer.files?.length) addFiles([...e.dataTransfer.files]);
   }
 
@@ -271,45 +232,27 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, files, onChange
     e.target.value = '';
   }
 
-  function removeAt(i) {
-    onChange(files.filter((_, idx) => idx !== i));
-  }
-
   return (
     <>
-      <div
-        className={`cw__dropzone${dragActive ? ' cw__dropzone--active' : ''}`}
-        onDragEnter={handleDrag}
-        onDragOver={handleDrag}
-        onDragLeave={handleDrag}
-        onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          multiple={multiple}
-          accept={ALLOWED_TYPES.join(',')}
-          onChange={handleInput}
-          className="cw__file-input"
-          aria-label={`Upload photos for ${fieldKey}`}
-        />
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="cw__upload-icon">
+      <div className={`cw__dropzone${dragActive ? ' cw__dropzone--active' : ''}`}
+        onDragEnter={handleDrag} onDragOver={handleDrag} onDragLeave={handleDrag}
+        onDrop={handleDrop} onClick={() => inputRef.current?.click()}
+        role="button" tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}>
+        <input ref={inputRef} type="file" multiple={multiple}
+          accept={ALLOWED_TYPES.join(',')} onChange={handleInput}
+          className="cw__file-input" aria-label={`Upload photos for ${fieldKey}`} />
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="cw__upload-icon">
           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
           <polyline points="17 8 12 3 7 8" />
           <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
         <p className="cw__dropzone-text">
-          {resizingCount > 0
-            ? `Optimising ${resizingCount} photo${resizingCount > 1 ? 's' : ''}…`
-            : dragActive
-              ? 'Drop here…'
-              : multiple
-                ? `Drag & drop ${minFiles}–${maxFiles} photos or click to browse`
-                : 'Drag & drop a photo or click to browse'}
+          {resizingCount > 0 ? `Optimising ${resizingCount} photo${resizingCount > 1 ? 's' : ''}…`
+            : dragActive ? 'Drop here…'
+            : multiple ? `Drag & drop ${minFiles}–${maxFiles} photos or click to browse`
+            : 'Drag & drop a photo or click to browse'}
         </p>
         <p className="cw__dropzone-sub">JPG / PNG / WebP / HEIC — auto-resized to 3000px max</p>
       </div>
@@ -317,10 +260,9 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, files, onChange
         <ul className="cw__file-list">
           {files.map((f, i) => (
             <li key={`${f.name}-${f.size}-${i}`} className="cw__file-item">
-              <span className="cw__file-name">
-                {f.name} <span className="cw__file-size">({formatBytes(f.size)})</span>
-              </span>
-              <button type="button" onClick={() => removeAt(i)} className="cw__file-remove" aria-label={`Remove ${f.name}`}>×</button>
+              <span className="cw__file-name">{f.name} <span className="cw__file-size">({formatBytes(f.size)})</span></span>
+              <button type="button" onClick={() => onChange(files.filter((_, idx) => idx !== i))}
+                className="cw__file-remove" aria-label={`Remove ${f.name}`}>×</button>
             </li>
           ))}
         </ul>
@@ -329,65 +271,132 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, files, onChange
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main wizard component
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Main wizard ────────────────────────────────────────────────────────────
 export default function CommissionWorkflow({ service }) {
-  const [step, setStep] = useState(1);
-  const [briefValues, setBriefValues] = useState({}); // { fieldKey: stringValue }
-  const [briefFiles, setBriefFiles] = useState({});   // { fieldKey: File[] }
-  const [deliveryChoice, setDeliveryChoice] = useState('digital'); // 'digital' | 'both'
-  const [printFormat, setPrintFormat] = useState('');
-  const [printSize, setPrintSize] = useState('');
+  const styleOptions = service.styleOptions || [];
+  const digitalPrice = Number(service.digitalPrice) || 0;
+  const legacyPrice = Number(service.price) || 0;
+  const hasDigitalOption = digitalPrice > 0;
+
+  const hasPrintOption = useMemo(() => {
+    const u = service.printUpcharges;
+    if (!u) return false;
+    const anyPositive = (obj) => obj && Object.values(obj).some((v) => Number(v) > 0);
+    return anyPositive(u.poster) || anyPositive(u.canvasStandard) || anyPositive(u.canvasGallery);
+  }, [service]);
+
+  // Determine available paths
+  const availablePaths = useMemo(() => {
+    const paths = [];
+    if (hasDigitalOption) paths.push('digital');
+    if (hasPrintOption) paths.push('singlePrint');
+    if (hasDigitalOption && hasPrintOption) paths.push('bundle');
+    return paths;
+  }, [hasDigitalOption, hasPrintOption]);
+
+  const startStep = availablePaths.length > 1 ? 0 : 1;
+  const [step, setStep] = useState(startStep);
+  const [orderType, setOrderType] = useState(availablePaths[0] || 'digital');
+  const [briefValues, setBriefValues] = useState({});
+  const [briefFiles, setBriefFiles] = useState({});
+  const [prints, setPrints] = useState([{ styleKey: '', format: '', size: '' }]);
   const [shippingAddress, setShippingAddress] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const briefingFields = service.briefingFields || [];
 
-  // Does this service offer print formats at all?
-  const hasPrintOption = useMemo(() => {
-    const u = service.printUpcharges;
-    if (!u) return false;
-    const anyPositive = (obj) =>
-      obj && Object.values(obj).some((v) => Number(v) > 0);
-    return anyPositive(u.poster) || anyPositive(u.canvasStandard) || anyPositive(u.canvasGallery);
-  }, [service]);
-
-  // Compute current total
-  const computedPrice = useMemo(() => {
-    const base = Number(service.price) || 0;
-    if (deliveryChoice === 'digital') {
-      return { digitalBase: base, upcharge: 0, total: base, formatLabel: 'Digital download only' };
+  // Hide style picker in brief for digital and singlePrint paths
+  // (digital includes all styles; singlePrint chooses per-print)
+  const filteredBriefingFields = useMemo(() => {
+    if (orderType === 'digital' || orderType === 'singlePrint') {
+      return briefingFields.filter((f) => f.fieldType !== 'styleSwatch');
     }
-    if (printFormat && printSize) {
-      const sanityKey =
-        printFormat === 'poster' ? 'poster' :
-        printFormat === 'canvas-standard' ? 'canvasStandard' :
-        printFormat === 'canvas-gallery' ? 'canvasGallery' : null;
-      const upcharge = Number(service.printUpcharges?.[sanityKey]?.[printSize]) || 0;
-      const formatTitle =
-        printFormat === 'poster' ? 'Poster Print' :
-        printFormat === 'canvas-standard' ? 'Canvas Standard' :
-        printFormat === 'canvas-gallery' ? 'Canvas Gallery' : printFormat;
-      const sizeTitle = SIZE_LABELS[printSize] || printSize;
+    return briefingFields;
+  }, [briefingFields, orderType]);
+
+  // Lookup standalone print price (= shop price + £5 artwork fee)
+  function lookupStandalonePrintPrice(format, size) {
+    const upcharges = service.printUpcharges;
+    const key = formatToSanityKey(format);
+    return Number(upcharges?.[key]?.[size]) || 0;
+  }
+
+  // Lookup shop-only price (= standalone print price - £5)
+  // Used for bundle path where the £5 artwork fee is waived.
+  function lookupShopPrice(format, size) {
+    const standalone = lookupStandalonePrintPrice(format, size);
+    return Math.max(0, standalone - ARTWORK_FEE);
+  }
+
+  // Compute pricing breakdown for display + checkout
+  const pricing = useMemo(() => {
+    if (orderType === 'digital') {
       return {
-        digitalBase: base,
-        upcharge,
-        total: base + upcharge,
-        formatLabel: `${formatTitle} — ${sizeTitle}`,
+        lines: [{
+          label: `Digital bundle (all ${styleOptions.length || ''} styles)`.replace('  ', ' '),
+          amount: digitalPrice,
+        }],
+        total: digitalPrice,
+        artworkFeeWaived: false,
       };
     }
-    return { digitalBase: base, upcharge: 0, total: base, formatLabel: 'Select print format & size' };
-  }, [service, deliveryChoice, printFormat, printSize]);
 
-  // ── Validation ─────────────────────────────────────────────────────────────
+    if (orderType === 'singlePrint') {
+      const p = prints[0];
+      if (!p?.format || !p?.size) {
+        return { lines: [], total: 0, artworkFeeWaived: false };
+      }
+      const total = lookupStandalonePrintPrice(p.format, p.size);
+      const styleLabel = p.styleKey && styleOptions.length > 0
+        ? styleOptions.find((s) => s.key === p.styleKey)?.label
+        : null;
+      return {
+        lines: [{
+          label: `${FORMAT_LABELS[p.format]} — ${SIZE_LABELS[p.size]}${styleLabel ? ` (${styleLabel})` : ''}`,
+          note: `Includes £${ARTWORK_FEE.toFixed(2)} artwork fee`,
+          amount: total,
+        }],
+        total,
+        artworkFeeWaived: false,
+      };
+    }
+
+    // bundle
+    const validPrints = prints.filter((p) => p.format && p.size);
+    const lines = [
+      {
+        label: `Digital bundle (all ${styleOptions.length || ''} styles)`.replace('  ', ' '),
+        amount: digitalPrice,
+      },
+    ];
+    let runningTotal = digitalPrice;
+    validPrints.forEach((p) => {
+      const shop = lookupShopPrice(p.format, p.size);
+      const styleLabel = p.styleKey && styleOptions.length > 0
+        ? styleOptions.find((s) => s.key === p.styleKey)?.label
+        : null;
+      lines.push({
+        label: `${FORMAT_LABELS[p.format]} — ${SIZE_LABELS[p.size]}${styleLabel ? ` (${styleLabel})` : ''}`,
+        note: '£5 artwork fee waived',
+        amount: shop,
+      });
+      runningTotal += shop;
+    });
+    return {
+      lines,
+      total: runningTotal,
+      artworkFeeWaived: validPrints.length > 0,
+      savedAmount: validPrints.length * ARTWORK_FEE,
+    };
+  }, [orderType, prints, digitalPrice, service, styleOptions]);
+
+  // ─── Validation ────────────────────────────────────────────────────────────
   function validateBriefStep() {
-    for (const f of briefingFields) {
+    for (const f of filteredBriefingFields) {
       if (!f.required) continue;
       if (f.fieldType === 'photo') {
-        const arr = briefFiles[f.key] || [];
-        if (arr.length === 0) return `Please upload "${f.label}".`;
+        if ((briefFiles[f.key] || []).length === 0) return `Please upload "${f.label}".`;
       } else if (f.fieldType === 'photos') {
         const arr = briefFiles[f.key] || [];
         const min = f.minPhotos || 1;
@@ -403,25 +412,28 @@ export default function CommissionWorkflow({ service }) {
     return null;
   }
 
-  function validateFormatStep() {
-    if (deliveryChoice === 'both' && (!printFormat || !printSize)) {
-      return 'Please choose a print format and size.';
+  function validatePrintsStep() {
+    if (orderType === 'digital') return null;
+    const requireStyle = styleOptions.length > 0;
+    const validatePrints = orderType === 'singlePrint' ? prints.slice(0, 1) : prints;
+    for (const [i, p] of validatePrints.entries()) {
+      if (!p.format || !p.size) return `Please choose a format and size for print #${i + 1}.`;
+      if (requireStyle && !p.styleKey) return `Please choose a style for print #${i + 1}.`;
     }
-    if (deliveryChoice === 'both' && !shippingAddress.trim()) {
-      return 'Please enter your shipping address.';
-    }
+    if (!shippingAddress.trim()) return 'Please enter your shipping address.';
     return null;
   }
 
   function next() {
     setError('');
+    if (step === 0) { setStep(1); return; }
     if (step === 1) {
       const err = validateBriefStep();
       if (err) { setError(err); return; }
-      // If the service has no print option, skip Stage 2
-      setStep(hasPrintOption ? 2 : 3);
+      if (orderType === 'digital') { setStep(3); return; }
+      setStep(2);
     } else if (step === 2) {
-      const err = validateFormatStep();
+      const err = validatePrintsStep();
       if (err) { setError(err); return; }
       setStep(3);
     }
@@ -429,23 +441,44 @@ export default function CommissionWorkflow({ service }) {
 
   function back() {
     setError('');
-    if (step === 3 && !hasPrintOption) setStep(1);
-    else setStep((s) => Math.max(1, s - 1));
+    if (step === 3 && orderType === 'digital') { setStep(1); return; }
+    if (step === 1 && availablePaths.length > 1) { setStep(0); return; }
+    setStep((s) => Math.max(0, s - 1));
   }
 
-  // ── Submit to /.netlify/functions/commission-checkout ──────────────────────
+  function addPrint() {
+    setPrints((p) => [...p, { styleKey: '', format: '', size: '' }]);
+  }
+
+  function removePrint(i) {
+    setPrints((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p));
+  }
+
+  function updatePrint(i, patch) {
+    setPrints((p) => p.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+  }
+
+  // Reset prints array when changing path
+  function selectPath(path) {
+    setOrderType(path);
+    if (path === 'digital') {
+      setPrints([{ styleKey: '', format: '', size: '' }]);
+    } else if (path === 'singlePrint') {
+      setPrints((p) => [p[0] || { styleKey: '', format: '', size: '' }]);
+    }
+  }
+
+  // ─── Submit ────────────────────────────────────────────────────────────────
   async function submit() {
     setError('');
     setSubmitting(true);
 
     try {
       const fd = new FormData();
-
-      // Service identification
       fd.append('serviceSlug', service.slug);
       fd.append('serviceTitle', service.title);
+      fd.append('orderType', orderType);
 
-      // Customer fields — pull from briefValues using the standard keys
       const name = briefValues.customerName || '';
       const email = briefValues.customerEmail || '';
       const phone = briefValues.customerPhone || '';
@@ -453,7 +486,6 @@ export default function CommissionWorkflow({ service }) {
       fd.append('email', email);
       if (phone) fd.append('phone', phone);
 
-      // Free-text brief — concatenate non-customer, non-file fields as a single summary
       const briefSummary = briefingFields
         .filter((f) => !['photo', 'photos'].includes(f.fieldType))
         .filter((f) => !['customerName', 'customerEmail', 'customerPhone'].includes(f.key))
@@ -461,40 +493,27 @@ export default function CommissionWorkflow({ service }) {
         .join('\n');
       fd.append('brief', briefSummary);
 
-      // Structured brief data (Phase 2 new field)
       const briefData = briefingFields
         .filter((f) => !['photo', 'photos'].includes(f.fieldType))
-        .map((f) => ({
-          key: f.key,
-          label: f.label,
-          value: briefValues[f.key] || '',
-        }));
+        .map((f) => ({ key: f.key, label: f.label, value: briefValues[f.key] || '' }));
       fd.append('briefData', JSON.stringify(briefData));
 
-      // Format choice
-      const deliveryType = deliveryChoice === 'digital' ? 'digital' : 'both';
-      fd.append('deliveryType', deliveryType);
-      if (deliveryType === 'both') {
-        fd.append('printFormat', printFormat);
-        fd.append('printSize', printSize);
+      if (orderType !== 'digital') {
+        const validPrints = (orderType === 'singlePrint' ? prints.slice(0, 1) : prints)
+          .filter((p) => p.format && p.size);
+        fd.append('prints', JSON.stringify(validPrints));
         fd.append('shippingAddress', shippingAddress);
       }
 
-      // Append all uploaded photo files
       Object.values(briefFiles).forEach((arr) => {
         (arr || []).forEach((f) => fd.append('files', f));
       });
 
-      const res = await fetch('/.netlify/functions/commission-checkout', {
-        method: 'POST',
-        body: fd,
-      });
-
+      const res = await fetch('/.netlify/functions/commission-checkout', { method: 'POST', body: fd });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || 'Something went wrong. Please try again.');
       }
-
       const { url } = await res.json();
       if (!url) throw new Error('Checkout URL missing from response.');
       window.location.href = url;
@@ -504,89 +523,151 @@ export default function CommissionWorkflow({ service }) {
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  const totalSteps = hasPrintOption ? 3 : 2;
-  const displayStep = step === 3 && !hasPrintOption ? 2 : step;
+  // ─── Render ────────────────────────────────────────────────────────────────
+  // Stepper math: count visible steps based on path
+  const totalSteps =
+    (availablePaths.length > 1 ? 1 : 0) +    // step 0 if multi-path
+    1 +                                       // step 1 brief
+    (orderType !== 'digital' ? 1 : 0) +       // step 2 prints
+    1;                                        // step 3 review
+
+  const displayStepIndex =
+    step === 0 ? 0 :
+    step === 1 ? (availablePaths.length > 1 ? 1 : 0) :
+    step === 2 ? (availablePaths.length > 1 ? 2 : 1) :
+    /* step === 3 */ totalSteps - 1;
+
+  // Cheapest single-print starting price (for path card display)
+  const cheapestSinglePrintPrice = useMemo(() => {
+    const u = service.printUpcharges;
+    if (!u) return null;
+    const all = [];
+    ['poster', 'canvasStandard', 'canvasGallery'].forEach((fmt) => {
+      ['small', 'medium', 'large'].forEach((size) => {
+        const p = Number(u?.[fmt]?.[size]);
+        if (p > 0) all.push(p);
+      });
+    });
+    return all.length > 0 ? Math.min(...all) : null;
+  }, [service]);
+
+  const cheapestBundlePrice = useMemo(() => {
+    if (!hasDigitalOption || !cheapestSinglePrintPrice) return null;
+    return digitalPrice + Math.max(0, cheapestSinglePrintPrice - ARTWORK_FEE);
+  }, [digitalPrice, cheapestSinglePrintPrice, hasDigitalOption]);
 
   return (
     <div className="cw">
       <header className="cw__header">
         <h2 className="cw__title">Start Your Commission</h2>
-        <div className="cw__stepper" aria-label={`Step ${displayStep} of ${totalSteps}`}>
+        <div className="cw__stepper" aria-label={`Step ${displayStepIndex + 1} of ${totalSteps}`}>
           {Array.from({ length: totalSteps }).map((_, i) => (
-            <span
-              key={i}
-              className={`cw__stepper-dot${i + 1 === displayStep ? ' cw__stepper-dot--active' : ''}${i + 1 < displayStep ? ' cw__stepper-dot--done' : ''}`}
-            />
+            <span key={i}
+              className={`cw__stepper-dot${i === displayStepIndex ? ' cw__stepper-dot--active' : ''}${i < displayStepIndex ? ' cw__stepper-dot--done' : ''}`} />
           ))}
         </div>
       </header>
 
-      {/* ── STEP 1: BRIEF ─────────────────────────────────────────────────── */}
+      {/* STEP 0 — Path picker */}
+      {step === 0 && (
+        <section className="cw__section">
+          <p className="cw__step-intro">How would you like to order?</p>
+          <div className="cw__path-cards">
+            {hasDigitalOption && (
+              <button type="button"
+                className={`cw__path-card${orderType === 'digital' ? ' cw__path-card--selected' : ''}`}
+                onClick={() => selectPath('digital')}>
+                <span className="cw__path-title">Digital Bundle</span>
+                <span className="cw__path-price">{priceLabel(digitalPrice)}</span>
+                <span className="cw__path-desc">
+                  All {styleOptions.length || 'available'} styles delivered as digital files. No physical print.
+                </span>
+              </button>
+            )}
+            {hasPrintOption && (
+              <button type="button"
+                className={`cw__path-card${orderType === 'singlePrint' ? ' cw__path-card--selected' : ''}`}
+                onClick={() => selectPath('singlePrint')}>
+                <span className="cw__path-title">Single Print</span>
+                <span className="cw__path-price">from {priceLabel(cheapestSinglePrintPrice)}</span>
+                <span className="cw__path-desc">
+                  One physical print in your chosen style. Includes the digital file for that style.
+                </span>
+              </button>
+            )}
+            {hasDigitalOption && hasPrintOption && (
+              <button type="button"
+                className={`cw__path-card cw__path-card--best${orderType === 'bundle' ? ' cw__path-card--selected' : ''}`}
+                onClick={() => selectPath('bundle')}>
+                <span className="cw__path-badge">Best Value</span>
+                <span className="cw__path-title">Bundle + Prints</span>
+                <span className="cw__path-price">from {priceLabel(cheapestBundlePrice)}</span>
+                <span className="cw__path-desc">
+                  Digital bundle plus any number of prints. £5 artwork fee waived on every print.
+                </span>
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* STEP 1 — Brief */}
       {step === 1 && (
         <section className="cw__section">
           <p className="cw__step-intro">Tell us about your commission. The more detail, the better we can match what you've imagined.</p>
-          {briefingFields.map((field) => (
-            <BriefField
-              key={field._key || field.key}
-              field={field}
+          {filteredBriefingFields.map((field) => (
+            <BriefField key={field._key || field.key} field={field}
               value={briefValues[field.key]}
               onChange={(k, v) => setBriefValues((p) => ({ ...p, [k]: v }))}
               files={briefFiles}
               onFilesChange={(k, arr) => setBriefFiles((p) => ({ ...p, [k]: arr }))}
-            />
+              styleOptions={styleOptions} />
           ))}
-          {briefingFields.length === 0 && (
+          {filteredBriefingFields.length === 0 && (
             <p className="cw__empty">This service doesn't have a briefing form configured yet. Please contact us directly to commission.</p>
           )}
         </section>
       )}
 
-      {/* ── STEP 2: FORMAT ────────────────────────────────────────────────── */}
-      {step === 2 && hasPrintOption && (
+      {/* STEP 2 — Prints */}
+      {step === 2 && orderType !== 'digital' && (
         <section className="cw__section">
-          <p className="cw__step-intro">How would you like your finished commission delivered?</p>
+          <p className="cw__step-intro">
+            {orderType === 'singlePrint'
+              ? 'Configure your print.'
+              : 'Add as many prints as you like — the £5 artwork fee is waived on every one because the digital bundle covers it.'}
+          </p>
 
-          <div className="cw__delivery-cards">
-            <label className={`cw__delivery-card${deliveryChoice === 'digital' ? ' cw__delivery-card--selected' : ''}`}>
-              <input
-                type="radio"
-                name="deliveryChoice"
-                value="digital"
-                checked={deliveryChoice === 'digital'}
-                onChange={() => setDeliveryChoice('digital')}
-              />
-              <span className="cw__delivery-title">Digital download only</span>
-              <span className="cw__delivery-desc">High-res file emailed via a secure link.</span>
-              <span className="cw__delivery-price">{priceLabel(service.price)}</span>
-            </label>
+          {(orderType === 'singlePrint' ? prints.slice(0, 1) : prints).map((p, i) => (
+            <div key={i} className="cw__print-row">
+              <div className="cw__print-header">
+                <strong>Print {i + 1}</strong>
+                {orderType === 'bundle' && prints.length > 1 && (
+                  <button type="button" className="cw__print-remove" onClick={() => removePrint(i)}>
+                    Remove
+                  </button>
+                )}
+              </div>
 
-            <label className={`cw__delivery-card${deliveryChoice === 'both' ? ' cw__delivery-card--selected' : ''}`}>
-              <input
-                type="radio"
-                name="deliveryChoice"
-                value="both"
-                checked={deliveryChoice === 'both'}
-                onChange={() => setDeliveryChoice('both')}
-              />
-              <span className="cw__delivery-title">Digital + Print</span>
-              <span className="cw__delivery-desc">Digital file plus a physical print delivered to your door.</span>
-              <span className="cw__delivery-price">From {priceLabel(service.price + (Number(service.printUpcharges?.poster?.small) || 0))}</span>
-            </label>
-          </div>
+              {styleOptions.length > 0 && (
+                <label className="cw__field">
+                  <span className="cw__label">Style <span className="cw__required-star">*</span></span>
+                  <select className="cw__select" value={p.styleKey}
+                    onChange={(e) => updatePrint(i, { styleKey: e.target.value })} required>
+                    <option value="">Choose a style…</option>
+                    {styleOptions.map((s) => (
+                      <option key={s.key} value={s.key}>{s.label}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
-          {deliveryChoice === 'both' && (
-            <div className="cw__print-options">
               <div className="cw__row">
                 <label className="cw__field">
-                  <span className="cw__label">Print Format <span className="cw__required-star">*</span></span>
-                  <select
-                    className="cw__select"
-                    value={printFormat}
-                    onChange={(e) => { setPrintFormat(e.target.value); setPrintSize(''); }}
-                    required
-                  >
-                    <option value="">Select format…</option>
+                  <span className="cw__label">Format <span className="cw__required-star">*</span></span>
+                  <select className="cw__select" value={p.format}
+                    onChange={(e) => updatePrint(i, { format: e.target.value, size: '' })} required>
+                    <option value="">Format…</option>
                     <option value="poster">Poster Print</option>
                     <option value="canvas-standard">Canvas Standard</option>
                     <option value="canvas-gallery">Canvas Gallery</option>
@@ -594,83 +675,85 @@ export default function CommissionWorkflow({ service }) {
                 </label>
                 <label className="cw__field">
                   <span className="cw__label">Size <span className="cw__required-star">*</span></span>
-                  <select
-                    className="cw__select"
-                    value={printSize}
-                    onChange={(e) => setPrintSize(e.target.value)}
-                    required
-                    disabled={!printFormat}
-                  >
-                    <option value="">Select size…</option>
-                    <option value="small">Small</option>
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
+                  <select className="cw__select" value={p.size} disabled={!p.format}
+                    onChange={(e) => updatePrint(i, { size: e.target.value })} required>
+                    <option value="">Size…</option>
+                    <option value="small">Small (12×12")</option>
+                    <option value="medium">Medium (16×16")</option>
+                    <option value="large">Large (20×20")</option>
                   </select>
                 </label>
               </div>
-              <label className="cw__field">
-                <span className="cw__label">Shipping Address <span className="cw__required-star">*</span></span>
-                <textarea
-                  className="cw__textarea"
-                  rows={3}
-                  value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
-                  required
-                  placeholder="Full delivery address including postcode"
-                />
-              </label>
+
+              {p.format && p.size && (
+                <p className="cw__print-price">
+                  {orderType === 'bundle' ? (
+                    <>
+                      {priceLabel(lookupShopPrice(p.format, p.size))}
+                      <span className="cw__print-savings"> · £5 artwork fee waived</span>
+                    </>
+                  ) : (
+                    <>{priceLabel(lookupStandalonePrintPrice(p.format, p.size))}</>
+                  )}
+                </p>
+              )}
             </div>
+          ))}
+
+          {orderType === 'bundle' && (
+            <button type="button" className="cw__btn cw__btn--add" onClick={addPrint}>
+              + Add another print
+            </button>
           )}
+
+          <label className="cw__field">
+            <span className="cw__label">Shipping Address <span className="cw__required-star">*</span></span>
+            <textarea className="cw__textarea" rows={3} value={shippingAddress}
+              onChange={(e) => setShippingAddress(e.target.value)} required
+              placeholder="Full delivery address including postcode" />
+          </label>
 
           <div className="cw__price-preview">
             <span>Running total:</span>
-            <strong>{priceLabel(computedPrice.total)}</strong>
+            <strong>{priceLabel(pricing.total)}</strong>
           </div>
         </section>
       )}
 
-      {/* ── STEP 3: REVIEW ────────────────────────────────────────────────── */}
+      {/* STEP 3 — Review */}
       {step === 3 && (
         <section className="cw__section">
           <p className="cw__step-intro">Quick check before payment.</p>
 
           <dl className="cw__summary">
+            <div className="cw__summary-row"><dt>Service</dt><dd>{service.title}</dd></div>
             <div className="cw__summary-row">
-              <dt>Service</dt>
-              <dd>{service.title}</dd>
+              <dt>Order type</dt>
+              <dd>
+                {orderType === 'digital' && 'Digital bundle'}
+                {orderType === 'singlePrint' && 'Single print'}
+                {orderType === 'bundle' && `Bundle + ${prints.filter((p) => p.format && p.size).length} print(s)`}
+              </dd>
             </div>
-
             {briefingFields
               .filter((f) => !['photo', 'photos'].includes(f.fieldType))
+              .filter((f) => f.fieldType !== 'styleSwatch' || orderType === 'bundle')
               .map((f) => (
                 <div className="cw__summary-row" key={f.key}>
                   <dt>{f.label}</dt>
                   <dd>{briefValues[f.key] || <em>(not provided)</em>}</dd>
                 </div>
               ))}
-
-            {/* Photo upload summaries */}
-            {briefingFields
-              .filter((f) => ['photo', 'photos'].includes(f.fieldType))
-              .map((f) => {
-                const arr = briefFiles[f.key] || [];
-                return (
-                  <div className="cw__summary-row" key={f.key}>
-                    <dt>{f.label}</dt>
-                    <dd>
-                      {arr.length === 0 ? <em>(none uploaded)</em> :
-                        `${arr.length} photo${arr.length > 1 ? 's' : ''} ready to upload`}
-                    </dd>
-                  </div>
-                );
-              })}
-
-            <div className="cw__summary-row">
-              <dt>Format</dt>
-              <dd>{computedPrice.formatLabel}</dd>
-            </div>
-
-            {deliveryChoice === 'both' && shippingAddress && (
+            {briefingFields.filter((f) => ['photo', 'photos'].includes(f.fieldType)).map((f) => {
+              const arr = briefFiles[f.key] || [];
+              return (
+                <div className="cw__summary-row" key={f.key}>
+                  <dt>{f.label}</dt>
+                  <dd>{arr.length === 0 ? <em>(none uploaded)</em> : `${arr.length} photo${arr.length > 1 ? 's' : ''} ready`}</dd>
+                </div>
+              );
+            })}
+            {orderType !== 'digital' && shippingAddress && (
               <div className="cw__summary-row">
                 <dt>Shipping to</dt>
                 <dd style={{ whiteSpace: 'pre-line' }}>{shippingAddress}</dd>
@@ -678,18 +761,35 @@ export default function CommissionWorkflow({ service }) {
             )}
           </dl>
 
+          <div className="cw__line-items">
+            {pricing.lines.map((line, i) => (
+              <div className="cw__line-item" key={i}>
+                <span className="cw__line-label">
+                  {line.label}
+                  {line.note && <em className="cw__line-note"> · {line.note}</em>}
+                </span>
+                <span className="cw__line-amount">{priceLabel(line.amount)}</span>
+              </div>
+            ))}
+            {pricing.artworkFeeWaived && pricing.savedAmount > 0 && (
+              <div className="cw__line-item cw__line-item--savings">
+                <span className="cw__line-label">Bundle saving (£5 × {prints.filter((p) => p.format && p.size).length} prints)</span>
+                <span className="cw__line-amount">−{priceLabel(pricing.savedAmount)}</span>
+              </div>
+            )}
+          </div>
+
           <div className="cw__total-row">
             <span>Total</span>
-            <strong>{priceLabel(computedPrice.total)}</strong>
+            <strong>{priceLabel(pricing.total)}</strong>
           </div>
         </section>
       )}
 
-      {/* ── ERROR + NAV ───────────────────────────────────────────────────── */}
       {error && <div className="cw__error" role="alert">{error}</div>}
 
       <div className="cw__nav">
-        {step > 1 && (
+        {step > startStep && (
           <button type="button" className="cw__btn cw__btn--secondary" onClick={back} disabled={submitting}>
             ← Back
           </button>
