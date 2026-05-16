@@ -1,23 +1,34 @@
 // src/components/CommissionWorkflow.jsx
-// Commission wizard — supports three order types with dynamic pricing:
+// Commission wizard — supports multiple order types per service:
 //
-//   Stage 0: Path picker — Digital Bundle / Single Print / Bundle + Prints
-//            (skipped if only one path is available)
-//   Stage 1: Brief — dynamically renders service.briefingFields
-//            (style picker hidden for digital and singlePrint paths; style is
-//             chosen per-print for those, or implicitly "all" for the bundle)
-//   Stage 2: Prints config — only for singlePrint and bundle paths
-//            (multi-print rows for bundle, single row for singlePrint)
-//   Stage 3: Review & Pay — summary, line-item breakdown, redirect to Stripe
+//   Cartoonify Me (digital + print + bundle):
+//     - digital              → all styles, £14.99 flat
+//     - singlePrint          → one print, artwork fee applies
+//     - bundle               → digital + N prints, artwork fee waived per print
 //
-// Pricing logic:
-//   Digital path:       service.digitalPrice (e.g. £14.99 for all styles)
-//   Single print:       service.printUpcharges[format][size] (= shop + £5)
-//   Bundle + prints:    service.digitalPrice + Σ(shop price per print)
-//                       (i.e. £5 artwork fee waived because digital pays for it)
+//   The Missing Moment (digital + print + animation):
+//     - digital              → digital still, £19.99
+//     - singlePrint          → one print, +£19.99 artwork fee
+//     - bundle               → digital still + N prints, artwork fee waived
+//     - animation-music      → animation + music + digital still (£79.99)
+//     - animation-vo         → animation + music + voiceover + digital still (£99.99)
+//     + optional prints can be added to either animation path with artwork fee waived
 //
-// Backwards compatible: if a service has no digitalPrice and no styleOptions,
-// it falls back to the legacy single-style single-print flow.
+// All variation is driven by service config:
+//   - digitalPrice         → enables digital path
+//   - styleOptions[]       → enables style picker (Cartoonify-style services)
+//   - printUpcharges       → enables print paths
+//   - animationMusicPrice  → enables animation-music path
+//   - animationVoPrice     → enables animation-vo path
+//   - artworkFee           → per-service artwork fee (Cartoonify £5, Missing Moment £19.99)
+//   - printSizeLabels      → per-service size labels (defaults to square sizes)
+//   - briefingFields[].showFor → conditional fields per orderType
+//
+// Stages:
+//   0 — Path picker (skipped if only one path available)
+//   1 — Brief fields (filtered by orderType via showFor)
+//   2 — Prints config (skipped if path is pure digital or animation-only without prints)
+//   3 — Review & Pay
 
 import { useState, useMemo, useRef } from 'react';
 
@@ -25,32 +36,36 @@ import { useState, useMemo, useRef } from 'react';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const CLIENT_RESIZE_MAX_PX = 3000;
 const CLIENT_RESIZE_QUALITY = 0.9;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
 const LEGACY_AJ_SWATCHES = [
-  { key: 'A', color: '#FF00FF' },
-  { key: 'B', color: '#FFFFFF' },
-  { key: 'C', color: '#FF6B35' },
-  { key: 'D', color: '#00BCD4' },
-  { key: 'E', color: '#FFEB3B' },
-  { key: 'F', color: '#E91E7B' },
-  { key: 'G', color: '#76FF03' },
-  { key: 'H', color: '#9E9E9E' },
-  { key: 'I', color: '#7C4DFF' },
-  { key: 'J', color: '#FF5252' },
+  { key: 'A', color: '#FF00FF' }, { key: 'B', color: '#FFFFFF' },
+  { key: 'C', color: '#FF6B35' }, { key: 'D', color: '#00BCD4' },
+  { key: 'E', color: '#FFEB3B' }, { key: 'F', color: '#E91E7B' },
+  { key: 'G', color: '#76FF03' }, { key: 'H', color: '#9E9E9E' },
+  { key: 'I', color: '#7C4DFF' }, { key: 'J', color: '#FF5252' },
 ];
 
-const SIZE_LABELS = {
+// Default size labels (Cartoonify uses these — square 1:1 sizes)
+const DEFAULT_SIZE_LABELS = {
   small: 'Small (12×12")',
   medium: 'Medium (16×16")',
   large: 'Large (20×20")',
 };
+
 const FORMAT_LABELS = {
   poster: 'Poster Print',
   'canvas-standard': 'Canvas Standard',
   'canvas-gallery': 'Canvas Gallery',
 };
-const ARTWORK_FEE = 5.0;
+
+const ORDER_TYPE_LABELS = {
+  digital: 'Digital',
+  singlePrint: 'Single Print',
+  bundle: 'Bundle + Prints',
+  'animation-music': 'Animation (Music)',
+  'animation-vo': 'Animation (Music + Voiceover)',
+};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function formatBytes(bytes) {
@@ -101,7 +116,7 @@ async function resizeImage(file) {
 
 // ─── Brief field renderer ───────────────────────────────────────────────────
 function BriefField({ field, value, onChange, files, onFilesChange, styleOptions }) {
-  const { key, label, fieldType, helperText, required, options, minPhotos, maxPhotos } = field;
+  const { key, label, fieldType, helperText, required, options, minPhotos, maxPhotos, acceptedFileTypes, maxFileSizeMb } = field;
   const labelEl = (
     <span className="cw__label">
       {label}
@@ -114,6 +129,7 @@ function BriefField({ field, value, onChange, files, onFilesChange, styleOptions
     return (
       <div className="cw__field">{labelEl}{helperEl}
         <PhotoDropzone fieldKey={key} multiple={false} maxFiles={1}
+          accept={ALLOWED_IMAGE_TYPES.join(',')}
           files={files[key] || []} onChange={(f) => onFilesChange(key, f)} />
       </div>
     );
@@ -123,7 +139,21 @@ function BriefField({ field, value, onChange, files, onFilesChange, styleOptions
     return (
       <div className="cw__field">{labelEl}{helperEl}
         <PhotoDropzone fieldKey={key} multiple minFiles={minPhotos || 1} maxFiles={maxPhotos || 10}
+          accept={ALLOWED_IMAGE_TYPES.join(',')}
           files={files[key] || []} onChange={(f) => onFilesChange(key, f)} />
+      </div>
+    );
+  }
+
+  if (fieldType === 'file') {
+    const maxMb = Number(maxFileSizeMb) || 10;
+    return (
+      <div className="cw__field">{labelEl}{helperEl}
+        <FileDropzone fieldKey={key}
+          accept={acceptedFileTypes || ''}
+          maxSizeBytes={maxMb * 1024 * 1024}
+          files={files[key] || []}
+          onChange={(f) => onFilesChange(key, f)} />
       </div>
     );
   }
@@ -140,10 +170,8 @@ function BriefField({ field, value, onChange, files, onFilesChange, styleOptions
     );
   }
 
-  // Style picker — uses service.styleOptions if available, falls back to A-J
   if (fieldType === 'styleSwatch') {
     const useNamed = Array.isArray(styleOptions) && styleOptions.length > 0;
-
     return (
       <div className="cw__field">{labelEl}{helperEl}
         {useNamed ? (
@@ -199,8 +227,8 @@ function BriefField({ field, value, onChange, files, onFilesChange, styleOptions
   );
 }
 
-// ─── Photo dropzone ────────────────────────────────────────────────────────
-function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, files, onChange }) {
+// ─── Photo dropzone (used for fieldType=photo and photos) ───────────────────
+function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, onChange }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
   const [resizingCount, setResizingCount] = useState(0);
@@ -212,7 +240,7 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, files, onChange
   }
 
   async function addFiles(incoming) {
-    const accepted = incoming.filter((f) => ALLOWED_TYPES.includes(f.type) && f.size <= MAX_FILE_SIZE);
+    const accepted = incoming.filter((f) => ALLOWED_IMAGE_TYPES.includes(f.type) && f.size <= MAX_FILE_SIZE);
     if (accepted.length === 0) return;
     setResizingCount(accepted.length);
     const resized = await Promise.all(accepted.map(resizeImage));
@@ -240,7 +268,7 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, files, onChange
         role="button" tabIndex={0}
         onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}>
         <input ref={inputRef} type="file" multiple={multiple}
-          accept={ALLOWED_TYPES.join(',')} onChange={handleInput}
+          accept={accept || ALLOWED_IMAGE_TYPES.join(',')} onChange={handleInput}
           className="cw__file-input" aria-label={`Upload photos for ${fieldKey}`} />
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="cw__upload-icon">
@@ -271,12 +299,91 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, files, onChange
   );
 }
 
+// ─── Generic file dropzone (for audio, video, document uploads) ─────────────
+function FileDropzone({ fieldKey, accept, maxSizeBytes, files, onChange }) {
+  const inputRef = useRef(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState('');
+
+  function handleDrag(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true);
+    else if (e.type === 'dragleave') setDragActive(false);
+  }
+
+  function addFiles(incoming) {
+    setError('');
+    const f = incoming[0];
+    if (!f) return;
+    if (maxSizeBytes && f.size > maxSizeBytes) {
+      setError(`File too large. Max ${Math.round(maxSizeBytes / 1024 / 1024)}MB.`);
+      return;
+    }
+    onChange([f]);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault(); e.stopPropagation(); setDragActive(false);
+    if (e.dataTransfer.files?.length) addFiles([...e.dataTransfer.files]);
+  }
+
+  function handleInput(e) {
+    if (e.target.files?.length) addFiles([...e.target.files]);
+    e.target.value = '';
+  }
+
+  return (
+    <>
+      <div className={`cw__dropzone${dragActive ? ' cw__dropzone--active' : ''}`}
+        onDragEnter={handleDrag} onDragOver={handleDrag} onDragLeave={handleDrag}
+        onDrop={handleDrop} onClick={() => inputRef.current?.click()}
+        role="button" tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}>
+        <input ref={inputRef} type="file"
+          accept={accept || undefined} onChange={handleInput}
+          className="cw__file-input" aria-label={`Upload file for ${fieldKey}`} />
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="cw__upload-icon">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        <p className="cw__dropzone-text">
+          {dragActive ? 'Drop here…' : 'Drag & drop a file or click to browse'}
+        </p>
+        <p className="cw__dropzone-sub">
+          {accept ? `Accepted: ${accept}` : 'Any file type'}
+          {maxSizeBytes ? ` · Max ${Math.round(maxSizeBytes / 1024 / 1024)}MB` : ''}
+        </p>
+      </div>
+      {error && <p className="cw__error" style={{ marginTop: '0.5rem' }}>{error}</p>}
+      {files.length > 0 && (
+        <ul className="cw__file-list">
+          {files.map((f, i) => (
+            <li key={`${f.name}-${f.size}-${i}`} className="cw__file-item">
+              <span className="cw__file-name">{f.name} <span className="cw__file-size">({formatBytes(f.size)})</span></span>
+              <button type="button" onClick={() => onChange([])}
+                className="cw__file-remove" aria-label={`Remove ${f.name}`}>×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
 // ─── Main wizard ────────────────────────────────────────────────────────────
 export default function CommissionWorkflow({ service }) {
   const styleOptions = service.styleOptions || [];
   const digitalPrice = Number(service.digitalPrice) || 0;
-  const legacyPrice = Number(service.price) || 0;
+  const animationMusicPrice = Number(service.animationMusicPrice) || 0;
+  const animationVoPrice = Number(service.animationVoPrice) || 0;
+  const artworkFee = service.artworkFee != null ? Number(service.artworkFee) : 5.0; // default £5 (Cartoonify)
+  const sizeLabels = service.printSizeLabels || DEFAULT_SIZE_LABELS;
+
   const hasDigitalOption = digitalPrice > 0;
+  const hasAnimationMusic = animationMusicPrice > 0;
+  const hasAnimationVo = animationVoPrice > 0;
+  const hasAnimation = hasAnimationMusic || hasAnimationVo;
 
   const hasPrintOption = useMemo(() => {
     const u = service.printUpcharges;
@@ -285,18 +392,21 @@ export default function CommissionWorkflow({ service }) {
     return anyPositive(u.poster) || anyPositive(u.canvasStandard) || anyPositive(u.canvasGallery);
   }, [service]);
 
-  // Determine available paths
+  // Available paths in display order
   const availablePaths = useMemo(() => {
     const paths = [];
     if (hasDigitalOption) paths.push('digital');
     if (hasPrintOption) paths.push('singlePrint');
     if (hasDigitalOption && hasPrintOption) paths.push('bundle');
+    if (hasAnimationMusic) paths.push('animation-music');
+    if (hasAnimationVo) paths.push('animation-vo');
     return paths;
-  }, [hasDigitalOption, hasPrintOption]);
+  }, [hasDigitalOption, hasPrintOption, hasAnimationMusic, hasAnimationVo]);
 
   const startStep = availablePaths.length > 1 ? 0 : 1;
   const [step, setStep] = useState(startStep);
   const [orderType, setOrderType] = useState(availablePaths[0] || 'digital');
+  const [includePrintsWithAnimation, setIncludePrintsWithAnimation] = useState(false);
   const [briefValues, setBriefValues] = useState({});
   const [briefFiles, setBriefFiles] = useState({});
   const [prints, setPrints] = useState([{ styleKey: '', format: '', size: '' }]);
@@ -306,55 +416,64 @@ export default function CommissionWorkflow({ service }) {
 
   const briefingFields = service.briefingFields || [];
 
-  // Hide style picker in brief for digital and singlePrint paths
-  // (digital includes all styles; singlePrint chooses per-print)
+  // ─── Filter briefing fields by orderType using showFor ────────────────────
   const filteredBriefingFields = useMemo(() => {
-    if (orderType === 'digital' || orderType === 'singlePrint') {
-      return briefingFields.filter((f) => f.fieldType !== 'styleSwatch');
-    }
-    return briefingFields;
+    return briefingFields
+      .filter((f) => {
+        // Style picker hidden for digital and singlePrint paths
+        // (digital includes all styles; singlePrint chooses style per-print)
+        if (f.fieldType === 'styleSwatch' && (orderType === 'digital' || orderType === 'singlePrint')) {
+          return false;
+        }
+        // Honour showFor — if set, only show when orderType matches
+        if (Array.isArray(f.showFor) && f.showFor.length > 0) {
+          return f.showFor.includes(orderType);
+        }
+        return true;
+      });
   }, [briefingFields, orderType]);
 
-  // Lookup standalone print price (= shop price + £5 artwork fee)
-  function lookupStandalonePrintPrice(format, size) {
+  // Whether the print configuration step is needed
+  const orderInvolvesPrints =
+    orderType === 'singlePrint' ||
+    orderType === 'bundle' ||
+    ((orderType === 'animation-music' || orderType === 'animation-vo') && includePrintsWithAnimation);
+
+  // ─── Pricing helpers ──────────────────────────────────────────────────────
+  function lookupBasePrintPrice(format, size) {
     const upcharges = service.printUpcharges;
     const key = formatToSanityKey(format);
     return Number(upcharges?.[key]?.[size]) || 0;
   }
-
-  // Lookup shop-only price (= standalone print price - £5)
-  // Used for bundle path where the £5 artwork fee is waived.
-  function lookupShopPrice(format, size) {
-    const standalone = lookupStandalonePrintPrice(format, size);
-    return Math.max(0, standalone - ARTWORK_FEE);
+  function lookupStandalonePrintPrice(format, size) {
+    return lookupBasePrintPrice(format, size) + artworkFee;
   }
 
-  // Compute pricing breakdown for display + checkout
+  // ─── Pricing breakdown ────────────────────────────────────────────────────
   const pricing = useMemo(() => {
+    // Digital-only path
     if (orderType === 'digital') {
+      const label = styleOptions.length > 0
+        ? `Digital bundle (all ${styleOptions.length} styles)`
+        : 'Digital download';
       return {
-        lines: [{
-          label: `Digital bundle (all ${styleOptions.length || ''} styles)`.replace('  ', ' '),
-          amount: digitalPrice,
-        }],
+        lines: [{ label, amount: digitalPrice }],
         total: digitalPrice,
         artworkFeeWaived: false,
       };
     }
 
+    // Single print only
     if (orderType === 'singlePrint') {
       const p = prints[0];
-      if (!p?.format || !p?.size) {
-        return { lines: [], total: 0, artworkFeeWaived: false };
-      }
+      if (!p?.format || !p?.size) return { lines: [], total: 0, artworkFeeWaived: false };
       const total = lookupStandalonePrintPrice(p.format, p.size);
       const styleLabel = p.styleKey && styleOptions.length > 0
-        ? styleOptions.find((s) => s.key === p.styleKey)?.label
-        : null;
+        ? styleOptions.find((s) => s.key === p.styleKey)?.label : null;
       return {
         lines: [{
-          label: `${FORMAT_LABELS[p.format]} — ${SIZE_LABELS[p.size]}${styleLabel ? ` (${styleLabel})` : ''}`,
-          note: `Includes £${ARTWORK_FEE.toFixed(2)} artwork fee`,
+          label: `${FORMAT_LABELS[p.format]} — ${sizeLabels[p.size] || p.size}${styleLabel ? ` (${styleLabel})` : ''}`,
+          note: `Includes £${artworkFee.toFixed(2)} artwork fee`,
           amount: total,
         }],
         total,
@@ -362,34 +481,66 @@ export default function CommissionWorkflow({ service }) {
       };
     }
 
-    // bundle
-    const validPrints = prints.filter((p) => p.format && p.size);
-    const lines = [
-      {
-        label: `Digital bundle (all ${styleOptions.length || ''} styles)`.replace('  ', ' '),
-        amount: digitalPrice,
-      },
-    ];
-    let runningTotal = digitalPrice;
-    validPrints.forEach((p) => {
-      const shop = lookupShopPrice(p.format, p.size);
-      const styleLabel = p.styleKey && styleOptions.length > 0
-        ? styleOptions.find((s) => s.key === p.styleKey)?.label
-        : null;
-      lines.push({
-        label: `${FORMAT_LABELS[p.format]} — ${SIZE_LABELS[p.size]}${styleLabel ? ` (${styleLabel})` : ''}`,
-        note: '£5 artwork fee waived',
-        amount: shop,
+    // Bundle: digital + N prints (artwork fee waived)
+    if (orderType === 'bundle') {
+      const validPrints = prints.filter((p) => p.format && p.size);
+      const digitalLabel = styleOptions.length > 0
+        ? `Digital bundle (all ${styleOptions.length} styles)`
+        : 'Digital download';
+      const lines = [{ label: digitalLabel, amount: digitalPrice }];
+      let total = digitalPrice;
+      validPrints.forEach((p) => {
+        const base = lookupBasePrintPrice(p.format, p.size);
+        const styleLabel = p.styleKey && styleOptions.length > 0
+          ? styleOptions.find((s) => s.key === p.styleKey)?.label : null;
+        lines.push({
+          label: `${FORMAT_LABELS[p.format]} — ${sizeLabels[p.size] || p.size}${styleLabel ? ` (${styleLabel})` : ''}`,
+          note: `£${artworkFee.toFixed(2)} artwork fee waived`,
+          amount: base,
+        });
+        total += base;
       });
-      runningTotal += shop;
-    });
-    return {
-      lines,
-      total: runningTotal,
-      artworkFeeWaived: validPrints.length > 0,
-      savedAmount: validPrints.length * ARTWORK_FEE,
-    };
-  }, [orderType, prints, digitalPrice, service, styleOptions]);
+      return {
+        lines, total,
+        artworkFeeWaived: validPrints.length > 0,
+        savedAmount: validPrints.length * artworkFee,
+      };
+    }
+
+    // Animation paths
+    if (orderType === 'animation-music' || orderType === 'animation-vo') {
+      const animPrice = orderType === 'animation-music' ? animationMusicPrice : animationVoPrice;
+      const animLabel = orderType === 'animation-music'
+        ? 'Animation (30s with music) + digital still'
+        : 'Animation (30s with music + voiceover) + digital still';
+      const lines = [{ label: animLabel, amount: animPrice }];
+      let total = animPrice;
+
+      if (includePrintsWithAnimation) {
+        const validPrints = prints.filter((p) => p.format && p.size);
+        validPrints.forEach((p) => {
+          const base = lookupBasePrintPrice(p.format, p.size);
+          const styleLabel = p.styleKey && styleOptions.length > 0
+            ? styleOptions.find((s) => s.key === p.styleKey)?.label : null;
+          lines.push({
+            label: `${FORMAT_LABELS[p.format]} — ${sizeLabels[p.size] || p.size}${styleLabel ? ` (${styleLabel})` : ''}`,
+            note: `£${artworkFee.toFixed(2)} artwork fee waived`,
+            amount: base,
+          });
+          total += base;
+        });
+        return {
+          lines, total,
+          artworkFeeWaived: validPrints.length > 0,
+          savedAmount: validPrints.length * artworkFee,
+        };
+      }
+
+      return { lines, total, artworkFeeWaived: false };
+    }
+
+    return { lines: [], total: 0, artworkFeeWaived: false };
+  }, [orderType, prints, digitalPrice, animationMusicPrice, animationVoPrice, includePrintsWithAnimation, artworkFee, sizeLabels, service, styleOptions]);
 
   // ─── Validation ────────────────────────────────────────────────────────────
   function validateBriefStep() {
@@ -401,6 +552,8 @@ export default function CommissionWorkflow({ service }) {
         const arr = briefFiles[f.key] || [];
         const min = f.minPhotos || 1;
         if (arr.length < min) return `Please upload at least ${min} photo${min > 1 ? 's' : ''} for "${f.label}".`;
+      } else if (f.fieldType === 'file') {
+        if ((briefFiles[f.key] || []).length === 0) return `Please upload a file for "${f.label}".`;
       } else {
         const v = (briefValues[f.key] || '').trim();
         if (!v) return `Please fill in "${f.label}".`;
@@ -413,10 +566,10 @@ export default function CommissionWorkflow({ service }) {
   }
 
   function validatePrintsStep() {
-    if (orderType === 'digital') return null;
+    if (!orderInvolvesPrints) return null;
     const requireStyle = styleOptions.length > 0;
-    const validatePrints = orderType === 'singlePrint' ? prints.slice(0, 1) : prints;
-    for (const [i, p] of validatePrints.entries()) {
+    const printsToValidate = orderType === 'singlePrint' ? prints.slice(0, 1) : prints;
+    for (const [i, p] of printsToValidate.entries()) {
       if (!p.format || !p.size) return `Please choose a format and size for print #${i + 1}.`;
       if (requireStyle && !p.styleKey) return `Please choose a style for print #${i + 1}.`;
     }
@@ -430,8 +583,8 @@ export default function CommissionWorkflow({ service }) {
     if (step === 1) {
       const err = validateBriefStep();
       if (err) { setError(err); return; }
-      if (orderType === 'digital') { setStep(3); return; }
-      setStep(2);
+      if (orderInvolvesPrints) setStep(2);
+      else setStep(3);
     } else if (step === 2) {
       const err = validatePrintsStep();
       if (err) { setError(err); return; }
@@ -441,43 +594,41 @@ export default function CommissionWorkflow({ service }) {
 
   function back() {
     setError('');
-    if (step === 3 && orderType === 'digital') { setStep(1); return; }
+    if (step === 3 && !orderInvolvesPrints) { setStep(1); return; }
     if (step === 1 && availablePaths.length > 1) { setStep(0); return; }
     setStep((s) => Math.max(0, s - 1));
+  }
+
+  function selectPath(path) {
+    setOrderType(path);
+    setIncludePrintsWithAnimation(false);
+    if (path === 'singlePrint') {
+      setPrints((p) => [p[0] || { styleKey: '', format: '', size: '' }]);
+    } else {
+      setPrints([{ styleKey: '', format: '', size: '' }]);
+    }
   }
 
   function addPrint() {
     setPrints((p) => [...p, { styleKey: '', format: '', size: '' }]);
   }
-
   function removePrint(i) {
     setPrints((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p));
   }
-
   function updatePrint(i, patch) {
     setPrints((p) => p.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
-  }
-
-  // Reset prints array when changing path
-  function selectPath(path) {
-    setOrderType(path);
-    if (path === 'digital') {
-      setPrints([{ styleKey: '', format: '', size: '' }]);
-    } else if (path === 'singlePrint') {
-      setPrints((p) => [p[0] || { styleKey: '', format: '', size: '' }]);
-    }
   }
 
   // ─── Submit ────────────────────────────────────────────────────────────────
   async function submit() {
     setError('');
     setSubmitting(true);
-
     try {
       const fd = new FormData();
       fd.append('serviceSlug', service.slug);
       fd.append('serviceTitle', service.title);
       fd.append('orderType', orderType);
+      fd.append('includePrintsWithAnimation', includePrintsWithAnimation ? 'true' : 'false');
 
       const name = briefValues.customerName || '';
       const email = briefValues.customerEmail || '';
@@ -486,27 +637,31 @@ export default function CommissionWorkflow({ service }) {
       fd.append('email', email);
       if (phone) fd.append('phone', phone);
 
-      const briefSummary = briefingFields
-        .filter((f) => !['photo', 'photos'].includes(f.fieldType))
+      const briefSummary = filteredBriefingFields
+        .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
         .filter((f) => !['customerName', 'customerEmail', 'customerPhone'].includes(f.key))
         .map((f) => `${f.label}: ${briefValues[f.key] || '(not provided)'}`)
         .join('\n');
       fd.append('brief', briefSummary);
 
-      const briefData = briefingFields
-        .filter((f) => !['photo', 'photos'].includes(f.fieldType))
+      const briefData = filteredBriefingFields
+        .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
         .map((f) => ({ key: f.key, label: f.label, value: briefValues[f.key] || '' }));
       fd.append('briefData', JSON.stringify(briefData));
 
-      if (orderType !== 'digital') {
+      if (orderInvolvesPrints) {
         const validPrints = (orderType === 'singlePrint' ? prints.slice(0, 1) : prints)
           .filter((p) => p.format && p.size);
         fd.append('prints', JSON.stringify(validPrints));
         fd.append('shippingAddress', shippingAddress);
       }
 
-      Object.values(briefFiles).forEach((arr) => {
-        (arr || []).forEach((f) => fd.append('files', f));
+      Object.entries(briefFiles).forEach(([fieldKey, arr]) => {
+        (arr || []).forEach((f) => {
+          // Tag every uploaded file with its source field so the function knows
+          // whether it's the original photo, subject refs, location refs, or a generic file.
+          fd.append('files', f, `${fieldKey}__${f.name}`);
+        });
       });
 
       const res = await fetch('/.netlify/functions/commission-checkout', { method: 'POST', body: fd });
@@ -523,38 +678,36 @@ export default function CommissionWorkflow({ service }) {
     }
   }
 
-  // ─── Render ────────────────────────────────────────────────────────────────
-  // Stepper math: count visible steps based on path
+  // ─── Render helpers ────────────────────────────────────────────────────────
   const totalSteps =
-    (availablePaths.length > 1 ? 1 : 0) +    // step 0 if multi-path
-    1 +                                       // step 1 brief
-    (orderType !== 'digital' ? 1 : 0) +       // step 2 prints
-    1;                                        // step 3 review
-
+    (availablePaths.length > 1 ? 1 : 0) +
+    1 +
+    (orderInvolvesPrints ? 1 : 0) +
+    1;
   const displayStepIndex =
-    step === 0 ? 0 :
-    step === 1 ? (availablePaths.length > 1 ? 1 : 0) :
-    step === 2 ? (availablePaths.length > 1 ? 2 : 1) :
-    /* step === 3 */ totalSteps - 1;
+    step === 0 ? 0
+    : step === 1 ? (availablePaths.length > 1 ? 1 : 0)
+    : step === 2 ? (availablePaths.length > 1 ? 2 : 1)
+    : totalSteps - 1;
 
-  // Cheapest single-print starting price (for path card display)
-  const cheapestSinglePrintPrice = useMemo(() => {
+  // Cheapest standalone-print price (for the Single Print card)
+  const cheapestStandalonePrint = useMemo(() => {
     const u = service.printUpcharges;
     if (!u) return null;
     const all = [];
     ['poster', 'canvasStandard', 'canvasGallery'].forEach((fmt) => {
       ['small', 'medium', 'large'].forEach((size) => {
         const p = Number(u?.[fmt]?.[size]);
-        if (p > 0) all.push(p);
+        if (p > 0) all.push(p + artworkFee);
       });
     });
     return all.length > 0 ? Math.min(...all) : null;
-  }, [service]);
+  }, [service, artworkFee]);
 
-  const cheapestBundlePrice = useMemo(() => {
-    if (!hasDigitalOption || !cheapestSinglePrintPrice) return null;
-    return digitalPrice + Math.max(0, cheapestSinglePrintPrice - ARTWORK_FEE);
-  }, [digitalPrice, cheapestSinglePrintPrice, hasDigitalOption]);
+  const cheapestBundle = useMemo(() => {
+    if (!hasDigitalOption || !cheapestStandalonePrint) return null;
+    return digitalPrice + Math.max(0, cheapestStandalonePrint - artworkFee);
+  }, [digitalPrice, cheapestStandalonePrint, hasDigitalOption, artworkFee]);
 
   return (
     <div className="cw">
@@ -577,10 +730,12 @@ export default function CommissionWorkflow({ service }) {
               <button type="button"
                 className={`cw__path-card${orderType === 'digital' ? ' cw__path-card--selected' : ''}`}
                 onClick={() => selectPath('digital')}>
-                <span className="cw__path-title">Digital Bundle</span>
+                <span className="cw__path-title">Digital {styleOptions.length > 0 ? 'Bundle' : 'Download'}</span>
                 <span className="cw__path-price">{priceLabel(digitalPrice)}</span>
                 <span className="cw__path-desc">
-                  All {styleOptions.length || 'available'} styles delivered as digital files. No physical print.
+                  {styleOptions.length > 0
+                    ? `All ${styleOptions.length} styles as digital files. No physical print.`
+                    : 'Digital file delivered to your inbox. No physical print.'}
                 </span>
               </button>
             )}
@@ -589,9 +744,9 @@ export default function CommissionWorkflow({ service }) {
                 className={`cw__path-card${orderType === 'singlePrint' ? ' cw__path-card--selected' : ''}`}
                 onClick={() => selectPath('singlePrint')}>
                 <span className="cw__path-title">Single Print</span>
-                <span className="cw__path-price">from {priceLabel(cheapestSinglePrintPrice)}</span>
+                <span className="cw__path-price">from {priceLabel(cheapestStandalonePrint)}</span>
                 <span className="cw__path-desc">
-                  One physical print in your chosen style. Includes the digital file for that style.
+                  One physical print + digital file. Includes £{artworkFee.toFixed(2)} artwork fee.
                 </span>
               </button>
             )}
@@ -601,13 +756,46 @@ export default function CommissionWorkflow({ service }) {
                 onClick={() => selectPath('bundle')}>
                 <span className="cw__path-badge">Best Value</span>
                 <span className="cw__path-title">Bundle + Prints</span>
-                <span className="cw__path-price">from {priceLabel(cheapestBundlePrice)}</span>
+                <span className="cw__path-price">from {priceLabel(cheapestBundle)}</span>
                 <span className="cw__path-desc">
-                  Digital bundle plus any number of prints. £5 artwork fee waived on every print.
+                  Digital{styleOptions.length > 0 ? ' bundle' : ' file'} + any prints. £{artworkFee.toFixed(2)} artwork fee waived per print.
+                </span>
+              </button>
+            )}
+            {hasAnimationMusic && (
+              <button type="button"
+                className={`cw__path-card${orderType === 'animation-music' ? ' cw__path-card--selected' : ''}`}
+                onClick={() => selectPath('animation-music')}>
+                <span className="cw__path-title">Animation (Music)</span>
+                <span className="cw__path-price">{priceLabel(animationMusicPrice)}</span>
+                <span className="cw__path-desc">
+                  30-second animated short with a custom soundtrack. Includes the digital still.
+                </span>
+              </button>
+            )}
+            {hasAnimationVo && (
+              <button type="button"
+                className={`cw__path-card${orderType === 'animation-vo' ? ' cw__path-card--selected' : ''}`}
+                onClick={() => selectPath('animation-vo')}>
+                <span className="cw__path-title">Animation + Voiceover</span>
+                <span className="cw__path-price">{priceLabel(animationVoPrice)}</span>
+                <span className="cw__path-desc">
+                  30-second animated short with soundtrack AND AI voiceover. Includes the digital still.
                 </span>
               </button>
             )}
           </div>
+
+          {/* Add-prints checkbox for animation paths */}
+          {(orderType === 'animation-music' || orderType === 'animation-vo') && hasPrintOption && (
+            <label className="cw__inline-toggle">
+              <input type="checkbox" checked={includePrintsWithAnimation}
+                onChange={(e) => setIncludePrintsWithAnimation(e.target.checked)} />
+              <span>
+                Also add prints to this order — £{artworkFee.toFixed(2)} artwork fee waived per print
+              </span>
+            </label>
+          )}
         </section>
       )}
 
@@ -624,25 +812,25 @@ export default function CommissionWorkflow({ service }) {
               styleOptions={styleOptions} />
           ))}
           {filteredBriefingFields.length === 0 && (
-            <p className="cw__empty">This service doesn't have a briefing form configured yet. Please contact us directly to commission.</p>
+            <p className="cw__empty">This service doesn't have a briefing form configured yet. Please contact us directly.</p>
           )}
         </section>
       )}
 
       {/* STEP 2 — Prints */}
-      {step === 2 && orderType !== 'digital' && (
+      {step === 2 && orderInvolvesPrints && (
         <section className="cw__section">
           <p className="cw__step-intro">
             {orderType === 'singlePrint'
               ? 'Configure your print.'
-              : 'Add as many prints as you like — the £5 artwork fee is waived on every one because the digital bundle covers it.'}
+              : `Add as many prints as you like — the £${artworkFee.toFixed(2)} artwork fee is waived on every one.`}
           </p>
 
           {(orderType === 'singlePrint' ? prints.slice(0, 1) : prints).map((p, i) => (
             <div key={i} className="cw__print-row">
               <div className="cw__print-header">
                 <strong>Print {i + 1}</strong>
-                {orderType === 'bundle' && prints.length > 1 && (
+                {orderType !== 'singlePrint' && prints.length > 1 && (
                   <button type="button" className="cw__print-remove" onClick={() => removePrint(i)}>
                     Remove
                   </button>
@@ -678,29 +866,29 @@ export default function CommissionWorkflow({ service }) {
                   <select className="cw__select" value={p.size} disabled={!p.format}
                     onChange={(e) => updatePrint(i, { size: e.target.value })} required>
                     <option value="">Size…</option>
-                    <option value="small">Small (12×12")</option>
-                    <option value="medium">Medium (16×16")</option>
-                    <option value="large">Large (20×20")</option>
+                    <option value="small">{sizeLabels.small || 'Small'}</option>
+                    <option value="medium">{sizeLabels.medium || 'Medium'}</option>
+                    <option value="large">{sizeLabels.large || 'Large'}</option>
                   </select>
                 </label>
               </div>
 
               {p.format && p.size && (
                 <p className="cw__print-price">
-                  {orderType === 'bundle' ? (
-                    <>
-                      {priceLabel(lookupShopPrice(p.format, p.size))}
-                      <span className="cw__print-savings"> · £5 artwork fee waived</span>
-                    </>
-                  ) : (
+                  {orderType === 'singlePrint' ? (
                     <>{priceLabel(lookupStandalonePrintPrice(p.format, p.size))}</>
+                  ) : (
+                    <>
+                      {priceLabel(lookupBasePrintPrice(p.format, p.size))}
+                      <span className="cw__print-savings"> · £{artworkFee.toFixed(2)} artwork fee waived</span>
+                    </>
                   )}
                 </p>
               )}
             </div>
           ))}
 
-          {orderType === 'bundle' && (
+          {orderType !== 'singlePrint' && (
             <button type="button" className="cw__btn cw__btn--add" onClick={addPrint}>
               + Add another print
             </button>
@@ -730,30 +918,33 @@ export default function CommissionWorkflow({ service }) {
             <div className="cw__summary-row">
               <dt>Order type</dt>
               <dd>
-                {orderType === 'digital' && 'Digital bundle'}
-                {orderType === 'singlePrint' && 'Single print'}
-                {orderType === 'bundle' && `Bundle + ${prints.filter((p) => p.format && p.size).length} print(s)`}
+                {ORDER_TYPE_LABELS[orderType] || orderType}
+                {(orderType === 'animation-music' || orderType === 'animation-vo') && includePrintsWithAnimation && (
+                  <> + {prints.filter((p) => p.format && p.size).length} print(s)</>
+                )}
               </dd>
             </div>
-            {briefingFields
-              .filter((f) => !['photo', 'photos'].includes(f.fieldType))
-              .filter((f) => f.fieldType !== 'styleSwatch' || orderType === 'bundle')
+            {filteredBriefingFields
+              .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
               .map((f) => (
                 <div className="cw__summary-row" key={f.key}>
                   <dt>{f.label}</dt>
                   <dd>{briefValues[f.key] || <em>(not provided)</em>}</dd>
                 </div>
               ))}
-            {briefingFields.filter((f) => ['photo', 'photos'].includes(f.fieldType)).map((f) => {
+            {filteredBriefingFields.filter((f) => ['photo', 'photos', 'file'].includes(f.fieldType)).map((f) => {
               const arr = briefFiles[f.key] || [];
               return (
                 <div className="cw__summary-row" key={f.key}>
                   <dt>{f.label}</dt>
-                  <dd>{arr.length === 0 ? <em>(none uploaded)</em> : `${arr.length} photo${arr.length > 1 ? 's' : ''} ready`}</dd>
+                  <dd>{arr.length === 0 ? <em>(none uploaded)</em>
+                    : f.fieldType === 'file'
+                      ? `${arr[0].name} (${formatBytes(arr[0].size)})`
+                      : `${arr.length} photo${arr.length > 1 ? 's' : ''} ready`}</dd>
                 </div>
               );
             })}
-            {orderType !== 'digital' && shippingAddress && (
+            {orderInvolvesPrints && shippingAddress && (
               <div className="cw__summary-row">
                 <dt>Shipping to</dt>
                 <dd style={{ whiteSpace: 'pre-line' }}>{shippingAddress}</dd>
@@ -773,7 +964,9 @@ export default function CommissionWorkflow({ service }) {
             ))}
             {pricing.artworkFeeWaived && pricing.savedAmount > 0 && (
               <div className="cw__line-item cw__line-item--savings">
-                <span className="cw__line-label">Bundle saving (£5 × {prints.filter((p) => p.format && p.size).length} prints)</span>
+                <span className="cw__line-label">
+                  Bundle saving (£{artworkFee.toFixed(2)} × {prints.filter((p) => p.format && p.size).length} prints)
+                </span>
                 <span className="cw__line-amount">−{priceLabel(pricing.savedAmount)}</span>
               </div>
             )}

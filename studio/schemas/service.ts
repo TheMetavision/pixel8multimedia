@@ -162,11 +162,51 @@ export default defineType({
       ],
     }),
     defineField({
-      name: 'printUpcharges',
-      title: 'Print Prices (£)',
+      name: 'animationMusicPrice',
+      title: 'Animation (Music) Price (£)',
+      type: 'number',
+      group: 'pricing',
+      description:
+        'Flat price for a 30-second animated short with a generated soundtrack. Customer also receives the digital still at no extra cost. Leave blank if this service has no animation option.',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'animationVoPrice',
+      title: 'Animation (Music + Voiceover) Price (£)',
+      type: 'number',
+      group: 'pricing',
+      description:
+        'Flat price for a 30-second animated short with soundtrack AND AI-generated voiceover. Customer also receives the digital still. Leave blank if this service has no animation+VO option.',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'artworkFee',
+      title: 'Artwork Creation Fee (£)',
+      type: 'number',
+      group: 'pricing',
+      description:
+        'Per-print fee added when a customer buys a print WITHOUT also buying a digital or animation base order. This fee is waived if the artwork is already paid for via the digital bundle or animation order in the same checkout. Default: £5 (Cartoonify uses £5, Missing Moment uses £19.99).',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'printSizeLabels',
+      title: 'Print Size Labels',
       type: 'object',
       group: 'pricing',
-      description: 'Standalone print prices = shop product price + £5 artwork creation fee. Bundle orders (digital + print at same checkout) get the £5 waived per print, calculated automatically.',
+      description:
+        'Customer-facing labels for the small/medium/large print sizes for THIS service. Cartoonify uses 12×12/16×16/20×20 squares; Missing Moment uses 12×8/16×12/24×16 rectangles. Leave blank to use defaults (square sizes).',
+      fields: [
+        { name: 'small', title: 'Small label', type: 'string', description: 'E.g. "Small (12×8\\")"' },
+        { name: 'medium', title: 'Medium label', type: 'string', description: 'E.g. "Medium (16×12\\")"' },
+        { name: 'large', title: 'Large label', type: 'string', description: 'E.g. "Large (24×16\\")"' },
+      ],
+    }),
+    defineField({
+      name: 'printUpcharges',
+      title: 'Print Product Prices (£)',
+      type: 'object',
+      group: 'pricing',
+      description: 'Print product prices BEFORE the artwork creation fee. The wizard adds the artworkFee (above) on top for standalone single-print purchases, and waives it when the customer also orders a digital or animation base.',
       fields: [
         {
           name: 'poster',
@@ -249,6 +289,7 @@ export default defineType({
                 { title: 'Style Picker — uses service.styleOptions (or A–J fallback)', value: 'styleSwatch' },
                 { title: 'Photo — single upload', value: 'photo' },
                 { title: 'Photos — multiple uploads', value: 'photos' },
+                { title: 'File — generic file upload (audio, video, document)', value: 'file' },
               ],
               layout: 'dropdown',
             },
@@ -265,6 +306,22 @@ export default defineType({
             title: 'Required',
             type: 'boolean',
             initialValue: true,
+          }),
+          defineField({
+            name: 'showFor',
+            title: 'Show only for these order types',
+            type: 'array',
+            of: [{ type: 'string' }],
+            options: {
+              list: [
+                { title: 'Digital Bundle', value: 'digital' },
+                { title: 'Single Print (standalone)', value: 'singlePrint' },
+                { title: 'Bundle + Prints', value: 'bundle' },
+                { title: 'Animation (Music)', value: 'animation-music' },
+                { title: 'Animation (Music + Voiceover)', value: 'animation-vo' },
+              ],
+            },
+            description: 'If left empty, this field shows for ALL order types. If populated, the field only renders when the customer picks one of the selected order types. Example: voiceover script field should only show for "Animation (Music + Voiceover)".',
           }),
           defineField({
             name: 'options',
@@ -288,13 +345,28 @@ export default defineType({
             description: 'For Photos field only. Upper limit.',
             hidden: ({ parent }: any) => parent?.fieldType !== 'photos',
           }),
+          defineField({
+            name: 'acceptedFileTypes',
+            title: 'Accepted file types (File only)',
+            type: 'string',
+            description: 'Comma-separated MIME types or extensions (e.g. "audio/*" or ".mp3,.wav,.m4a"). Used only when fieldType = File.',
+            hidden: ({ parent }: any) => parent?.fieldType !== 'file',
+          }),
+          defineField({
+            name: 'maxFileSizeMb',
+            title: 'Max file size (MB)',
+            type: 'number',
+            description: 'Maximum size in MB for File uploads. Defaults to 10MB.',
+            hidden: ({ parent }: any) => parent?.fieldType !== 'file',
+          }),
         ],
         preview: {
-          select: { title: 'label', subtitle: 'fieldType', required: 'required' },
-          prepare({ title, subtitle, required }) {
+          select: { title: 'label', subtitle: 'fieldType', required: 'required', showFor: 'showFor' },
+          prepare({ title, subtitle, required, showFor }) {
+            const conditional = Array.isArray(showFor) && showFor.length > 0 ? ` · ${showFor.length} path(s)` : '';
             return {
               title: `${title}${required ? ' *' : ''}`,
-              subtitle: subtitle || 'No type set',
+              subtitle: (subtitle || 'No type set') + conditional,
             };
           },
         },

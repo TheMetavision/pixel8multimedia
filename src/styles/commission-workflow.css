@@ -781,3 +781,39 @@
 .cw__line-item--savings .cw__line-amount {
   color: #76FF03;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * APPEND THESE STYLES to the end of src/styles/commission-workflow.css
+ * They add support for the "Also add prints" inline toggle on animation paths.
+ * Everything else (path cards, style grid, print rows, line items) is already
+ * in the existing CSS from the Cartoonify bundle.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.cw__inline-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin-top: 1rem;
+  padding: 0.875rem 1rem;
+  background: rgba(240, 120, 40, 0.06);
+  border: 1px solid rgba(240, 120, 40, 0.25);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text, #F0EDE6);
+  line-height: 1.5;
+}
+
+.cw__inline-toggle input[type="checkbox"] {
+  flex-shrink: 0;
+  margin-top: 2px;
+  width: 1rem;
+  height: 1rem;
+  accent-color: #F07828;
+  cursor: pointer;
+}
+
+.cw__inline-toggle:hover {
+  background: rgba(240, 120, 40, 0.1);
+  border-color: rgba(240, 120, 40, 0.4);
+}

@@ -1,16 +1,13 @@
 // netlify/functions/commission-checkout.mts
 // Receives commission wizard payload (multipart), uploads customer files to Sanity,
-// creates a commission document with structured briefData + prints array, creates
-// a Stripe Checkout Session with separate line items per print, returns checkout URL.
+// creates a commission document, creates Stripe Checkout Session, returns URL.
 //
-// PHASE 3 (May 16 2026):
-//   - New orderType payload: 'digital' | 'singlePrint' | 'bundle'
-//   - Bundle path waives the £5 artwork fee per print
-//   - Multi-print support — `prints` is an array
-//   - Stripe line items rendered per print for clearer audit trail
-//   - Each print can have its own style key (from service.styleOptions)
-//
-// Backwards compatible with legacy deliveryType payload from old wizard.
+// PHASE 4 (May 17 2026):
+//   - New orderTypes: 'animation-music' and 'animation-vo' (Missing Moment)
+//   - includePrintsWithAnimation flag — prints can be added to animation orders
+//   - Per-service `artworkFee` (Cartoonify £5, Missing Moment £19.99)
+//   - Per-service `printSizeLabels` for non-square services
+//   - Stripe line items rendered per print/animation/digital for clear audit trail
 
 import type { Context } from '@netlify/functions';
 import Stripe from 'stripe';
@@ -28,12 +25,11 @@ const sanity = createClient({
 });
 
 const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
-const ARTWORK_FEE_GBP = 5.0;
 
-const SIZE_LABELS: Record<string, string> = {
-  small: 'Small (12×12")',
-  medium: 'Medium (16×16")',
-  large: 'Large (20×20")',
+const DEFAULT_SIZE_LABELS: Record<string, string> = {
+  small: 'Small',
+  medium: 'Medium',
+  large: 'Large',
 };
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -48,254 +44,231 @@ const FORMAT_TO_SANITY_KEY: Record<string, string> = {
   'canvas-gallery': 'canvasGallery',
 };
 
-// Legacy size key map for backward compat with old wizard payloads
 const SIZE_KEY_MAP: Record<string, 'small' | 'medium' | 'large'> = {
-  '12x8': 'small',
-  '16x12': 'medium',
-  '24x16': 'large',
-  '12x12': 'small',
-  '16x16': 'medium',
-  '20x20': 'large',
-  small: 'small',
-  medium: 'medium',
-  large: 'large',
+  '12x8': 'small',  '16x12': 'medium', '24x16': 'large',
+  '12x12': 'small', '16x16': 'medium', '20x20': 'large',
+  small: 'small',   medium: 'medium',  large: 'large',
 };
 
-interface PrintLineItem {
-  styleKey?: string;
-  styleLabel?: string;
-  format: string;
-  size: 'small' | 'medium' | 'large';
-  shopPriceGbp: number;          // shop product price (no artwork fee)
-  standalonePriceGbp: number;    // shop + £5 artwork fee
-  appliedPriceGbp: number;       // what we actually charge for this line
-  artworkFeeApplied: boolean;    // false if waived (bundle path)
-}
+type OrderType = 'digital' | 'singlePrint' | 'bundle' | 'animation-music' | 'animation-vo';
 
+interface ParsedPrint { styleKey?: string; format?: string; size?: string; }
+
+interface BreakdownLine { label: string; amount: number; artworkFeeWaived: boolean; }
 interface PriceBreakdown {
-  orderType: 'digital' | 'singlePrint' | 'bundle';
+  orderType: OrderType;
   digitalBundle?: { label: string; amount: number };
-  prints: Array<{ label: string; amount: number; artworkFeeWaived: boolean }>;
+  animation?: { label: string; amount: number };
+  prints: BreakdownLine[];
   total: number;
   totalArtworkFeeSaved: number;
+  printFormatLabel: string;
 }
 
-interface ParsedPrint {
-  styleKey?: string;
-  format?: string;
-  size?: string;
+function sizeLabel(service: any, sizeKey: string): string {
+  return service?.printSizeLabels?.[sizeKey] || DEFAULT_SIZE_LABELS[sizeKey] || sizeKey;
 }
 
-function pretty(format: string, size: string, styleLabel?: string): string {
-  const base = `${FORMAT_LABELS[format] || format} — ${SIZE_LABELS[size] || size}`;
+function pretty(service: any, format: string, sizeKey: string, styleLabel?: string): string {
+  const base = `${FORMAT_LABELS[format] || format} — ${sizeLabel(service, sizeKey)}`;
   return styleLabel ? `${base} (${styleLabel})` : base;
 }
 
 function calculatePricing(args: {
-  orderType: string;
+  orderType: OrderType;
   service: any;
   prints: ParsedPrint[];
+  includePrintsWithAnimation: boolean;
 }): { breakdown: PriceBreakdown; stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] } {
-  const { service, prints } = args;
+  const { service, prints, orderType, includePrintsWithAnimation } = args;
   const digitalPriceGbp = Number(service.digitalPrice) || 0;
+  const animationMusicGbp = Number(service.animationMusicPrice) || 0;
+  const animationVoGbp = Number(service.animationVoPrice) || 0;
+  const artworkFee = service.artworkFee != null ? Number(service.artworkFee) : 5.0;
   const styleOptions: Array<{ key: string; label: string }> = service.styleOptions || [];
 
-  function labelForStyle(styleKey?: string): string | undefined {
-    if (!styleKey) return undefined;
-    return styleOptions.find((s) => s.key === styleKey)?.label;
+  const labelForStyle = (k?: string) => k ? styleOptions.find((s) => s.key === k)?.label : undefined;
+
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+  const breakdownPrints: BreakdownLine[] = [];
+  let total = 0;
+  let saved = 0;
+  let breakdown: Partial<PriceBreakdown> = { orderType, prints: breakdownPrints };
+
+  // ── Add base tier ──────────────────────────────────────────────────────────
+  if (orderType === 'digital') {
+    const label = styleOptions.length > 0
+      ? `${service.title} — Digital Bundle (all ${styleOptions.length} styles)`
+      : `${service.title} — Digital Download`;
+    breakdown.digitalBundle = { label, amount: digitalPriceGbp };
+    total += digitalPriceGbp;
+    lineItems.push({
+      price_data: {
+        currency: 'gbp', unit_amount: Math.round(digitalPriceGbp * 100),
+        product_data: { name: label },
+      },
+      quantity: 1,
+    });
   }
 
-  // ─── Digital path ──────────────────────────────────────────────────────
-  if (args.orderType === 'digital') {
-    const breakdown: PriceBreakdown = {
-      orderType: 'digital',
-      digitalBundle: {
-        label: `Digital bundle (all ${styleOptions.length} styles)`,
-        amount: digitalPriceGbp,
+  if (orderType === 'bundle') {
+    const label = styleOptions.length > 0
+      ? `${service.title} — Digital Bundle (all ${styleOptions.length} styles)`
+      : `${service.title} — Digital Download`;
+    breakdown.digitalBundle = { label, amount: digitalPriceGbp };
+    total += digitalPriceGbp;
+    lineItems.push({
+      price_data: {
+        currency: 'gbp', unit_amount: Math.round(digitalPriceGbp * 100),
+        product_data: { name: label },
       },
-      prints: [],
-      total: digitalPriceGbp,
-      totalArtworkFeeSaved: 0,
-    };
-
-    const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      {
-        price_data: {
-          currency: 'gbp',
-          unit_amount: Math.round(digitalPriceGbp * 100),
-          product_data: {
-            name: `${service.title} — Digital Bundle`,
-            description: `All ${styleOptions.length} styles delivered as digital files`,
-          },
-        },
-        quantity: 1,
-      },
-    ];
-
-    return { breakdown, stripeLineItems };
+      quantity: 1,
+    });
   }
 
-  // ─── Single print path ─────────────────────────────────────────────────
-  if (args.orderType === 'singlePrint') {
-    const p = prints[0];
-    if (!p?.format || !p?.size) {
-      throw new Error('Single print path requires a format and size');
-    }
-    const sanityFormatKey = FORMAT_TO_SANITY_KEY[p.format];
-    const sizeKey = SIZE_KEY_MAP[p.size] || (p.size as 'small' | 'medium' | 'large');
-    const standalonePrice = Number(service.printUpcharges?.[sanityFormatKey]?.[sizeKey]) || 0;
-
-    if (standalonePrice <= 0) {
-      throw new Error(`No price configured for ${p.format} / ${sizeKey}`);
-    }
-
-    const styleLabel = labelForStyle(p.styleKey);
-    const lineLabel = pretty(p.format, sizeKey, styleLabel);
-
-    const breakdown: PriceBreakdown = {
-      orderType: 'singlePrint',
-      prints: [
-        {
-          label: lineLabel,
-          amount: standalonePrice,
-          artworkFeeWaived: false,
-        },
-      ],
-      total: standalonePrice,
-      totalArtworkFeeSaved: 0,
-    };
-
-    const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      {
-        price_data: {
-          currency: 'gbp',
-          unit_amount: Math.round(standalonePrice * 100),
-          product_data: {
-            name: `${service.title} — ${lineLabel}`,
-            description: `Includes £${ARTWORK_FEE_GBP.toFixed(2)} artwork creation fee`,
-          },
-        },
-        quantity: 1,
+  if (orderType === 'animation-music' || orderType === 'animation-vo') {
+    const animPrice = orderType === 'animation-music' ? animationMusicGbp : animationVoGbp;
+    const animLabel = orderType === 'animation-music'
+      ? `${service.title} — Animation (30s with music) + digital still`
+      : `${service.title} — Animation (30s with music + voiceover) + digital still`;
+    breakdown.animation = { label: animLabel, amount: animPrice };
+    total += animPrice;
+    lineItems.push({
+      price_data: {
+        currency: 'gbp', unit_amount: Math.round(animPrice * 100),
+        product_data: { name: animLabel },
       },
-    ];
-
-    return { breakdown, stripeLineItems };
+      quantity: 1,
+    });
   }
 
-  // ─── Bundle path ───────────────────────────────────────────────────────
-  if (args.orderType === 'bundle') {
+  // ── Add prints (if applicable) ─────────────────────────────────────────────
+  const shouldAddPrints =
+    orderType === 'singlePrint' ||
+    orderType === 'bundle' ||
+    ((orderType === 'animation-music' || orderType === 'animation-vo') && includePrintsWithAnimation);
+
+  if (shouldAddPrints) {
     const validPrints = prints.filter((p) => p.format && p.size);
-    if (validPrints.length === 0) {
-      // Bundle without prints = same as digital path
-      return calculatePricing({ ...args, orderType: 'digital' });
-    }
 
-    const breakdownPrints: PriceBreakdown['prints'] = [];
-    const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      {
-        price_data: {
-          currency: 'gbp',
-          unit_amount: Math.round(digitalPriceGbp * 100),
-          product_data: {
-            name: `${service.title} — Digital Bundle`,
-            description: `All ${styleOptions.length} styles delivered as digital files`,
-          },
-        },
-        quantity: 1,
-      },
-    ];
-
-    let total = digitalPriceGbp;
-    let saved = 0;
-
-    for (const p of validPrints) {
-      const sanityFormatKey = FORMAT_TO_SANITY_KEY[p.format!];
+    if (orderType === 'singlePrint') {
+      const p = validPrints[0];
+      if (!p) throw new Error('Single print path requires a format and size');
+      const sanityFmt = FORMAT_TO_SANITY_KEY[p.format!];
       const sizeKey = SIZE_KEY_MAP[p.size!] || (p.size as 'small' | 'medium' | 'large');
-      const standalonePrice = Number(service.printUpcharges?.[sanityFormatKey]?.[sizeKey]) || 0;
-      if (standalonePrice <= 0) continue;
+      const basePrintPrice = Number(service.printUpcharges?.[sanityFmt]?.[sizeKey]) || 0;
+      if (basePrintPrice <= 0) throw new Error(`No price configured for ${p.format} / ${sizeKey}`);
 
-      // Bundle waives the £5 artwork fee — pay shop price only
-      const shopPrice = Math.max(0, standalonePrice - ARTWORK_FEE_GBP);
+      // Standalone print = base + artwork fee
+      const total1 = basePrintPrice + artworkFee;
       const styleLabel = labelForStyle(p.styleKey);
-      const lineLabel = pretty(p.format!, sizeKey, styleLabel);
+      const lineLabel = pretty(service, p.format!, sizeKey, styleLabel);
 
-      breakdownPrints.push({
-        label: lineLabel,
-        amount: shopPrice,
-        artworkFeeWaived: true,
-      });
-
-      stripeLineItems.push({
+      breakdownPrints.push({ label: lineLabel, amount: total1, artworkFeeWaived: false });
+      total += total1;
+      lineItems.push({
         price_data: {
-          currency: 'gbp',
-          unit_amount: Math.round(shopPrice * 100),
+          currency: 'gbp', unit_amount: Math.round(total1 * 100),
           product_data: {
             name: `${service.title} — ${lineLabel}`,
-            description: '£5 artwork fee waived (bundle order)',
+            description: `Includes £${artworkFee.toFixed(2)} artwork creation fee`,
           },
         },
         quantity: 1,
       });
+    } else {
+      // bundle, animation-music, animation-vo — artwork fee waived
+      for (const p of validPrints) {
+        const sanityFmt = FORMAT_TO_SANITY_KEY[p.format!];
+        const sizeKey = SIZE_KEY_MAP[p.size!] || (p.size as 'small' | 'medium' | 'large');
+        const basePrintPrice = Number(service.printUpcharges?.[sanityFmt]?.[sizeKey]) || 0;
+        if (basePrintPrice <= 0) continue;
 
-      total += shopPrice;
-      saved += ARTWORK_FEE_GBP;
+        const styleLabel = labelForStyle(p.styleKey);
+        const lineLabel = pretty(service, p.format!, sizeKey, styleLabel);
+
+        breakdownPrints.push({ label: lineLabel, amount: basePrintPrice, artworkFeeWaived: true });
+        total += basePrintPrice;
+        saved += artworkFee;
+        lineItems.push({
+          price_data: {
+            currency: 'gbp', unit_amount: Math.round(basePrintPrice * 100),
+            product_data: {
+              name: `${service.title} — ${lineLabel}`,
+              description: `£${artworkFee.toFixed(2)} artwork fee waived (bundle order)`,
+            },
+          },
+          quantity: 1,
+        });
+      }
     }
-
-    const breakdown: PriceBreakdown = {
-      orderType: 'bundle',
-      digitalBundle: {
-        label: `Digital bundle (all ${styleOptions.length} styles)`,
-        amount: digitalPriceGbp,
-      },
-      prints: breakdownPrints,
-      total,
-      totalArtworkFeeSaved: saved,
-    };
-
-    return { breakdown, stripeLineItems };
   }
 
-  throw new Error(`Unknown orderType: ${args.orderType}`);
+  // ── Build summary label ────────────────────────────────────────────────────
+  let formatLabel = 'Digital only';
+  if (orderType === 'singlePrint' && breakdownPrints.length === 1) {
+    formatLabel = breakdownPrints[0].label;
+  } else if (orderType === 'bundle') {
+    formatLabel = `Digital bundle + ${breakdownPrints.length} print(s)`;
+  } else if (orderType === 'animation-music') {
+    formatLabel = breakdownPrints.length > 0
+      ? `Animation (music) + ${breakdownPrints.length} print(s)`
+      : 'Animation (music)';
+  } else if (orderType === 'animation-vo') {
+    formatLabel = breakdownPrints.length > 0
+      ? `Animation (music + voiceover) + ${breakdownPrints.length} print(s)`
+      : 'Animation (music + voiceover)';
+  }
+
+  const finalBreakdown: PriceBreakdown = {
+    orderType,
+    digitalBundle: breakdown.digitalBundle,
+    animation: breakdown.animation,
+    prints: breakdownPrints,
+    total,
+    totalArtworkFeeSaved: saved,
+    printFormatLabel: formatLabel,
+  };
+
+  return { breakdown: finalBreakdown, stripeLineItems: lineItems };
 }
 
-// Legacy fallback for old wizard payloads (deliveryType-based)
+// Legacy fallback for old wizard payloads
 function legacyCalculatePricing(args: {
   deliveryType: string;
   printFormat?: string;
   printSize?: string;
   service: any;
 }): { breakdown: PriceBreakdown; stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] } {
-  // Map legacy deliveryType -> new orderType
   if (args.deliveryType === 'digital') {
-    return calculatePricing({ orderType: 'digital', service: args.service, prints: [] });
+    return calculatePricing({ orderType: 'digital', service: args.service, prints: [], includePrintsWithAnimation: false });
   }
   if (args.deliveryType === 'print') {
     return calculatePricing({
       orderType: 'singlePrint',
       service: args.service,
       prints: [{ format: args.printFormat, size: args.printSize }],
+      includePrintsWithAnimation: false,
     });
   }
-  // 'both' = treat as bundle path
   return calculatePricing({
     orderType: 'bundle',
     service: args.service,
     prints: [{ format: args.printFormat, size: args.printSize }],
+    includePrintsWithAnimation: false,
   });
 }
 
 export default async function handler(req: Request, _context: Context) {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      status: 405, headers: { 'Content-Type': 'application/json' },
     });
   }
 
   try {
     const formData = await req.formData();
 
-    // ─── Extract fields ──────────────────────────────────────────────────
     const serviceSlug = formData.get('serviceSlug') as string;
     const serviceTitle = formData.get('serviceTitle') as string;
     const name = formData.get('name') as string;
@@ -303,16 +276,13 @@ export default async function handler(req: Request, _context: Context) {
     const phone = (formData.get('phone') as string) || undefined;
     const brief = (formData.get('brief') as string) || '';
     const shippingAddress = (formData.get('shippingAddress') as string) || undefined;
-
-    // New: orderType + prints array
     const orderType = (formData.get('orderType') as string) || '';
+    const includePrintsWithAnimation = (formData.get('includePrintsWithAnimation') as string) === 'true';
 
-    // Legacy: deliveryType + single printFormat/printSize
     const legacyDeliveryType = (formData.get('deliveryType') as string) || '';
     const legacyPrintFormat = (formData.get('printFormat') as string) || undefined;
     const legacyPrintSize = (formData.get('printSize') as string) || undefined;
 
-    // Parse prints array (new wizard format)
     let prints: ParsedPrint[] = [];
     const printsRaw = formData.get('prints') as string | null;
     if (printsRaw) {
@@ -325,12 +295,9 @@ export default async function handler(req: Request, _context: Context) {
             size: p.size ? String(p.size) : undefined,
           }));
         }
-      } catch (e) {
-        console.warn('Invalid prints JSON:', e);
-      }
+      } catch (e) { console.warn('Invalid prints JSON:', e); }
     }
 
-    // Structured brief data
     const briefDataRaw = formData.get('briefData') as string | null;
     let briefData: Array<{ key: string; label: string; value: string }> = [];
     if (briefDataRaw) {
@@ -340,14 +307,11 @@ export default async function handler(req: Request, _context: Context) {
           briefData = parsed
             .filter((b) => b && typeof b === 'object' && b.key)
             .map((b) => ({
-              key: String(b.key),
-              label: String(b.label || b.key),
+              key: String(b.key), label: String(b.label || b.key),
               value: b.value == null ? '' : String(b.value),
             }));
         }
-      } catch (e) {
-        console.warn('Invalid briefData JSON:', e);
-      }
+      } catch (e) { console.warn('Invalid briefData JSON:', e); }
     }
 
     if (!serviceSlug || !name || !email) {
@@ -357,72 +321,78 @@ export default async function handler(req: Request, _context: Context) {
       );
     }
 
-    // ─── Look up service doc ─────────────────────────────────────────────
+    // Look up service doc with all new fields
     const service = await sanity.fetch(
       `*[_type == "service" && slug.current == $slug][0]{
-        _id, title, price, digitalPrice, printUpcharges, styleOptions, commissionEnabled
+        _id, title, price, digitalPrice, printUpcharges, styleOptions,
+        animationMusicPrice, animationVoPrice, artworkFee, printSizeLabels,
+        commissionEnabled
       }`,
       { slug: serviceSlug }
     );
 
     if (!service) {
-      return new Response(
-        JSON.stringify({ error: 'Service not found.' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Service not found.' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } });
     }
-
     if (service.commissionEnabled === false) {
-      return new Response(
-        JSON.stringify({ error: 'This service is not currently accepting new commissions.' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'This service is not currently accepting new commissions.' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // ─── Upload files to Sanity ──────────────────────────────────────────
+    // Upload files to Sanity. New: filename prefix like "fieldKey__realname"
+    // tells us which briefing field each file came from. Preserved in metadata
+    // for the team email and Studio review.
     const files = formData.getAll('files') as File[];
-    const uploadedAssets: Array<{ _type: 'image'; _key: string; asset: { _type: 'reference'; _ref: string } }> = [];
+    const uploadedAssets: Array<{
+      _type: 'object'; _key: string;
+      fieldKey: string;
+      asset: { _type: 'reference'; _ref: string };
+      originalName: string;
+    }> = [];
 
     for (const file of files) {
       if (!file.size) continue;
       const buffer = Buffer.from(await file.arrayBuffer());
+
+      // Parse "fieldKey__originalName" filename pattern
+      const parts = file.name.split('__');
+      const fieldKey = parts.length > 1 ? parts[0] : 'unknown';
+      const originalName = parts.length > 1 ? parts.slice(1).join('__') : file.name;
+
       const asset = await sanity.assets.upload('image', buffer, {
-        filename: file.name,
+        filename: originalName,
         contentType: file.type,
       });
       uploadedAssets.push({
-        _type: 'image',
+        _type: 'object',
         _key: nanoid(8),
+        fieldKey,
+        originalName,
         asset: { _type: 'reference', _ref: asset._id },
       });
     }
 
-    // ─── Generate order ref ──────────────────────────────────────────────
     const orderRef = `PX-${nanoid(8).toUpperCase()}`;
 
-    // ─── Calculate pricing ───────────────────────────────────────────────
     let breakdown: PriceBreakdown;
     let stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
 
     if (orderType) {
-      // New wizard payload
-      ({ breakdown, stripeLineItems } = calculatePricing({ orderType, service, prints }));
+      ({ breakdown, stripeLineItems } = calculatePricing({
+        orderType: orderType as OrderType, service, prints, includePrintsWithAnimation,
+      }));
     } else if (legacyDeliveryType) {
-      // Legacy wizard payload
       ({ breakdown, stripeLineItems } = legacyCalculatePricing({
         deliveryType: legacyDeliveryType,
-        printFormat: legacyPrintFormat,
-        printSize: legacyPrintSize,
-        service,
+        printFormat: legacyPrintFormat, printSize: legacyPrintSize, service,
       }));
     } else {
-      return new Response(
-        JSON.stringify({ error: 'Missing orderType or deliveryType.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Missing orderType or deliveryType.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // ─── Build commission doc ────────────────────────────────────────────
+    // Build commission doc
     const commissionDoc: any = {
       _type: 'commission',
       orderRef,
@@ -433,35 +403,28 @@ export default async function handler(req: Request, _context: Context) {
       customerPhone: phone,
       brief,
       orderType: breakdown.orderType,
-      shippingAddress: breakdown.orderType !== 'digital' ? shippingAddress : undefined,
+      shippingAddress: breakdown.prints.length > 0 ? shippingAddress : undefined,
       uploadedFiles: uploadedAssets,
       amount: breakdown.total,
       priceBreakdown: {
         orderType: breakdown.orderType,
         digitalBundle: breakdown.digitalBundle?.amount ?? 0,
         digitalBundleLabel: breakdown.digitalBundle?.label || '',
+        animationAmount: breakdown.animation?.amount ?? 0,
+        animationLabel: breakdown.animation?.label || '',
         prints: breakdown.prints.map((p, i) => ({
           _key: `pb-${nanoid(6)}-${i}`,
-          label: p.label,
-          amount: p.amount,
-          artworkFeeWaived: p.artworkFeeWaived,
+          label: p.label, amount: p.amount, artworkFeeWaived: p.artworkFeeWaived,
         })),
         total: breakdown.total,
         totalArtworkFeeSaved: breakdown.totalArtworkFeeSaved,
-        // Customer-facing summary line
-        printFormatLabel: breakdown.prints.length === 0
-          ? 'Digital bundle only'
-          : breakdown.prints.length === 1
-            ? breakdown.prints[0].label
-            : `${breakdown.prints.length} prints + digital bundle`,
+        printFormatLabel: breakdown.printFormatLabel,
       },
-      // Persist the structured prints array
       prints: prints
         .filter((p) => p.format && p.size)
         .map((p, i) => ({
           _key: `pr-${nanoid(6)}-${i}`,
-          styleKey: p.styleKey,
-          format: p.format,
+          styleKey: p.styleKey, format: p.format,
           size: SIZE_KEY_MAP[p.size!] || p.size,
         })),
     };
@@ -470,15 +433,12 @@ export default async function handler(req: Request, _context: Context) {
       commissionDoc.briefData = briefData.map((b, i) => ({
         _type: 'briefAnswer',
         _key: `ba-${nanoid(6)}-${i}`,
-        key: b.key,
-        label: b.label,
-        value: b.value,
+        key: b.key, label: b.label, value: b.value,
       }));
     }
 
     const commission = await sanity.create(commissionDoc);
 
-    // ─── Create Stripe Checkout Session ──────────────────────────────────
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       customer_email: email,
@@ -495,8 +455,7 @@ export default async function handler(req: Request, _context: Context) {
     });
 
     return new Response(JSON.stringify({ url: session.url, orderRef }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      status: 200, headers: { 'Content-Type': 'application/json' },
     });
   } catch (err: any) {
     console.error('commission-checkout error:', err);
