@@ -1,0 +1,271 @@
+---
+// src/components/PrintPricingTable.astro
+// Displays a detailed pricing table for all print formats and sizes on a
+// service page. Shows STANDALONE prices (i.e. what the customer pays if they
+// only order a print with no digital or animation base).
+//
+// Renders nothing if the service has no printUpcharges configured.
+// Respects per-service printSizeLabels (Cartoonify uses 12×12/16×16/20×20,
+// Missing Moment uses 12×8/16×12/24×16).
+
+interface Props {
+  service: {
+    artworkFee?: number;
+    printUpcharges?: {
+      poster?: { small?: number; medium?: number; large?: number };
+      canvasStandard?: { small?: number; medium?: number; large?: number };
+      canvasGallery?: { small?: number; medium?: number; large?: number };
+    };
+    printSizeLabels?: { small?: string; medium?: string; large?: string };
+  };
+}
+
+const { service } = Astro.props;
+
+const DEFAULT_SIZE_LABELS = {
+  small: 'Small (12×12")',
+  medium: 'Medium (16×16")',
+  large: 'Large (20×20")',
+};
+
+const sizeLabels = {
+  small: service.printSizeLabels?.small || DEFAULT_SIZE_LABELS.small,
+  medium: service.printSizeLabels?.medium || DEFAULT_SIZE_LABELS.medium,
+  large: service.printSizeLabels?.large || DEFAULT_SIZE_LABELS.large,
+};
+
+const artworkFee = service.artworkFee != null ? Number(service.artworkFee) : 5.0;
+
+const u = service.printUpcharges;
+
+// Detect whether any print prices exist
+const hasAnyPrints = u && (
+  Object.values(u.poster || {}).some((v) => Number(v) > 0) ||
+  Object.values(u.canvasStandard || {}).some((v) => Number(v) > 0) ||
+  Object.values(u.canvasGallery || {}).some((v) => Number(v) > 0)
+);
+
+function priceLabel(p: number | undefined | null): string {
+  if (p == null || isNaN(Number(p)) || Number(p) <= 0) return '—';
+  return `£${Number(p).toFixed(2)}`;
+}
+
+const sizes: Array<'small' | 'medium' | 'large'> = ['small', 'medium', 'large'];
+
+const formats = [
+  { key: 'poster',         label: 'Poster Print',    accent: 'cyan',    sub: '260gsm Photo Paper' },
+  { key: 'canvasStandard', label: 'Canvas Standard', accent: 'yellow',  sub: '410gsm Water-Resistant Canvas', popular: true },
+  { key: 'canvasGallery',  label: 'Canvas Gallery',  accent: 'magenta', sub: '410gsm Water-Resistant Canvas' },
+];
+---
+
+{hasAnyPrints && (
+  <section class="print-pricing" aria-label="Print options and pricing">
+    <h2 class="print-pricing__title">Print Options &amp; Pricing</h2>
+    <p class="print-pricing__intro">
+      Standalone print prices include the £{artworkFee.toFixed(2)} artwork creation fee.
+      Order a digital or animation along with prints in the same checkout and the artwork fee is waived per print.
+    </p>
+
+    <div class="print-pricing__cards">
+      {formats.map((fmt) => {
+        const prices = (u as any)?.[fmt.key] || {};
+        return (
+          <div class:list={[
+            'print-pricing__card',
+            `print-pricing__card--${fmt.accent}`,
+            fmt.popular ? 'print-pricing__card--popular' : '',
+          ]}>
+            {fmt.popular && <span class="print-pricing__popular-badge">Most Popular</span>}
+            <header class="print-pricing__card-header">
+              <h3 class="print-pricing__card-title">{fmt.label}</h3>
+              <p class="print-pricing__card-sub">{fmt.sub}</p>
+            </header>
+            <ul class="print-pricing__rows">
+              {sizes.map((size) => (
+                <li class="print-pricing__row">
+                  <span class="print-pricing__row-label">
+                    <strong>{size.charAt(0).toUpperCase() + size.slice(1)}</strong>
+                    <span class="print-pricing__row-size">{sizeLabels[size].replace(/^[A-Za-z]+\s+\(/, '').replace(/\)$/, '')}</span>
+                  </span>
+                  <span class="print-pricing__row-price">{priceLabel(prices[size])}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  </section>
+)}
+
+<style>
+  .print-pricing {
+    max-width: 1100px;
+    margin: 0 auto 3rem;
+    padding: 2rem 1.5rem;
+  }
+
+  .print-pricing__title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-align: center;
+    margin: 0 0 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    color: var(--text, #fafafa);
+  }
+
+  .print-pricing__intro {
+    max-width: 640px;
+    margin: 0 auto 1.75rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-muted, #a1a1aa);
+    line-height: 1.55;
+  }
+
+  .print-pricing__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .print-pricing__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid transparent;
+  }
+
+  .print-pricing__card--cyan {
+    border-color: #00BCD4;
+  }
+  .print-pricing__card--yellow {
+    border-color: #FFEB3B;
+  }
+  .print-pricing__card--magenta {
+    border-color: #E91E7B;
+  }
+
+  .print-pricing__card-header {
+    padding: 1.25rem 1.5rem 1rem;
+  }
+
+  .print-pricing__card--cyan .print-pricing__card-header {
+    background: #00BCD4;
+    color: #000;
+  }
+  .print-pricing__card--yellow .print-pricing__card-header {
+    background: #FFEB3B;
+    color: #000;
+  }
+  .print-pricing__card--magenta .print-pricing__card-header {
+    background: #E91E7B;
+    color: #000;
+  }
+
+  .print-pricing__popular-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 0.375rem;
+    background: rgba(0, 0, 0, 0.85);
+    color: #FFEB3B;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.625rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    text-align: center;
+    z-index: 1;
+  }
+
+  .print-pricing__card--popular .print-pricing__card-header {
+    padding-top: 2.25rem;
+  }
+
+  .print-pricing__card-title {
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.125rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .print-pricing__card-sub {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    font-style: italic;
+  }
+
+  .print-pricing__rows {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .print-pricing__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .print-pricing__row:last-child {
+    border-bottom: none;
+  }
+
+  .print-pricing__row-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .print-pricing__row-label strong {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text, #fafafa);
+  }
+
+  .print-pricing__row-size {
+    font-size: 0.75rem;
+    color: var(--text-muted, #a1a1aa);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .print-pricing__row-price {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  .print-pricing__card--cyan .print-pricing__row-price {
+    color: #00BCD4;
+  }
+  .print-pricing__card--yellow .print-pricing__row-price {
+    color: #FFEB3B;
+  }
+  .print-pricing__card--magenta .print-pricing__row-price {
+    color: #E91E7B;
+  }
+
+  @media (max-width: 640px) {
+    .print-pricing {
+      padding: 1.5rem 1rem;
+    }
+
+    .print-pricing__cards {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

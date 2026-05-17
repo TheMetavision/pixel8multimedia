@@ -8,6 +8,7 @@ import { sanityClient } from '../../lib/sanity';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CommissionWorkflow from '../../components/CommissionWorkflow.jsx';
 import PricingStrip from '../../components/PricingStrip.astro';
+import PrintPricingTable from '../../components/PrintPricingTable.astro';
 import '../../styles/commission-workflow.css';
 
 const { slug } = Astro.params;
@@ -246,6 +247,9 @@ const serviceForWizard = {
 
     <!-- Pricing Strip — shows three pricing paths (only renders when service.digitalPrice is set) -->
     <PricingStrip service={serviceForWizard} />
+
+    <!-- Print Pricing Table — detailed standalone print prices (only renders when service has printUpcharges) -->
+    <PrintPricingTable service={serviceForWizard} />
 
     <!-- How It Works -->
     {service.steps?.length > 0 && (
