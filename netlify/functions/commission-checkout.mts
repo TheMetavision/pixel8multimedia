@@ -50,7 +50,8 @@ const SIZE_KEY_MAP: Record<string, 'small' | 'medium' | 'large'> = {
   small: 'small',   medium: 'medium',  large: 'large',
 };
 
-type OrderType = 'digital' | 'singlePrint' | 'bundle' | 'animation-music' | 'animation-vo';
+type OrderType = 'digital' | 'digital-secondary' | 'digital-both' | 'singlePrint' | 'bundle' | 'animation-music' | 'animation-vo';
+type BundleCollection = 'primary' | 'secondary' | 'both';
 
 interface ParsedPrint { styleKey?: string; format?: string; size?: string; }
 
@@ -79,15 +80,24 @@ function calculatePricing(args: {
   service: any;
   prints: ParsedPrint[];
   includePrintsWithAnimation: boolean;
+  bundleCollection: BundleCollection;
 }): { breakdown: PriceBreakdown; stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] } {
-  const { service, prints, orderType, includePrintsWithAnimation } = args;
+  const { service, prints, orderType, includePrintsWithAnimation, bundleCollection } = args;
   const digitalPriceGbp = Number(service.digitalPrice) || 0;
+  const digitalPriceSecondaryGbp = Number(service.digitalPriceSecondary) || 0;
+  const digitalPriceBothGbp = Number(service.digitalPriceBoth) || 0;
   const animationMusicGbp = Number(service.animationMusicPrice) || 0;
   const animationVoGbp = Number(service.animationVoPrice) || 0;
   const artworkFee = service.artworkFee != null ? Number(service.artworkFee) : 5.0;
   const styleOptions: Array<{ key: string; label: string }> = service.styleOptions || [];
+  const styleOptionsSecondary: Array<{ key: string; label: string }> = service.styleOptionsSecondary || [];
+  const allStyleOptions = [...styleOptions, ...styleOptionsSecondary];
+  const collectionLabel = service.collectionLabel || 'Collection 1';
+  const collectionLabelSecondary = service.collectionLabelSecondary || 'Collection 2';
+  const hasSecondaryCollection = styleOptionsSecondary.length > 0 && digitalPriceSecondaryGbp > 0;
 
-  const labelForStyle = (k?: string) => k ? styleOptions.find((s) => s.key === k)?.label : undefined;
+  // Style label lookup spans both collections so prints can use any style
+  const labelForStyle = (k?: string) => k ? allStyleOptions.find((s) => s.key === k)?.label : undefined;
 
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
   const breakdownPrints: BreakdownLine[] = [];
@@ -97,9 +107,11 @@ function calculatePricing(args: {
 
   // ── Add base tier ──────────────────────────────────────────────────────────
   if (orderType === 'digital') {
-    const label = styleOptions.length > 0
-      ? `${service.title} — Digital Bundle (all ${styleOptions.length} styles)`
-      : `${service.title} — Digital Download`;
+    const label = hasSecondaryCollection
+      ? `${service.title} — Digital — ${collectionLabel} (${styleOptions.length} styles)`
+      : styleOptions.length > 0
+        ? `${service.title} — Digital Bundle (all ${styleOptions.length} styles)`
+        : `${service.title} — Digital Download`;
     breakdown.digitalBundle = { label, amount: digitalPriceGbp };
     total += digitalPriceGbp;
     lineItems.push({
@@ -111,16 +123,60 @@ function calculatePricing(args: {
     });
   }
 
-  if (orderType === 'bundle') {
-    const label = styleOptions.length > 0
-      ? `${service.title} — Digital Bundle (all ${styleOptions.length} styles)`
-      : `${service.title} — Digital Download`;
-    breakdown.digitalBundle = { label, amount: digitalPriceGbp };
-    total += digitalPriceGbp;
+  if (orderType === 'digital-secondary') {
+    const label = `${service.title} — Digital — ${collectionLabelSecondary} (${styleOptionsSecondary.length} styles)`;
+    breakdown.digitalBundle = { label, amount: digitalPriceSecondaryGbp };
+    total += digitalPriceSecondaryGbp;
     lineItems.push({
       price_data: {
-        currency: 'gbp', unit_amount: Math.round(digitalPriceGbp * 100),
+        currency: 'gbp', unit_amount: Math.round(digitalPriceSecondaryGbp * 100),
         product_data: { name: label },
+      },
+      quantity: 1,
+    });
+  }
+
+  if (orderType === 'digital-both') {
+    const totalStyles = styleOptions.length + styleOptionsSecondary.length;
+    const label = `${service.title} — Both Collections Digital (${totalStyles} styles total)`;
+    breakdown.digitalBundle = { label, amount: digitalPriceBothGbp };
+    total += digitalPriceBothGbp;
+    lineItems.push({
+      price_data: {
+        currency: 'gbp', unit_amount: Math.round(digitalPriceBothGbp * 100),
+        product_data: { name: label },
+      },
+      quantity: 1,
+    });
+  }
+
+  if (orderType === 'bundle') {
+    // For services with a secondary collection, the bundle picks which digital
+    // tier is included via bundleCollection. For single-collection services,
+    // we just use the primary digitalPrice.
+    let bundleDigitalLabel: string;
+    let bundleDigitalAmount: number;
+    if (hasSecondaryCollection && bundleCollection === 'secondary') {
+      bundleDigitalLabel = `${service.title} — Digital — ${collectionLabelSecondary} (${styleOptionsSecondary.length} styles)`;
+      bundleDigitalAmount = digitalPriceSecondaryGbp;
+    } else if (hasSecondaryCollection && bundleCollection === 'both' && digitalPriceBothGbp > 0) {
+      const totalStyles = styleOptions.length + styleOptionsSecondary.length;
+      bundleDigitalLabel = `${service.title} — Both Collections Digital (${totalStyles} styles total)`;
+      bundleDigitalAmount = digitalPriceBothGbp;
+    } else {
+      bundleDigitalLabel = hasSecondaryCollection
+        ? `${service.title} — Digital — ${collectionLabel} (${styleOptions.length} styles)`
+        : styleOptions.length > 0
+          ? `${service.title} — Digital Bundle (all ${styleOptions.length} styles)`
+          : `${service.title} — Digital Download`;
+      bundleDigitalAmount = digitalPriceGbp;
+    }
+    breakdown.digitalBundle = { label: bundleDigitalLabel, amount: bundleDigitalAmount };
+    total += bundleDigitalAmount;
+    lineItems.push({
+      price_data: {
+        currency: 'gbp', unit_amount: Math.round(bundleDigitalAmount * 100),
+        product_data: { name: bundleDigitalLabel },
       },
       quantity: 1,
     });
@@ -283,7 +339,7 @@ function legacyCalculatePricing(args: {
   service: any;
 }): { breakdown: PriceBreakdown; stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] } {
   if (args.deliveryType === 'digital') {
-    return calculatePricing({ orderType: 'digital', service: args.service, prints: [], includePrintsWithAnimation: false });
+    return calculatePricing({ orderType: 'digital', service: args.service, prints: [], includePrintsWithAnimation: false, bundleCollection: 'primary' });
   }
   if (args.deliveryType === 'print') {
     return calculatePricing({
@@ -291,6 +347,7 @@ function legacyCalculatePricing(args: {
       service: args.service,
       prints: [{ format: args.printFormat, size: args.printSize }],
       includePrintsWithAnimation: false,
+      bundleCollection: 'primary',
     });
   }
   return calculatePricing({
@@ -298,6 +355,7 @@ function legacyCalculatePricing(args: {
     service: args.service,
     prints: [{ format: args.printFormat, size: args.printSize }],
     includePrintsWithAnimation: false,
+    bundleCollection: 'primary',
   });
 }
 
@@ -320,6 +378,11 @@ export default async function handler(req: Request, _context: Context) {
     const shippingAddress = (formData.get('shippingAddress') as string) || undefined;
     const orderType = (formData.get('orderType') as string) || '';
     const includePrintsWithAnimation = (formData.get('includePrintsWithAnimation') as string) === 'true';
+    const bundleCollectionRaw = (formData.get('bundleCollection') as string) || 'primary';
+    const bundleCollection: BundleCollection =
+      bundleCollectionRaw === 'secondary' || bundleCollectionRaw === 'both'
+        ? bundleCollectionRaw
+        : 'primary';
 
     const legacyDeliveryType = (formData.get('deliveryType') as string) || '';
     const legacyPrintFormat = (formData.get('printFormat') as string) || undefined;
@@ -423,7 +486,7 @@ export default async function handler(req: Request, _context: Context) {
 
     if (orderType) {
       ({ breakdown, stripeLineItems } = calculatePricing({
-        orderType: orderType as OrderType, service, prints, includePrintsWithAnimation,
+        orderType: orderType as OrderType, service, prints, includePrintsWithAnimation, bundleCollection,
       }));
     } else if (legacyDeliveryType) {
       ({ breakdown, stripeLineItems } = legacyCalculatePricing({
@@ -446,6 +509,7 @@ export default async function handler(req: Request, _context: Context) {
       customerPhone: phone,
       brief,
       orderType: breakdown.orderType,
+      bundleCollection: bundleCollection,
       shippingAddress: breakdown.prints.length > 0 ? shippingAddress : undefined,
       uploadedFiles: uploadedAssets,
       amount: breakdown.total,

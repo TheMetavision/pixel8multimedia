@@ -399,7 +399,13 @@ function FileDropzone({ fieldKey, accept, maxSizeBytes, files, onChange }) {
 // ─── Main wizard ────────────────────────────────────────────────────────────
 export default function CommissionWorkflow({ service }) {
   const styleOptions = service.styleOptions || [];
+  // SECONDARY COLLECTION (e.g. Back In Time's Historical Periods alongside Modern Decades)
+  const styleOptionsSecondary = service.styleOptionsSecondary || [];
+  const collectionLabel = service.collectionLabel || 'Collection 1';
+  const collectionLabelSecondary = service.collectionLabelSecondary || 'Collection 2';
   const digitalPrice = Number(service.digitalPrice) || 0;
+  const digitalPriceSecondary = Number(service.digitalPriceSecondary) || 0;
+  const digitalPriceBoth = Number(service.digitalPriceBoth) || 0;
   const animationMusicPrice = Number(service.animationMusicPrice) || 0;
   const animationVoPrice = Number(service.animationVoPrice) || 0;
   const artworkFee = service.artworkFee != null ? Number(service.artworkFee) : 5.0; // default £5 (Cartoonify)
@@ -414,9 +420,17 @@ export default function CommissionWorkflow({ service }) {
   const sizeLabels = service.printSizeLabels || DEFAULT_SIZE_LABELS;
 
   const hasDigitalOption = digitalPrice > 0;
+  const hasSecondaryCollection = styleOptionsSecondary.length > 0 && digitalPriceSecondary > 0;
+  const hasBothCollectionsPrice = digitalPriceBoth > 0 && hasSecondaryCollection;
   const hasAnimationMusic = animationMusicPrice > 0;
   const hasAnimationVo = animationVoPrice > 0;
   const hasAnimation = hasAnimationMusic || hasAnimationVo;
+
+  // All available styles across both collections (for single-print picker — customer can pick any era)
+  const allStyleOptions = useMemo(() => {
+    if (!hasSecondaryCollection) return styleOptions;
+    return [...styleOptions, ...styleOptionsSecondary];
+  }, [styleOptions, styleOptionsSecondary, hasSecondaryCollection]);
 
   const hasPrintOption = useMemo(() => {
     const u = service.printUpcharges;
@@ -429,17 +443,23 @@ export default function CommissionWorkflow({ service }) {
   const availablePaths = useMemo(() => {
     const paths = [];
     if (hasDigitalOption) paths.push('digital');
+    if (hasSecondaryCollection) paths.push('digital-secondary');
+    if (hasBothCollectionsPrice) paths.push('digital-both');
     if (hasPrintOption) paths.push('singlePrint');
     if (hasDigitalOption && hasPrintOption) paths.push('bundle');
     if (hasAnimationMusic) paths.push('animation-music');
     if (hasAnimationVo) paths.push('animation-vo');
     return paths;
-  }, [hasDigitalOption, hasPrintOption, hasAnimationMusic, hasAnimationVo]);
+  }, [hasDigitalOption, hasSecondaryCollection, hasBothCollectionsPrice, hasPrintOption, hasAnimationMusic, hasAnimationVo]);
 
   const startStep = availablePaths.length > 1 ? 0 : 1;
   const [step, setStep] = useState(startStep);
   const [orderType, setOrderType] = useState(availablePaths[0] || 'digital');
   const [includePrintsWithAnimation, setIncludePrintsWithAnimation] = useState(false);
+  // For bundle path: which digital collection is the customer bundling with prints?
+  // 'primary' = main collection, 'secondary' = secondary, 'both' = both collections.
+  // Only meaningful when hasSecondaryCollection is true.
+  const [bundleCollection, setBundleCollection] = useState('primary');
   const [briefValues, setBriefValues] = useState({});
   const [briefFiles, setBriefFiles] = useState({});
   const [prints, setPrints] = useState([{ styleKey: '', format: '', size: '' }]);
@@ -453,9 +473,14 @@ export default function CommissionWorkflow({ service }) {
   const filteredBriefingFields = useMemo(() => {
     return briefingFields
       .filter((f) => {
-        // Style picker hidden for digital and singlePrint paths
-        // (digital includes all styles; singlePrint chooses style per-print)
-        if (f.fieldType === 'styleSwatch' && (orderType === 'digital' || orderType === 'singlePrint')) {
+        // Style picker hidden for ALL digital paths (digital includes everything)
+        // and singlePrint (where style is chosen per-print in the prints step)
+        if (f.fieldType === 'styleSwatch' && (
+          orderType === 'digital' ||
+          orderType === 'digital-secondary' ||
+          orderType === 'digital-both' ||
+          orderType === 'singlePrint'
+        )) {
           return false;
         }
         // Honour showFor — if set, only show when orderType matches
@@ -482,16 +507,59 @@ export default function CommissionWorkflow({ service }) {
     return lookupBasePrintPrice(format, size) + artworkFee;
   }
 
+  // Helper — which style options are available given the current context?
+  // For singlePrint: all styles across both collections (customer picks any).
+  // For bundle: depends on bundleCollection state.
+  function getStylesForPrintRow() {
+    if (orderType === 'singlePrint') return allStyleOptions;
+    if (orderType === 'bundle') {
+      if (bundleCollection === 'primary') return styleOptions;
+      if (bundleCollection === 'secondary') return styleOptionsSecondary;
+      if (bundleCollection === 'both') return allStyleOptions;
+    }
+    return allStyleOptions;
+  }
+
+  // Helper — for any style key, find its label across both collections
+  function findStyleLabel(styleKey) {
+    if (!styleKey) return null;
+    const match = allStyleOptions.find((s) => s.key === styleKey);
+    return match?.label || null;
+  }
+
   // ─── Pricing breakdown ────────────────────────────────────────────────────
   const pricing = useMemo(() => {
-    // Digital-only path
+    // Digital-only path (primary collection)
     if (orderType === 'digital') {
-      const label = styleOptions.length > 0
-        ? `Digital bundle (all ${styleOptions.length} styles)`
-        : 'Digital download';
+      const label = hasSecondaryCollection
+        ? `Digital — ${collectionLabel} (all ${styleOptions.length} styles)`
+        : styleOptions.length > 0
+          ? `Digital bundle (all ${styleOptions.length} styles)`
+          : 'Digital download';
       return {
         lines: [{ label, amount: digitalPrice }],
         total: digitalPrice,
+        artworkFeeWaived: false,
+      };
+    }
+
+    // Digital-only path (secondary collection)
+    if (orderType === 'digital-secondary') {
+      const label = `Digital — ${collectionLabelSecondary} (all ${styleOptionsSecondary.length} styles)`;
+      return {
+        lines: [{ label, amount: digitalPriceSecondary }],
+        total: digitalPriceSecondary,
+        artworkFeeWaived: false,
+      };
+    }
+
+    // Both collections — combined digital
+    if (orderType === 'digital-both') {
+      const totalStyles = styleOptions.length + styleOptionsSecondary.length;
+      const label = `Both Collections — Digital (${totalStyles} styles total)`;
+      return {
+        lines: [{ label, amount: digitalPriceBoth }],
+        total: digitalPriceBoth,
         artworkFeeWaived: false,
       };
     }
@@ -501,8 +569,7 @@ export default function CommissionWorkflow({ service }) {
       const p = prints[0];
       if (!p?.format || !p?.size) return { lines: [], total: 0, artworkFeeWaived: false };
       const total = lookupStandalonePrintPrice(p.format, p.size);
-      const styleLabel = p.styleKey && styleOptions.length > 0
-        ? styleOptions.find((s) => s.key === p.styleKey)?.label : null;
+      const styleLabel = findStyleLabel(p.styleKey);
       return {
         lines: [{
           label: `${FORMAT_LABELS[p.format]} — ${sizeLabels[p.size] || p.size}${styleLabel ? ` (${styleLabel})` : ''}`,
@@ -514,25 +581,40 @@ export default function CommissionWorkflow({ service }) {
       };
     }
 
-    // Bundle: digital + N prints
+    // Bundle: digital + N prints. For two-collection services the bundle includes
+    // a digital tier (primary, secondary, or both) chosen via bundleCollection state.
     if (orderType === 'bundle') {
       const validPrints = prints.filter((p) => p.format && p.size);
-      const digitalLabel = styleOptions.length > 0
-        ? `Digital bundle (all ${styleOptions.length} styles)`
-        : 'Digital download';
-      const lines = [{ label: digitalLabel, amount: digitalPrice }];
-      let total = digitalPrice;
+
+      // Determine the digital component of the bundle
+      let digitalLine;
+      let digitalAmount;
+      if (hasSecondaryCollection && bundleCollection === 'secondary') {
+        digitalLine = `Digital — ${collectionLabelSecondary} (all ${styleOptionsSecondary.length} styles)`;
+        digitalAmount = digitalPriceSecondary;
+      } else if (hasSecondaryCollection && bundleCollection === 'both') {
+        const totalStyles = styleOptions.length + styleOptionsSecondary.length;
+        digitalLine = `Both Collections — Digital (${totalStyles} styles total)`;
+        digitalAmount = digitalPriceBoth;
+      } else {
+        // primary collection (default)
+        digitalLine = hasSecondaryCollection
+          ? `Digital — ${collectionLabel} (all ${styleOptions.length} styles)`
+          : styleOptions.length > 0
+            ? `Digital bundle (all ${styleOptions.length} styles)`
+            : 'Digital download';
+        digitalAmount = digitalPrice;
+      }
+
+      const lines = [{ label: digitalLine, amount: digitalAmount }];
+      let total = digitalAmount;
       let saved = 0;
 
-      // Are we waiving the artwork fee? Two flags interact:
-      //   - artworkBundledWithDigital TRUE  → waive (Cartoonify/Missing Moment)
-      //   - artworkBundledWithDigital FALSE → artwork still applies (YSYS)
       const waiveArtwork = artworkBundledWithDigital;
 
       validPrints.forEach((p) => {
         const base = lookupBasePrintPrice(p.format, p.size);
-        const styleLabel = p.styleKey && styleOptions.length > 0
-          ? styleOptions.find((s) => s.key === p.styleKey)?.label : null;
+        const styleLabel = findStyleLabel(p.styleKey);
         lines.push({
           label: `${FORMAT_LABELS[p.format]} — ${sizeLabels[p.size] || p.size}${styleLabel ? ` (${styleLabel})` : ''}`,
           note: waiveArtwork ? `£${artworkFee.toFixed(2)} artwork fee waived` : undefined,
@@ -542,18 +624,16 @@ export default function CommissionWorkflow({ service }) {
         if (waiveArtwork) saved += artworkFee;
       });
 
-      // If artwork still applies (e.g. YSYS), add it as a separate line
+      // If artwork still applies (YSYS-style), add it as a separate line
       if (!waiveArtwork && validPrints.length > 0) {
         if (artworkFeePerOrder) {
-          // Charged once per order, regardless of print count
           lines.push({
-            label: 'Lyrics layout artwork fee',
+            label: 'Artwork fee',
             note: 'One-time charge per order',
             amount: artworkFee,
           });
           total += artworkFee;
         } else {
-          // Charged per print (each print added artwork inline)
           for (let i = 0; i < validPrints.length; i++) {
             lines.push({
               label: `Artwork fee (print ${i + 1})`,
@@ -604,7 +684,7 @@ export default function CommissionWorkflow({ service }) {
     }
 
     return { lines: [], total: 0, artworkFeeWaived: false };
-  }, [orderType, prints, digitalPrice, animationMusicPrice, animationVoPrice, includePrintsWithAnimation, artworkFee, sizeLabels, service, styleOptions]);
+  }, [orderType, prints, digitalPrice, digitalPriceSecondary, digitalPriceBoth, bundleCollection, hasSecondaryCollection, collectionLabel, collectionLabelSecondary, animationMusicPrice, animationVoPrice, includePrintsWithAnimation, artworkFee, sizeLabels, service, styleOptions, styleOptionsSecondary]);
 
   // ─── Validation ────────────────────────────────────────────────────────────
   function validateBriefStep() {
@@ -633,7 +713,7 @@ export default function CommissionWorkflow({ service }) {
 
   function validatePrintsStep() {
     if (!orderInvolvesPrints) return null;
-    const requireStyle = styleOptions.length > 0;
+    const requireStyle = styleOptions.length > 0 || styleOptionsSecondary.length > 0;
     const printsToValidate = orderType === 'singlePrint' ? prints.slice(0, 1) : prints;
     for (const [i, p] of printsToValidate.entries()) {
       if (!p.format || !p.size) return `Please choose a format and size for print #${i + 1}.`;
@@ -695,6 +775,7 @@ export default function CommissionWorkflow({ service }) {
       fd.append('serviceTitle', service.title);
       fd.append('orderType', orderType);
       fd.append('includePrintsWithAnimation', includePrintsWithAnimation ? 'true' : 'false');
+      fd.append('bundleCollection', bundleCollection);
 
       const name = briefValues.customerName || '';
       const email = briefValues.customerEmail || '';
@@ -818,12 +899,41 @@ export default function CommissionWorkflow({ service }) {
               <button type="button"
                 className={`cw__path-card${orderType === 'digital' ? ' cw__path-card--selected' : ''}`}
                 onClick={() => selectPath('digital')}>
-                <span className="cw__path-title">Digital {styleOptions.length > 0 ? 'Bundle' : 'Download'}</span>
+                <span className="cw__path-title">
+                  {hasSecondaryCollection
+                    ? `Digital — ${collectionLabel}`
+                    : `Digital ${styleOptions.length > 0 ? 'Bundle' : 'Download'}`}
+                </span>
                 <span className="cw__path-price">{priceLabel(digitalPrice)}</span>
                 <span className="cw__path-desc">
-                  {styleOptions.length > 0
-                    ? `All ${styleOptions.length} styles as digital files. No physical print.`
-                    : 'Digital file delivered to your inbox. No physical print.'}
+                  {hasSecondaryCollection
+                    ? `All ${styleOptions.length} ${collectionLabel.toLowerCase()} styles as digital files. No physical print.`
+                    : styleOptions.length > 0
+                      ? `All ${styleOptions.length} styles as digital files. No physical print.`
+                      : 'Digital file delivered to your inbox. No physical print.'}
+                </span>
+              </button>
+            )}
+            {hasSecondaryCollection && (
+              <button type="button"
+                className={`cw__path-card${orderType === 'digital-secondary' ? ' cw__path-card--selected' : ''}`}
+                onClick={() => selectPath('digital-secondary')}>
+                <span className="cw__path-title">Digital — {collectionLabelSecondary}</span>
+                <span className="cw__path-price">{priceLabel(digitalPriceSecondary)}</span>
+                <span className="cw__path-desc">
+                  All {styleOptionsSecondary.length} {collectionLabelSecondary.toLowerCase()} styles as digital files. No physical print.
+                </span>
+              </button>
+            )}
+            {hasBothCollectionsPrice && (
+              <button type="button"
+                className={`cw__path-card${orderType === 'digital-both' ? ' cw__path-card--selected' : ''}`}
+                onClick={() => selectPath('digital-both')}>
+                <span className="cw__path-badge">Best Value Digital</span>
+                <span className="cw__path-title">Both Collections</span>
+                <span className="cw__path-price">{priceLabel(digitalPriceBoth)}</span>
+                <span className="cw__path-desc">
+                  All {styleOptions.length + styleOptionsSecondary.length} styles across both collections — save £{(digitalPrice + digitalPriceSecondary - digitalPriceBoth).toFixed(2)} vs buying separately.
                 </span>
               </button>
             )}
@@ -834,7 +944,9 @@ export default function CommissionWorkflow({ service }) {
                 <span className="cw__path-title">Single Print</span>
                 <span className="cw__path-price">from {priceLabel(cheapestStandalonePrint)}</span>
                 <span className="cw__path-desc">
-                  One physical print + digital file. Includes £{artworkFee.toFixed(2)} artwork fee.
+                  {hasSecondaryCollection
+                    ? `One physical print of any style from either collection. Includes £${artworkFee.toFixed(2)} artwork fee.`
+                    : `One physical print + digital file. Includes £${artworkFee.toFixed(2)} artwork fee.`}
                 </span>
               </button>
             )}
@@ -846,12 +958,15 @@ export default function CommissionWorkflow({ service }) {
                 <span className="cw__path-title">Bundle + Prints</span>
                 <span className="cw__path-price">from {priceLabel(cheapestBundle)}</span>
                 <span className="cw__path-desc">
-                  Digital{styleOptions.length > 0 ? ' bundle' : ' file'} + any prints.
-                  {artworkBundledWithDigital
-                    ? ` £${artworkFee.toFixed(2)} artwork fee waived per print.`
-                    : artworkFeePerOrder
-                      ? ` £${artworkFee.toFixed(2)} artwork fee charged once per order.`
-                      : ` £${artworkFee.toFixed(2)} artwork fee applies per print.`}
+                  {hasSecondaryCollection
+                    ? `Pick a digital collection + add any prints. £${artworkFee.toFixed(2)} artwork fee waived per print.`
+                    : `Digital${styleOptions.length > 0 ? ' bundle' : ' file'} + any prints.${
+                        artworkBundledWithDigital
+                          ? ` £${artworkFee.toFixed(2)} artwork fee waived per print.`
+                          : artworkFeePerOrder
+                            ? ` £${artworkFee.toFixed(2)} artwork fee charged once per order.`
+                            : ` £${artworkFee.toFixed(2)} artwork fee applies per print.`
+                      }`}
                 </span>
               </button>
             )}
@@ -923,6 +1038,35 @@ export default function CommissionWorkflow({ service }) {
                   : `Add as many prints as you like — the £${artworkFee.toFixed(2)} artwork fee applies per print.`}
           </p>
 
+          {/* Bundle path + secondary collection: pick which digital tier */}
+          {orderType === 'bundle' && hasSecondaryCollection && (
+            <div className="cw__field">
+              <span className="cw__label">Which digital collection? <span className="cw__required-star">*</span></span>
+              <div className="cw__collection-toggle">
+                <button type="button"
+                  className={`cw__collection-btn${bundleCollection === 'primary' ? ' cw__collection-btn--active' : ''}`}
+                  onClick={() => setBundleCollection('primary')}>
+                  <span className="cw__collection-name">{collectionLabel}</span>
+                  <span className="cw__collection-price">{priceLabel(digitalPrice)}</span>
+                </button>
+                <button type="button"
+                  className={`cw__collection-btn${bundleCollection === 'secondary' ? ' cw__collection-btn--active' : ''}`}
+                  onClick={() => setBundleCollection('secondary')}>
+                  <span className="cw__collection-name">{collectionLabelSecondary}</span>
+                  <span className="cw__collection-price">{priceLabel(digitalPriceSecondary)}</span>
+                </button>
+                {hasBothCollectionsPrice && (
+                  <button type="button"
+                    className={`cw__collection-btn${bundleCollection === 'both' ? ' cw__collection-btn--active' : ''}`}
+                    onClick={() => setBundleCollection('both')}>
+                    <span className="cw__collection-name">Both Collections</span>
+                    <span className="cw__collection-price">{priceLabel(digitalPriceBoth)}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {(orderType === 'singlePrint' ? prints.slice(0, 1) : prints).map((p, i) => (
             <div key={i} className="cw__print-row">
               <div className="cw__print-header">
@@ -934,15 +1078,32 @@ export default function CommissionWorkflow({ service }) {
                 )}
               </div>
 
-              {styleOptions.length > 0 && (
+              {(styleOptions.length > 0 || styleOptionsSecondary.length > 0) && (
                 <label className="cw__field">
                   <span className="cw__label">Style <span className="cw__required-star">*</span></span>
                   <select className="cw__select" value={p.styleKey}
                     onChange={(e) => updatePrint(i, { styleKey: e.target.value })} required>
                     <option value="">Choose a style…</option>
-                    {styleOptions.map((s) => (
-                      <option key={s.key} value={s.key}>{s.label}</option>
-                    ))}
+                    {hasSecondaryCollection ? (
+                      <>
+                        <optgroup label={collectionLabel}>
+                          {/* For bundle/secondary the customer can only pick from secondary;
+                              for bundle/primary only from primary; for both/singlePrint they can pick anything. */}
+                          {((orderType === 'bundle' && bundleCollection === 'secondary') ? [] : styleOptions).map((s) => (
+                            <option key={s.key} value={s.key}>{s.label}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label={collectionLabelSecondary}>
+                          {((orderType === 'bundle' && bundleCollection === 'primary') ? [] : styleOptionsSecondary).map((s) => (
+                            <option key={s.key} value={s.key}>{s.label}</option>
+                          ))}
+                        </optgroup>
+                      </>
+                    ) : (
+                      styleOptions.map((s) => (
+                        <option key={s.key} value={s.key}>{s.label}</option>
+                      ))
+                    )}
                   </select>
                 </label>
               )}

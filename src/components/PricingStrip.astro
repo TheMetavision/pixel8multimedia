@@ -13,6 +13,10 @@
 interface Props {
   service: {
     digitalPrice?: number;
+    digitalPriceSecondary?: number;
+    digitalPriceBoth?: number;
+    collectionLabel?: string;
+    collectionLabelSecondary?: string;
     animationMusicPrice?: number;
     animationVoPrice?: number;
     artworkFee?: number;
@@ -24,6 +28,7 @@ interface Props {
       canvasGallery?: { small?: number; medium?: number; large?: number };
     };
     styleOptions?: Array<{ key: string; label: string }>;
+    styleOptionsSecondary?: Array<{ key: string; label: string }>;
   };
 }
 
@@ -33,11 +38,18 @@ const DEFAULT_ARTWORK_FEE = 5.0;
 const artworkFee = service.artworkFee != null ? Number(service.artworkFee) : DEFAULT_ARTWORK_FEE;
 const artworkBundledWithDigital = service.artworkBundledWithDigital !== false; // default true
 const digitalPrice = Number(service.digitalPrice) || 0;
+const digitalPriceSecondary = Number(service.digitalPriceSecondary) || 0;
+const digitalPriceBoth = Number(service.digitalPriceBoth) || 0;
 const animationMusicPrice = Number(service.animationMusicPrice) || 0;
 const animationVoPrice = Number(service.animationVoPrice) || 0;
 const styleCount = (service.styleOptions || []).length;
+const styleCountSecondary = (service.styleOptionsSecondary || []).length;
+const collectionLabel = service.collectionLabel || 'Collection 1';
+const collectionLabelSecondary = service.collectionLabelSecondary || 'Collection 2';
 
 const hasDigital = digitalPrice > 0;
+const hasSecondaryCollection = styleCountSecondary > 0 && digitalPriceSecondary > 0;
+const hasBothCollectionsPrice = digitalPriceBoth > 0 && hasSecondaryCollection;
 const hasAnimationMusic = animationMusicPrice > 0;
 const hasAnimationVo = animationVoPrice > 0;
 
@@ -81,12 +93,39 @@ function priceLabel(p: number | null): string {
     <div class="pricing-strip__cards">
       {hasDigital && (
         <div class="pricing-strip__card pricing-strip__card--cyan">
-          <span class="pricing-strip__card-title">Digital {styleCount > 0 ? 'Bundle' : 'Download'}</span>
+          <span class="pricing-strip__card-title">
+            {hasSecondaryCollection
+              ? `Digital — ${collectionLabel}`
+              : `Digital ${styleCount > 0 ? 'Bundle' : 'Download'}`}
+          </span>
           <span class="pricing-strip__card-price">{priceLabel(digitalPrice)}</span>
           <span class="pricing-strip__card-desc">
-            {styleCount > 0
-              ? `All ${styleCount} styles delivered as digital files. No physical print.`
-              : 'Digital file delivered to your inbox. No physical print.'}
+            {hasSecondaryCollection
+              ? `All ${styleCount} ${collectionLabel.toLowerCase()} styles as digital files. No physical print.`
+              : styleCount > 0
+                ? `All ${styleCount} styles delivered as digital files. No physical print.`
+                : 'Digital file delivered to your inbox. No physical print.'}
+          </span>
+        </div>
+      )}
+
+      {hasSecondaryCollection && (
+        <div class="pricing-strip__card pricing-strip__card--violet">
+          <span class="pricing-strip__card-title">Digital — {collectionLabelSecondary}</span>
+          <span class="pricing-strip__card-price">{priceLabel(digitalPriceSecondary)}</span>
+          <span class="pricing-strip__card-desc">
+            All {styleCountSecondary} {collectionLabelSecondary.toLowerCase()} styles as digital files. No physical print.
+          </span>
+        </div>
+      )}
+
+      {hasBothCollectionsPrice && (
+        <div class="pricing-strip__card pricing-strip__card--yellow">
+          <span class="pricing-strip__card-badge">Best Digital</span>
+          <span class="pricing-strip__card-title">Both Collections</span>
+          <span class="pricing-strip__card-price">{priceLabel(digitalPriceBoth)}</span>
+          <span class="pricing-strip__card-desc">
+            All {styleCount + styleCountSecondary} styles across both collections — save £{(digitalPrice + digitalPriceSecondary - digitalPriceBoth).toFixed(2)}.
           </span>
         </div>
       )}
@@ -96,7 +135,9 @@ function priceLabel(p: number | null): string {
           <span class="pricing-strip__card-title">Single Print</span>
           <span class="pricing-strip__card-price">from {priceLabel(cheapestStandalonePrint)}</span>
           <span class="pricing-strip__card-desc">
-            One physical print + digital file. Includes £{artworkFee.toFixed(2)} artwork fee.
+            {hasSecondaryCollection
+              ? `One physical print of any style from either collection. Includes £${artworkFee.toFixed(2)} artwork fee.`
+              : `One physical print + digital file. Includes £${artworkFee.toFixed(2)} artwork fee.`}
           </span>
         </div>
       )}

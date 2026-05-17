@@ -858,3 +858,69 @@
 .cw__checkbox-label {
   flex: 1;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * APPEND THESE STYLES to the end of src/styles/commission-workflow.css
+ * They add support for the new "Which digital collection?" toggle that
+ * appears in the prints step when a service has two distinct style
+ * collections (e.g. Back In Time: Modern Decades vs Historical Periods).
+ *
+ * Pattern: three pill-style buttons that wrap on mobile.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.cw__collection-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.cw__collection-btn {
+  flex: 1 1 calc(33.333% - 0.5rem);
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text, #F0EDE6);
+  font-family: inherit;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.cw__collection-btn:hover {
+  border-color: rgba(240, 120, 40, 0.5);
+  transform: translateY(-1px);
+}
+
+.cw__collection-btn--active {
+  border-color: #F07828;
+  background: rgba(240, 120, 40, 0.12);
+  box-shadow: 0 0 20px rgba(240, 120, 40, 0.2);
+}
+
+.cw__collection-name {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cw__collection-price {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #F07828;
+}
+
+@media (max-width: 640px) {
+  .cw__collection-btn {
+    flex: 1 1 100%;
+  }
+}

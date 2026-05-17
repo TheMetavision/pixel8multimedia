@@ -162,6 +162,73 @@ export default defineType({
       ],
     }),
     defineField({
+      name: 'collectionLabel',
+      title: 'Collection 1 — Display Label',
+      type: 'string',
+      group: 'pricing',
+      description: 'Optional. If this service offers TWO distinct style collections (e.g. Back In Time: Modern Decades vs Historical Periods), this is the customer-facing label for the primary collection (matches `styleOptions[]`). Leave blank for services with only one collection.',
+    }),
+    defineField({
+      name: 'styleOptionsSecondary',
+      title: 'Collection 2 — Style Options',
+      type: 'array',
+      group: 'pricing',
+      description: 'Optional second collection of styles. Used by Back In Time for the Historical Periods bundle (Roman, Medieval, Renaissance etc.) alongside Modern Decades. Leave empty unless this service offers two distinct collections.',
+      of: [
+        {
+          type: 'object',
+          name: 'styleOptionSecondary',
+          fields: [
+            {
+              name: 'key',
+              title: 'Internal Key',
+              type: 'string',
+              description: 'Short slug, lowercase, hyphenated. E.g. "roman", "medieval".',
+              validation: (Rule) => Rule.required().regex(/^[a-z0-9-]+$/, { name: 'lowercase-hyphenated' }),
+            },
+            {
+              name: 'label',
+              title: 'Display Name',
+              type: 'string',
+              description: 'What the customer sees, e.g. "Roman", "Victorian".',
+              validation: (Rule) => Rule.required(),
+            },
+            {
+              name: 'helperText',
+              title: 'Description',
+              type: 'string',
+            },
+          ],
+          preview: {
+            select: { title: 'label', subtitle: 'key' },
+          },
+        },
+      ],
+    }),
+    defineField({
+      name: 'collectionLabelSecondary',
+      title: 'Collection 2 — Display Label',
+      type: 'string',
+      group: 'pricing',
+      description: 'Customer-facing label for the secondary collection (matches `styleOptionsSecondary[]`). E.g. "Historical Periods". Required if `styleOptionsSecondary` is populated.',
+    }),
+    defineField({
+      name: 'digitalPriceSecondary',
+      title: 'Collection 2 — Digital Bundle Price (£)',
+      type: 'number',
+      group: 'pricing',
+      description: 'Price for the digital bundle of the SECONDARY collection only. Used when a service offers two distinct collections. E.g. Back In Time charges £14.99 for Modern Decades AND £14.99 for Historical Periods.',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'digitalPriceBoth',
+      title: 'Both Collections — Bundle Price (£)',
+      type: 'number',
+      group: 'pricing',
+      description: 'Discounted bundle price for buying BOTH collections together. Should be less than `digitalPrice + digitalPriceSecondary` to create the incentive. E.g. £14.99 + £14.99 = £29.98 individually, £24.99 together = £4.99 saving.',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
       name: 'animationMusicPrice',
       title: 'Animation (Music) Price (£)',
       type: 'number',
