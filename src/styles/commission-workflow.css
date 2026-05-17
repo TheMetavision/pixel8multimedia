@@ -817,3 +817,44 @@
   background: rgba(240, 120, 40, 0.1);
   border-color: rgba(240, 120, 40, 0.4);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * APPEND THESE STYLES to the end of src/styles/commission-workflow.css
+ * They add support for the new fieldType="checkbox" (consent/confirmation
+ * tickboxes). Style matches the inline-toggle visual so consent boxes feel
+ * weighty without breaking the form rhythm.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.cw__checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+  padding: 1rem 1.125rem;
+  background: rgba(240, 120, 40, 0.05);
+  border: 1px solid rgba(240, 120, 40, 0.22);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text, #F0EDE6);
+  line-height: 1.55;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.cw__checkbox-row:hover {
+  background: rgba(240, 120, 40, 0.09);
+  border-color: rgba(240, 120, 40, 0.38);
+}
+
+.cw__checkbox {
+  flex-shrink: 0;
+  margin-top: 3px;
+  width: 1rem;
+  height: 1rem;
+  accent-color: #F07828;
+  cursor: pointer;
+}
+
+.cw__checkbox-label {
+  flex: 1;
+}

@@ -308,6 +308,7 @@ export default defineType({
                 { title: 'Photo — single upload', value: 'photo' },
                 { title: 'Photos — multiple uploads', value: 'photos' },
                 { title: 'File — generic file upload (audio, video, document)', value: 'file' },
+                { title: 'Checkbox — consent / confirmation tickbox', value: 'checkbox' },
               ],
               layout: 'dropdown',
             },

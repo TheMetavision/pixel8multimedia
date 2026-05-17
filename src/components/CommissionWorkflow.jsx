@@ -218,6 +218,31 @@ function BriefField({ field, value, onChange, files, onFilesChange, styleOptions
     );
   }
 
+  if (fieldType === 'checkbox') {
+    // Consent/confirmation checkbox. Required=true means user must tick it
+    // to proceed. The label text is the consent statement itself, so we
+    // render it inline next to the checkbox (not above) for natural reading.
+    const checked = value === true;
+    return (
+      <div className="cw__field">
+        <label className="cw__checkbox-row">
+          <input
+            type="checkbox"
+            className="cw__checkbox"
+            checked={checked}
+            required={required}
+            onChange={(e) => onChange(key, e.target.checked)}
+          />
+          <span className="cw__checkbox-label">
+            {label}
+            {required && <span className="cw__required-star"> *</span>}
+          </span>
+        </label>
+        {helperEl}
+      </div>
+    );
+  }
+
   const inputType = fieldType === 'email' ? 'email' : fieldType === 'phone' ? 'tel' : 'text';
   return (
     <label className="cw__field">{labelEl}{helperEl}
@@ -593,6 +618,8 @@ export default function CommissionWorkflow({ service }) {
         if (arr.length < min) return `Please upload at least ${min} photo${min > 1 ? 's' : ''} for "${f.label}".`;
       } else if (f.fieldType === 'file') {
         if ((briefFiles[f.key] || []).length === 0) return `Please upload a file for "${f.label}".`;
+      } else if (f.fieldType === 'checkbox') {
+        if (briefValues[f.key] !== true) return `Please confirm: "${f.label}"`;
       } else {
         const v = (briefValues[f.key] || '').trim();
         if (!v) return `Please fill in "${f.label}".`;
@@ -679,13 +706,28 @@ export default function CommissionWorkflow({ service }) {
       const briefSummary = filteredBriefingFields
         .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
         .filter((f) => !['customerName', 'customerEmail', 'customerPhone'].includes(f.key))
-        .map((f) => `${f.label}: ${briefValues[f.key] || '(not provided)'}`)
+        .map((f) => {
+          const raw = briefValues[f.key];
+          let display;
+          if (f.fieldType === 'checkbox') {
+            display = raw === true ? 'Yes' : 'No';
+          } else {
+            display = raw || '(not provided)';
+          }
+          return `${f.label}: ${display}`;
+        })
         .join('\n');
       fd.append('brief', briefSummary);
 
       const briefData = filteredBriefingFields
         .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
-        .map((f) => ({ key: f.key, label: f.label, value: briefValues[f.key] || '' }));
+        .map((f) => {
+          const raw = briefValues[f.key];
+          let v;
+          if (f.fieldType === 'checkbox') v = raw === true ? 'Yes' : 'No';
+          else v = raw || '';
+          return { key: f.key, label: f.label, value: v };
+        });
       fd.append('briefData', JSON.stringify(briefData));
 
       if (orderInvolvesPrints) {
@@ -986,12 +1028,21 @@ export default function CommissionWorkflow({ service }) {
             </div>
             {filteredBriefingFields
               .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
-              .map((f) => (
-                <div className="cw__summary-row" key={f.key}>
-                  <dt>{f.label}</dt>
-                  <dd>{briefValues[f.key] || <em>(not provided)</em>}</dd>
-                </div>
-              ))}
+              .map((f) => {
+                const raw = briefValues[f.key];
+                let display;
+                if (f.fieldType === 'checkbox') {
+                  display = raw === true ? 'Yes' : <em>No</em>;
+                } else {
+                  display = raw || <em>(not provided)</em>;
+                }
+                return (
+                  <div className="cw__summary-row" key={f.key}>
+                    <dt>{f.label}</dt>
+                    <dd>{display}</dd>
+                  </div>
+                );
+              })}
             {filteredBriefingFields.filter((f) => ['photo', 'photos', 'file'].includes(f.fieldType)).map((f) => {
               const arr = briefFiles[f.key] || [];
               return (
