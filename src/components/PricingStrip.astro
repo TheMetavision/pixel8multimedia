@@ -80,7 +80,7 @@ function priceLabel(p: number | null): string {
     <h2 class="pricing-strip__title">Choose Your Order Type</h2>
     <div class="pricing-strip__cards">
       {hasDigital && (
-        <div class="pricing-strip__card">
+        <div class="pricing-strip__card pricing-strip__card--cyan">
           <span class="pricing-strip__card-title">Digital {styleCount > 0 ? 'Bundle' : 'Download'}</span>
           <span class="pricing-strip__card-price">{priceLabel(digitalPrice)}</span>
           <span class="pricing-strip__card-desc">
@@ -92,7 +92,7 @@ function priceLabel(p: number | null): string {
       )}
 
       {hasPrint && (
-        <div class="pricing-strip__card">
+        <div class="pricing-strip__card pricing-strip__card--magenta">
           <span class="pricing-strip__card-title">Single Print</span>
           <span class="pricing-strip__card-price">from {priceLabel(cheapestStandalonePrint)}</span>
           <span class="pricing-strip__card-desc">
@@ -102,7 +102,7 @@ function priceLabel(p: number | null): string {
       )}
 
       {hasDigital && hasPrint && (
-        <div class="pricing-strip__card pricing-strip__card--best">
+        <div class="pricing-strip__card pricing-strip__card--orange pricing-strip__card--best">
           <span class="pricing-strip__card-badge">Best Value</span>
           <span class="pricing-strip__card-title">Bundle + Prints</span>
           <span class="pricing-strip__card-price">from {priceLabel(cheapestBundle)}</span>
@@ -115,7 +115,7 @@ function priceLabel(p: number | null): string {
       )}
 
       {hasAnimationMusic && (
-        <div class="pricing-strip__card">
+        <div class="pricing-strip__card pricing-strip__card--yellow">
           <span class="pricing-strip__card-title">Animation (Music)</span>
           <span class="pricing-strip__card-price">{priceLabel(animationMusicPrice)}</span>
           <span class="pricing-strip__card-desc">
@@ -125,7 +125,7 @@ function priceLabel(p: number | null): string {
       )}
 
       {hasAnimationVo && (
-        <div class="pricing-strip__card">
+        <div class="pricing-strip__card pricing-strip__card--violet">
           <span class="pricing-strip__card-title">Animation + Voiceover</span>
           <span class="pricing-strip__card-price">{priceLabel(animationVoPrice)}</span>
           <span class="pricing-strip__card-desc">
@@ -176,17 +176,69 @@ function priceLabel(p: number | null): string {
     background: rgba(0, 0, 0, 0.35);
     border: 2px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
-    transition: border-color 200ms ease, transform 200ms ease;
+    transition: border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
   }
 
   .pricing-strip__card:hover {
-    border-color: rgba(240, 120, 40, 0.5);
     transform: translateY(-2px);
   }
 
+  /* ── Per-card accent colours (drawn from the Pixel8 logo palette) ──── */
+
+  .pricing-strip__card--cyan {
+    border-color: #00BCD4;
+  }
+  .pricing-strip__card--cyan .pricing-strip__card-price {
+    color: #00BCD4;
+  }
+  .pricing-strip__card--cyan:hover {
+    box-shadow: 0 0 24px rgba(0, 188, 212, 0.25);
+  }
+
+  .pricing-strip__card--magenta {
+    border-color: #E91E7B;
+  }
+  .pricing-strip__card--magenta .pricing-strip__card-price {
+    color: #E91E7B;
+  }
+  .pricing-strip__card--magenta:hover {
+    box-shadow: 0 0 24px rgba(233, 30, 123, 0.25);
+  }
+
+  .pricing-strip__card--orange {
+    border-color: #F07828;
+    background: linear-gradient(135deg, rgba(240, 120, 40, 0.10), rgba(0, 0, 0, 0.35));
+  }
+  .pricing-strip__card--orange .pricing-strip__card-price {
+    color: #F07828;
+  }
+  .pricing-strip__card--orange:hover {
+    box-shadow: 0 0 28px rgba(240, 120, 40, 0.32);
+  }
+
+  .pricing-strip__card--yellow {
+    border-color: #FFEB3B;
+  }
+  .pricing-strip__card--yellow .pricing-strip__card-price {
+    color: #FFEB3B;
+  }
+  .pricing-strip__card--yellow:hover {
+    box-shadow: 0 0 24px rgba(255, 235, 59, 0.25);
+  }
+
+  .pricing-strip__card--violet {
+    border-color: #7C4DFF;
+  }
+  .pricing-strip__card--violet .pricing-strip__card-price {
+    color: #7C4DFF;
+  }
+  .pricing-strip__card--violet:hover {
+    box-shadow: 0 0 24px rgba(124, 77, 255, 0.28);
+  }
+
+  /* "Best Value" Bundle card — same orange treatment but slightly brighter */
   .pricing-strip__card--best {
-    background: linear-gradient(135deg, rgba(240, 120, 40, 0.08), rgba(233, 30, 123, 0.06));
-    border-color: rgba(240, 120, 40, 0.3);
+    border-color: #F07828;
   }
 
   .pricing-strip__card-badge {
@@ -202,6 +254,7 @@ function priceLabel(p: number | null): string {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
   .pricing-strip__card-title {
@@ -217,6 +270,7 @@ function priceLabel(p: number | null): string {
     font-family: 'Space Mono', monospace;
     font-size: 1.5rem;
     font-weight: 700;
+    /* default fallback; per-card accent classes override */
     color: #F07828;
   }
 
