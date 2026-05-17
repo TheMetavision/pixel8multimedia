@@ -378,6 +378,14 @@ export default function CommissionWorkflow({ service }) {
   const animationMusicPrice = Number(service.animationMusicPrice) || 0;
   const animationVoPrice = Number(service.animationVoPrice) || 0;
   const artworkFee = service.artworkFee != null ? Number(service.artworkFee) : 5.0; // default £5 (Cartoonify)
+  // Whether the artwork fee is bundled into the digital base.
+  // TRUE (default) = Cartoonify / Missing Moment — print artwork fee waived when digital is in same checkout.
+  // FALSE = Your Song Your Story — digital song and lyrics print are SEPARATE products, artwork always applies.
+  const artworkBundledWithDigital = service.artworkBundledWithDigital !== false; // default true
+  // Whether the artwork fee is charged once per ORDER (true) or once per PRINT (false).
+  // FALSE (default) = artwork × print count (Cartoonify/Missing Moment standalone behaviour).
+  // TRUE = artwork charged once regardless of print count (Your Song Your Story — one lyrics layout reused for any number of print sizes).
+  const artworkFeePerOrder = service.artworkFeePerOrder === true; // default false
   const sizeLabels = service.printSizeLabels || DEFAULT_SIZE_LABELS;
 
   const hasDigitalOption = digitalPrice > 0;
@@ -481,7 +489,7 @@ export default function CommissionWorkflow({ service }) {
       };
     }
 
-    // Bundle: digital + N prints (artwork fee waived)
+    // Bundle: digital + N prints
     if (orderType === 'bundle') {
       const validPrints = prints.filter((p) => p.format && p.size);
       const digitalLabel = styleOptions.length > 0
@@ -489,21 +497,52 @@ export default function CommissionWorkflow({ service }) {
         : 'Digital download';
       const lines = [{ label: digitalLabel, amount: digitalPrice }];
       let total = digitalPrice;
+      let saved = 0;
+
+      // Are we waiving the artwork fee? Two flags interact:
+      //   - artworkBundledWithDigital TRUE  → waive (Cartoonify/Missing Moment)
+      //   - artworkBundledWithDigital FALSE → artwork still applies (YSYS)
+      const waiveArtwork = artworkBundledWithDigital;
+
       validPrints.forEach((p) => {
         const base = lookupBasePrintPrice(p.format, p.size);
         const styleLabel = p.styleKey && styleOptions.length > 0
           ? styleOptions.find((s) => s.key === p.styleKey)?.label : null;
         lines.push({
           label: `${FORMAT_LABELS[p.format]} — ${sizeLabels[p.size] || p.size}${styleLabel ? ` (${styleLabel})` : ''}`,
-          note: `£${artworkFee.toFixed(2)} artwork fee waived`,
+          note: waiveArtwork ? `£${artworkFee.toFixed(2)} artwork fee waived` : undefined,
           amount: base,
         });
         total += base;
+        if (waiveArtwork) saved += artworkFee;
       });
+
+      // If artwork still applies (e.g. YSYS), add it as a separate line
+      if (!waiveArtwork && validPrints.length > 0) {
+        if (artworkFeePerOrder) {
+          // Charged once per order, regardless of print count
+          lines.push({
+            label: 'Lyrics layout artwork fee',
+            note: 'One-time charge per order',
+            amount: artworkFee,
+          });
+          total += artworkFee;
+        } else {
+          // Charged per print (each print added artwork inline)
+          for (let i = 0; i < validPrints.length; i++) {
+            lines.push({
+              label: `Artwork fee (print ${i + 1})`,
+              amount: artworkFee,
+            });
+            total += artworkFee;
+          }
+        }
+      }
+
       return {
         lines, total,
-        artworkFeeWaived: validPrints.length > 0,
-        savedAmount: validPrints.length * artworkFee,
+        artworkFeeWaived: waiveArtwork && validPrints.length > 0,
+        savedAmount: saved,
       };
     }
 
@@ -706,8 +745,15 @@ export default function CommissionWorkflow({ service }) {
 
   const cheapestBundle = useMemo(() => {
     if (!hasDigitalOption || !cheapestStandalonePrint) return null;
-    return digitalPrice + Math.max(0, cheapestStandalonePrint - artworkFee);
-  }, [digitalPrice, cheapestStandalonePrint, hasDigitalOption, artworkFee]);
+    // If artwork is bundled with digital (default), subtract artwork from print to get shop price
+    // If artwork is NOT bundled (YSYS), the cheapest bundle = digital + standalone print (artwork still applies)
+    if (artworkBundledWithDigital) {
+      return digitalPrice + Math.max(0, cheapestStandalonePrint - artworkFee);
+    } else {
+      // YSYS-style: digital + base + artwork (charged once if perOrder, once for single print either way)
+      return digitalPrice + cheapestStandalonePrint;
+    }
+  }, [digitalPrice, cheapestStandalonePrint, hasDigitalOption, artworkFee, artworkBundledWithDigital]);
 
   return (
     <div className="cw">
@@ -758,7 +804,12 @@ export default function CommissionWorkflow({ service }) {
                 <span className="cw__path-title">Bundle + Prints</span>
                 <span className="cw__path-price">from {priceLabel(cheapestBundle)}</span>
                 <span className="cw__path-desc">
-                  Digital{styleOptions.length > 0 ? ' bundle' : ' file'} + any prints. £{artworkFee.toFixed(2)} artwork fee waived per print.
+                  Digital{styleOptions.length > 0 ? ' bundle' : ' file'} + any prints.
+                  {artworkBundledWithDigital
+                    ? ` £${artworkFee.toFixed(2)} artwork fee waived per print.`
+                    : artworkFeePerOrder
+                      ? ` £${artworkFee.toFixed(2)} artwork fee charged once per order.`
+                      : ` £${artworkFee.toFixed(2)} artwork fee applies per print.`}
                 </span>
               </button>
             )}
@@ -823,7 +874,11 @@ export default function CommissionWorkflow({ service }) {
           <p className="cw__step-intro">
             {orderType === 'singlePrint'
               ? 'Configure your print.'
-              : `Add as many prints as you like — the £${artworkFee.toFixed(2)} artwork fee is waived on every one.`}
+              : artworkBundledWithDigital
+                ? `Add as many prints as you like — the £${artworkFee.toFixed(2)} artwork fee is waived on every one.`
+                : artworkFeePerOrder
+                  ? `Add as many prints as you like — the £${artworkFee.toFixed(2)} artwork fee is charged once per order regardless of how many prints.`
+                  : `Add as many prints as you like — the £${artworkFee.toFixed(2)} artwork fee applies per print.`}
           </p>
 
           {(orderType === 'singlePrint' ? prints.slice(0, 1) : prints).map((p, i) => (
@@ -877,10 +932,15 @@ export default function CommissionWorkflow({ service }) {
                 <p className="cw__print-price">
                   {orderType === 'singlePrint' ? (
                     <>{priceLabel(lookupStandalonePrintPrice(p.format, p.size))}</>
-                  ) : (
+                  ) : artworkBundledWithDigital ? (
                     <>
                       {priceLabel(lookupBasePrintPrice(p.format, p.size))}
                       <span className="cw__print-savings"> · £{artworkFee.toFixed(2)} artwork fee waived</span>
+                    </>
+                  ) : (
+                    <>
+                      {priceLabel(lookupBasePrintPrice(p.format, p.size))}
+                      <span className="cw__print-savings"> · print only (artwork fee shown below)</span>
                     </>
                   )}
                 </p>

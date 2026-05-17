@@ -189,6 +189,24 @@ export default defineType({
       validation: (Rule) => Rule.min(0),
     }),
     defineField({
+      name: 'artworkBundledWithDigital',
+      title: 'Artwork fee waived when bundled with digital?',
+      type: 'boolean',
+      group: 'pricing',
+      initialValue: true,
+      description:
+        'TRUE (default) = Cartoonify/Missing Moment model. The artwork fee is waived per print when the customer also orders a digital/animation base in the same checkout. FALSE = the artwork fee always applies even when ordered alongside a digital product (used for Your Song Your Story where the song and the lyrics print are independent products).',
+    }),
+    defineField({
+      name: 'artworkFeePerOrder',
+      title: 'Artwork fee charged once per order (not per print)?',
+      type: 'boolean',
+      group: 'pricing',
+      initialValue: false,
+      description:
+        'FALSE (default) = artwork fee multiplies by print count (Cartoonify/Missing Moment standalone model). TRUE = artwork fee is charged once per order regardless of how many prints are in it (Your Song Your Story model — one lyrics layout, multiple print sizes/formats).',
+    }),
+    defineField({
       name: 'printSizeLabels',
       title: 'Print Size Labels',
       type: 'object',

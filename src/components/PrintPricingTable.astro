@@ -11,6 +11,8 @@
 interface Props {
   service: {
     artworkFee?: number;
+    artworkBundledWithDigital?: boolean;
+    artworkFeePerOrder?: boolean;
     printUpcharges?: {
       poster?: { small?: number; medium?: number; large?: number };
       canvasStandard?: { small?: number; medium?: number; large?: number };
@@ -35,6 +37,8 @@ const sizeLabels = {
 };
 
 const artworkFee = service.artworkFee != null ? Number(service.artworkFee) : 5.0;
+const artworkBundledWithDigital = service.artworkBundledWithDigital !== false; // default true
+const artworkFeePerOrder = service.artworkFeePerOrder === true; // default false
 
 const u = service.printUpcharges;
 
@@ -63,8 +67,11 @@ const formats = [
   <section class="print-pricing" aria-label="Print options and pricing">
     <h2 class="print-pricing__title">Print Options &amp; Pricing</h2>
     <p class="print-pricing__intro">
-      Standalone print prices include the £{artworkFee.toFixed(2)} artwork creation fee.
-      Order a digital or animation along with prints in the same checkout and the artwork fee is waived per print.
+      {artworkBundledWithDigital
+        ? `Standalone print prices include the £${artworkFee.toFixed(2)} artwork creation fee. Order a digital or animation along with prints in the same checkout and the artwork fee is waived per print.`
+        : artworkFeePerOrder
+          ? `Standalone print prices include the £${artworkFee.toFixed(2)} artwork creation fee. When ordering multiple prints, the artwork fee is charged once per order (not per print). Ordering alongside the digital song does not waive this fee — they are separate products.`
+          : `Standalone print prices include the £${artworkFee.toFixed(2)} artwork creation fee. The fee applies to each print.`}
     </p>
 
     <div class="print-pricing__cards">

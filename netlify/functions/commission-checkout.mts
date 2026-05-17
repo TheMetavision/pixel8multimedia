@@ -177,7 +177,15 @@ function calculatePricing(args: {
         quantity: 1,
       });
     } else {
-      // bundle, animation-music, animation-vo — artwork fee waived
+      // bundle, animation-music, animation-vo
+      // Determine whether to waive the artwork fee on this order's prints.
+      // For animation paths, always waive (artwork is part of animation production).
+      // For 'bundle' path, honour the service's artworkBundledWithDigital flag.
+      const isAnimationPath = orderType === 'animation-music' || orderType === 'animation-vo';
+      const artworkBundledWithDigital = service.artworkBundledWithDigital !== false; // default true
+      const artworkFeePerOrder = service.artworkFeePerOrder === true; // default false
+      const waiveArtwork = isAnimationPath || artworkBundledWithDigital;
+
       for (const p of validPrints) {
         const sanityFmt = FORMAT_TO_SANITY_KEY[p.format!];
         const sizeKey = SIZE_KEY_MAP[p.size!] || (p.size as 'small' | 'medium' | 'large');
@@ -187,19 +195,53 @@ function calculatePricing(args: {
         const styleLabel = labelForStyle(p.styleKey);
         const lineLabel = pretty(service, p.format!, sizeKey, styleLabel);
 
-        breakdownPrints.push({ label: lineLabel, amount: basePrintPrice, artworkFeeWaived: true });
+        breakdownPrints.push({ label: lineLabel, amount: basePrintPrice, artworkFeeWaived: waiveArtwork });
         total += basePrintPrice;
-        saved += artworkFee;
+        if (waiveArtwork) saved += artworkFee;
         lineItems.push({
           price_data: {
             currency: 'gbp', unit_amount: Math.round(basePrintPrice * 100),
             product_data: {
               name: `${service.title} — ${lineLabel}`,
-              description: `£${artworkFee.toFixed(2)} artwork fee waived (bundle order)`,
+              description: waiveArtwork
+                ? `£${artworkFee.toFixed(2)} artwork fee waived (bundle order)`
+                : `Print only — artwork fee charged separately`,
             },
           },
           quantity: 1,
         });
+      }
+
+      // If artwork still applies (e.g. YSYS), add it as separate line item(s)
+      if (!waiveArtwork && validPrints.length > 0) {
+        if (artworkFeePerOrder) {
+          // Single artwork fee per order
+          total += artworkFee;
+          lineItems.push({
+            price_data: {
+              currency: 'gbp', unit_amount: Math.round(artworkFee * 100),
+              product_data: {
+                name: `${service.title} — Artwork creation fee`,
+                description: 'One-time charge per order',
+              },
+            },
+            quantity: 1,
+          });
+        } else {
+          // Per-print artwork fee
+          for (let i = 0; i < validPrints.length; i++) {
+            total += artworkFee;
+            lineItems.push({
+              price_data: {
+                currency: 'gbp', unit_amount: Math.round(artworkFee * 100),
+                product_data: {
+                  name: `${service.title} — Artwork fee (print ${i + 1})`,
+                },
+              },
+              quantity: 1,
+            });
+          }
+        }
       }
     }
   }
@@ -326,6 +368,7 @@ export default async function handler(req: Request, _context: Context) {
       `*[_type == "service" && slug.current == $slug][0]{
         _id, title, price, digitalPrice, printUpcharges, styleOptions,
         animationMusicPrice, animationVoPrice, artworkFee, printSizeLabels,
+        artworkBundledWithDigital, artworkFeePerOrder,
         commissionEnabled
       }`,
       { slug: serviceSlug }
