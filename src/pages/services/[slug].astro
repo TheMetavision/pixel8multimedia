@@ -534,22 +534,25 @@ const serviceForWizard = {
     margin-left: 0.25rem;
   }
 
-  .example-block__source-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+  /* Uniform-mode source grid — fixed 3-column layout */
+  .example-block .example-block__source-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
     gap: 0.875rem;
     margin-bottom: 1.5rem;
+    width: 100%;
     max-width: 1060px;
     margin-left: auto;
     margin-right: auto;
   }
 
-  .example-block__source-figure {
+  .example-block .example-block__source-figure {
     margin: 0;
     position: relative;
     overflow: hidden;
     border-radius: 8px;
     aspect-ratio: 16 / 10;
+    width: 100%;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
   }
@@ -813,8 +816,8 @@ const serviceForWizard = {
       grid-template-columns: 1fr;
     }
 
-    .example-block__source-grid {
-      grid-template-columns: repeat(2, 1fr);
+    .example-block .example-block__source-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
       gap: 0.5rem;
     }
 
