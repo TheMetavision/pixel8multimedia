@@ -76,16 +76,34 @@ const extParagraphs = service.extendedDescription
   ? service.extendedDescription.split(/\n\n+/).filter(Boolean)
   : [];
 
-// Helper: split images into original (first with tag "Original") and the rest
-function splitOriginal(images = []) {
+// Helper: categorise example images.
+//
+// For SOYL-style examples (which contain a "Digital Still" or "Collage"-tagged
+// image alongside many source photos), returns { mode: 'collage', sourcePhotos,
+// collage }. For all other services, returns { mode: 'standard', original,
+// rest } matching the previous splitOriginal() behaviour.
+function categoriseImages(images = []) {
   const valid = images.filter((img) => img.url);
-  if (!valid.length) return { original: null, rest: [] };
+  if (!valid.length) return { mode: 'standard', original: null, rest: [] };
+
+  // SOYL detection: any image tagged "Digital Still" or "Collage" (case-insensitive)
+  const collage = valid.find((img) => {
+    const t = (img.tag || '').toLowerCase();
+    return t.includes('digital still') || t.includes('collage');
+  });
+
+  if (collage) {
+    const sourcePhotos = valid.filter((img) => img !== collage);
+    return { mode: 'collage', sourcePhotos, collage };
+  }
+
+  // Standard photoreal service flow — first image tagged "Original" is the hero
   const first = valid[0];
   const isOriginal = first.tag && first.tag.toLowerCase().includes('original');
   if (isOriginal && valid.length > 1) {
-    return { original: first, rest: valid.slice(1) };
+    return { mode: 'standard', original: first, rest: valid.slice(1) };
   }
-  return { original: null, rest: valid };
+  return { mode: 'standard', original: null, rest: valid };
 }
 
 // Should the commission wizard be shown?
@@ -164,32 +182,76 @@ const serviceForWizard = {
       <section class="service-page__gallery">
         <h2 class="service-page__section-title">Examples</h2>
         {service.examples.map((example) => {
-          const { original, rest } = splitOriginal(example.images || []);
+          const categorised = categoriseImages(example.images || []);
           return (
             <div class="example-block">
               {example.label && (
                 <h3 class="example-block__label">{example.label}</h3>
               )}
 
-              {original && (
+              {/* ─── COLLAGE MODE — SOYL pattern: source photos → digital still ─── */}
+              {categorised.mode === 'collage' && (
+                <>
+                  {categorised.sourcePhotos.length > 0 && (
+                    <>
+                      <h4 class="example-block__section-title">Source Moments</h4>
+                      <div class="example-block__source-grid">
+                        {categorised.sourcePhotos.map((img) => (
+                          <figure class="example-block__source-figure">
+                            <img
+                              src={img.url}
+                              alt={`${example.label || service.title} — source photo`}
+                              loading="lazy"
+                              class="example-block__source-image"
+                            />
+                          </figure>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  <h4 class="example-block__section-title">
+                    Digital Still
+                    {service.digitalPrice && (
+                      <span class="example-block__price-tag"> — £{service.digitalPrice.toFixed(2)}</span>
+                    )}
+                  </h4>
+                  <div class="example-block__original">
+                    <figure class="example-block__figure">
+                      <img
+                        src={categorised.collage.url}
+                        alt={`${example.label || service.title} — Digital Still`}
+                        loading="lazy"
+                        class="example-block__image"
+                      />
+                      {categorised.collage.tag && (
+                        <figcaption class="example-block__tag">{categorised.collage.tag}</figcaption>
+                      )}
+                    </figure>
+                  </div>
+                </>
+              )}
+
+              {/* ─── STANDARD MODE — existing photoreal services ─── */}
+              {categorised.mode === 'standard' && categorised.original && (
                 <div class="example-block__original">
                   <figure class="example-block__figure">
                     <img
-                      src={original.url}
-                      alt={`${example.label || service.title} — ${original.tag || ''}`}
+                      src={categorised.original.url}
+                      alt={`${example.label || service.title} — ${categorised.original.tag || ''}`}
                       loading="lazy"
                       class="example-block__image"
                     />
-                    {original.tag && (
-                      <figcaption class="example-block__tag">{original.tag}</figcaption>
+                    {categorised.original.tag && (
+                      <figcaption class="example-block__tag">{categorised.original.tag}</figcaption>
                     )}
                   </figure>
                 </div>
               )}
 
-              {rest.length > 0 && (
+              {categorised.mode === 'standard' && categorised.rest.length > 0 && (
                 <div class="example-block__images">
-                  {rest.map((img) => (
+                  {categorised.rest.map((img) => (
                     <figure class="example-block__figure">
                       <img
                         src={img.url}
@@ -407,6 +469,56 @@ const serviceForWizard = {
     margin: 0 0 1.25rem;
     text-align: center;
     color: var(--text, #fafafa);
+  }
+
+  /* ── Collage mode (SOYL): section titles and source photo grid ────── */
+  .example-block__section-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text, #fafafa);
+    margin: 1.5rem 0 1rem;
+    text-align: center;
+    opacity: 0.85;
+  }
+
+  .example-block__price-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #00BCD4;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: 0.25rem;
+  }
+
+  .example-block__source-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .example-block__source-figure {
+    margin: 0;
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+    aspect-ratio: 1 / 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .example-block__source-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 
   .example-block__original {
@@ -644,6 +756,11 @@ const serviceForWizard = {
 
     .example-block__images {
       grid-template-columns: 1fr;
+    }
+
+    .example-block__source-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.375rem;
     }
 
     .example-block__videos {
