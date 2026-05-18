@@ -78,14 +78,22 @@ const extParagraphs = service.extendedDescription
 
 // Helper: categorise example images.
 //
-// For SOYL-style examples (which contain a "Collage"-tagged image alongside
-// many source photos), returns { mode: 'collage', sourcePhotos, collage }.
-// For all other services, returns { mode: 'standard', original, rest }
-// matching the previous splitOriginal() behaviour.
+// Three modes:
 //
-// NOTE: trigger word is strictly "collage" — NOT "digital still", because that
-// tag is widely used across photoreal services (Missing Moment, Crayon, Prankz,
-// Scene Stealer, etc.) for the transformed output image.
+//   - 'collage' — example contains a "Collage"-tagged image. Triggers the SOYL
+//     pattern: source-photos grid above + collage hero below.
+//
+//   - 'uniform' — all images share the same tag (typically "Original"). Renders
+//     as a flat grid with no hero split. Used when an example is a set of
+//     similar reference photos rather than a before/after transformation.
+//
+//   - 'standard' — the existing photoreal-service pattern: first image tagged
+//     "Original" is the centred hero, remaining (differently-tagged) images
+//     form the grid below.
+//
+// NOTE: collage trigger word is strictly "collage" — NOT "digital still",
+// because that tag is widely used across photoreal services (Missing Moment,
+// Crayon, Prankz, Scene Stealer, etc.) for the transformed output image.
 function categoriseImages(images = []) {
   const valid = images.filter((img) => img.url);
   if (!valid.length) return { mode: 'standard', original: null, rest: [] };
@@ -99,6 +107,15 @@ function categoriseImages(images = []) {
   if (collage) {
     const sourcePhotos = valid.filter((img) => img !== collage);
     return { mode: 'collage', sourcePhotos, collage };
+  }
+
+  // Uniform-tag detection: every image has the SAME (non-empty) tag — render
+  // as a flat grid. Handles the SOYL-pre-collage state where source photos are
+  // tagged "Original" without a corresponding collage.
+  const firstTag = valid[0].tag;
+  const allSameTag = !!firstTag && valid.every((img) => img.tag === firstTag);
+  if (allSameTag && valid.length > 1) {
+    return { mode: 'uniform', images: valid };
   }
 
   // Standard photoreal service flow — first image tagged "Original" is the hero
@@ -234,6 +251,25 @@ const serviceForWizard = {
                     </figure>
                   </div>
                 </>
+              )}
+
+              {/* ─── UNIFORM MODE — all images share one tag (e.g. SOYL pre-collage) ─── */}
+              {categorised.mode === 'uniform' && (
+                <div class="example-block__source-grid">
+                  {categorised.images.map((img) => (
+                    <figure class="example-block__source-figure">
+                      <img
+                        src={img.url}
+                        alt={`${example.label || service.title} — ${img.tag || ''}`}
+                        loading="lazy"
+                        class="example-block__source-image"
+                      />
+                      {img.tag && (
+                        <figcaption class="example-block__source-tag">{img.tag}</figcaption>
+                      )}
+                    </figure>
+                  ))}
+                </div>
               )}
 
               {/* ─── STANDARD MODE — existing photoreal services ─── */}
@@ -523,6 +559,21 @@ const serviceForWizard = {
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+
+  .example-block__source-tag {
+    position: absolute;
+    top: 0.375rem;
+    left: 0.375rem;
+    padding: 0.125rem 0.4375rem;
+    background: rgba(0, 0, 0, 0.75);
+    color: #F07828;
+    font-size: 0.625rem;
+    font-weight: 600;
+    border-radius: 4px;
+    backdrop-filter: blur(8px);
+    letter-spacing: 0.02em;
+    z-index: 1;
   }
 
   .example-block__original {
