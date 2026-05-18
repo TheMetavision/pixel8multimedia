@@ -78,18 +78,22 @@ const extParagraphs = service.extendedDescription
 
 // Helper: categorise example images.
 //
-// For SOYL-style examples (which contain a "Digital Still" or "Collage"-tagged
-// image alongside many source photos), returns { mode: 'collage', sourcePhotos,
-// collage }. For all other services, returns { mode: 'standard', original,
-// rest } matching the previous splitOriginal() behaviour.
+// For SOYL-style examples (which contain a "Collage"-tagged image alongside
+// many source photos), returns { mode: 'collage', sourcePhotos, collage }.
+// For all other services, returns { mode: 'standard', original, rest }
+// matching the previous splitOriginal() behaviour.
+//
+// NOTE: trigger word is strictly "collage" — NOT "digital still", because that
+// tag is widely used across photoreal services (Missing Moment, Crayon, Prankz,
+// Scene Stealer, etc.) for the transformed output image.
 function categoriseImages(images = []) {
   const valid = images.filter((img) => img.url);
   if (!valid.length) return { mode: 'standard', original: null, rest: [] };
 
-  // SOYL detection: any image tagged "Digital Still" or "Collage" (case-insensitive)
+  // SOYL detection: any image tagged with a value containing "collage"
   const collage = valid.find((img) => {
     const t = (img.tag || '').toLowerCase();
-    return t.includes('digital still') || t.includes('collage');
+    return t.includes('collage');
   });
 
   if (collage) {
