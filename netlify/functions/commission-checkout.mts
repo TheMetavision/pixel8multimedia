@@ -375,7 +375,9 @@ export default async function handler(req: Request, _context: Context) {
     const email = formData.get('email') as string;
     const phone = (formData.get('phone') as string) || undefined;
     const brief = (formData.get('brief') as string) || '';
-    const shippingAddress = (formData.get('shippingAddress') as string) || undefined;
+    // shippingAddress is now collected by Stripe Checkout via
+    // shipping_address_collection; webhook patches it onto the commission doc
+    // after payment. Nothing to parse from the form here.
     const orderType = (formData.get('orderType') as string) || '';
     const includePrintsWithAnimation = (formData.get('includePrintsWithAnimation') as string) === 'true';
     const bundleCollectionRaw = (formData.get('bundleCollection') as string) || 'primary';
@@ -510,7 +512,8 @@ export default async function handler(req: Request, _context: Context) {
       brief,
       orderType: breakdown.orderType,
       bundleCollection: bundleCollection,
-      shippingAddress: breakdown.prints.length > 0 ? shippingAddress : undefined,
+      // shippingAddress is patched onto this doc by the Stripe webhook after
+      // payment completes. Stripe collects it directly on the checkout page.
       uploadedFiles: uploadedAssets,
       amount: breakdown.total,
       priceBreakdown: {
@@ -546,7 +549,7 @@ export default async function handler(req: Request, _context: Context) {
 
     const commission = await sanity.create(commissionDoc);
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
       customer_email: email,
       metadata: {
@@ -559,7 +562,20 @@ export default async function handler(req: Request, _context: Context) {
       line_items: stripeLineItems,
       success_url: `${SITE_URL}/commission/success?ref=${orderRef}`,
       cancel_url: `${SITE_URL}/services/${serviceSlug}#commission`,
-    });
+    };
+
+    // For orders involving physical prints, ask Stripe Checkout to collect the
+    // shipping address inline. UK only for now. The webhook reads
+    // session.shipping_details after payment and patches the commission doc.
+    if (breakdown.prints.length > 0) {
+      sessionParams.shipping_address_collection = {
+        allowed_countries: ['GB'],
+      };
+      // Also collect phone — useful for courier delivery contact
+      sessionParams.phone_number_collection = { enabled: true };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return new Response(JSON.stringify({ url: session.url, orderRef }), {
       status: 200, headers: { 'Content-Type': 'application/json' },

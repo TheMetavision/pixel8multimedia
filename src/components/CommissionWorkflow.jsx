@@ -463,7 +463,10 @@ export default function CommissionWorkflow({ service }) {
   const [briefValues, setBriefValues] = useState({});
   const [briefFiles, setBriefFiles] = useState({});
   const [prints, setPrints] = useState([{ styleKey: '', format: '', size: '' }]);
-  const [shippingAddress, setShippingAddress] = useState('');
+  // Shipping address is collected by Stripe Checkout via
+  // shipping_address_collection. It arrives on the webhook in
+  // session.shipping_details and is patched onto the commission doc there.
+  // Nothing to track in wizard state.
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -719,7 +722,6 @@ export default function CommissionWorkflow({ service }) {
       if (!p.format || !p.size) return `Please choose a format and size for print #${i + 1}.`;
       if (requireStyle && !p.styleKey) return `Please choose a style for print #${i + 1}.`;
     }
-    if (!shippingAddress.trim()) return 'Please enter your shipping address.';
     return null;
   }
 
@@ -815,7 +817,6 @@ export default function CommissionWorkflow({ service }) {
         const validPrints = (orderType === 'singlePrint' ? prints.slice(0, 1) : prints)
           .filter((p) => p.format && p.size);
         fd.append('prints', JSON.stringify(validPrints));
-        fd.append('shippingAddress', shippingAddress);
       }
 
       Object.entries(briefFiles).forEach(([fieldKey, arr]) => {
@@ -1157,12 +1158,13 @@ export default function CommissionWorkflow({ service }) {
             </button>
           )}
 
-          <label className="cw__field">
-            <span className="cw__label">Shipping Address <span className="cw__required-star">*</span></span>
-            <textarea className="cw__textarea" rows={3} value={shippingAddress}
-              onChange={(e) => setShippingAddress(e.target.value)} required
-              placeholder="Full delivery address including postcode" />
-          </label>
+          <div className="cw__shipping-note">
+            <p className="cw__shipping-note__heading">📦 Shipping</p>
+            <p className="cw__shipping-note__body">
+              You'll enter your delivery address on the secure payment page in the
+              next step. We ship to UK addresses only. Free UK P&amp;P.
+            </p>
+          </div>
 
           <div className="cw__price-preview">
             <span>Running total:</span>
@@ -1216,10 +1218,10 @@ export default function CommissionWorkflow({ service }) {
                 </div>
               );
             })}
-            {orderInvolvesPrints && shippingAddress && (
+            {orderInvolvesPrints && (
               <div className="cw__summary-row">
                 <dt>Shipping to</dt>
-                <dd style={{ whiteSpace: 'pre-line' }}>{shippingAddress}</dd>
+                <dd className="cw__summary-muted">Entered on secure payment page (UK only)</dd>
               </div>
             )}
           </dl>
