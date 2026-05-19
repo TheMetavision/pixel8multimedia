@@ -30,7 +30,7 @@
 //   2 — Prints config (skipped if path is pure digital or animation-only without prints)
 //   3 — Review & Pay
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -470,6 +470,27 @@ export default function CommissionWorkflow({ service }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Ref + effect: when the step changes, scroll the wizard's top into view.
+  // Without this, mobile users carry over their scroll position from the
+  // (tall) prints step into the (shorter) review step and land at the bottom
+  // of the new content. Smooth scroll keeps the transition feeling fluid.
+  // Skip on the very first render so customers who deep-link to the wizard
+  // don't get yanked around when the page first loads.
+  const wizardRef = useRef(null);
+  const isFirstRenderRef = useRef(true);
+  useEffect(() => {
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+    if (!wizardRef.current) return;
+    // Use requestAnimationFrame to ensure the new step has rendered before
+    // measuring — avoids scrolling to a stale layout.
+    requestAnimationFrame(() => {
+      wizardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [step]);
+
   const briefingFields = service.briefingFields || [];
 
   // ─── Filter briefing fields by orderType using showFor ────────────────────
@@ -880,7 +901,7 @@ export default function CommissionWorkflow({ service }) {
   }, [digitalPrice, cheapestStandalonePrint, hasDigitalOption, artworkFee, artworkBundledWithDigital]);
 
   return (
-    <div className="cw">
+    <div className="cw" ref={wizardRef}>
       <header className="cw__header">
         <h2 className="cw__title">Start Your Commission</h2>
         <div className="cw__stepper" aria-label={`Step ${displayStepIndex + 1} of ${totalSteps}`}>
