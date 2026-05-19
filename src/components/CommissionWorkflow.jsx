@@ -999,7 +999,7 @@ export default function CommissionWorkflow({ service }) {
                 <span className="cw__path-title">Animation (Music)</span>
                 <span className="cw__path-price">{priceLabel(animationMusicPrice)}</span>
                 <span className="cw__path-desc">
-                  30-second animated short with a custom soundtrack. Includes the digital still.
+                  30-second animated short with a custom soundtrack.
                 </span>
               </button>
             )}
@@ -1010,7 +1010,7 @@ export default function CommissionWorkflow({ service }) {
                 <span className="cw__path-title">Animation + Voiceover</span>
                 <span className="cw__path-price">{priceLabel(animationVoPrice)}</span>
                 <span className="cw__path-desc">
-                  30-second animated short with soundtrack AND AI voiceover. Includes the digital still.
+                  30-second animated short with soundtrack AND AI voiceover.
                 </span>
               </button>
             )}
