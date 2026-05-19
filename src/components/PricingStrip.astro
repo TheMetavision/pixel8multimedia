@@ -69,14 +69,22 @@ const cheapestPrintBase = cheapestBasePrintPrice(service.printUpcharges);
 const hasPrint = cheapestPrintBase !== null;
 
 const cheapestStandalonePrint = hasPrint ? (cheapestPrintBase as number) + artworkFee : null;
-// Bundle starting price depends on whether artwork is bundled with digital:
-//   - Cartoonify/Missing Moment (bundled): digital + base (artwork waived)
-//   - YSYS (not bundled): digital + base + artwork (separate products)
+
+// Bundle is positioned as "2+ prints + digital" — so the cheapest bundle price
+// reflects two prints (digital + base × 2) when artwork is bundled, OR
+// (digital + base × 2 + artwork) when the artwork fee is a separate per-order
+// charge like YSYS lyrics print artwork.
 const cheapestBundle = hasDigital && hasPrint
   ? (artworkBundledWithDigital
-      ? digitalPrice + (cheapestPrintBase as number)
-      : digitalPrice + (cheapestPrintBase as number) + artworkFee)
+      ? digitalPrice + (cheapestPrintBase as number) * 2
+      : digitalPrice + (cheapestPrintBase as number) * 2 + artworkFee)
   : null;
+
+// Saving the customer gets vs ordering 2 single prints (one artwork fee per print)
+// — used to show the "save £X" line on the Bundle card
+const bundleSavingVsSingles = hasDigital && hasPrint && artworkBundledWithDigital
+  ? artworkFee // saved one artwork fee on the 2nd print + got digital free
+  : 0;
 
 // Render the strip if we have at least one base offer
 const shouldRender = hasDigital || hasAnimationMusic || hasAnimationVo;
@@ -101,10 +109,10 @@ function priceLabel(p: number | null): string {
           <span class="pricing-strip__card-price">{priceLabel(digitalPrice)}</span>
           <span class="pricing-strip__card-desc">
             {hasSecondaryCollection
-              ? `All ${styleCount} ${collectionLabel.toLowerCase()} styles as digital files. No physical print.`
+              ? `All ${styleCount} ${collectionLabel.toLowerCase()} styles. Digital files only.`
               : styleCount > 0
-                ? `All ${styleCount} styles delivered as digital files. No physical print.`
-                : 'Digital file delivered to your inbox. No physical print.'}
+                ? `All ${styleCount} styles as digital files.`
+                : 'Digital file only.'}
           </span>
         </div>
       )}
@@ -135,9 +143,10 @@ function priceLabel(p: number | null): string {
           <span class="pricing-strip__card-title">Single Print</span>
           <span class="pricing-strip__card-price">from {priceLabel(cheapestStandalonePrint)}</span>
           <span class="pricing-strip__card-desc">
+            <strong class="pricing-strip__card-use-case">Best for: one-off gift.</strong>
             {hasSecondaryCollection
-              ? `One physical print of any style from either collection. Includes £${artworkFee.toFixed(2)} artwork fee.`
-              : `One physical print + digital file. Includes £${artworkFee.toFixed(2)} artwork fee.`}
+              ? ` One print of any style from either collection. Includes the digital file. £${artworkFee.toFixed(2)} artwork fee.`
+              : ` One print + your digital file. Includes £${artworkFee.toFixed(2)} artwork fee.`}
           </span>
         </div>
       )}
@@ -145,12 +154,13 @@ function priceLabel(p: number | null): string {
       {hasDigital && hasPrint && (
         <div class="pricing-strip__card pricing-strip__card--orange pricing-strip__card--best">
           <span class="pricing-strip__card-badge">Best Value</span>
-          <span class="pricing-strip__card-title">Bundle + Prints</span>
+          <span class="pricing-strip__card-title">Bundle (2+ prints)</span>
           <span class="pricing-strip__card-price">from {priceLabel(cheapestBundle)}</span>
           <span class="pricing-strip__card-desc">
+            <strong class="pricing-strip__card-use-case">Best for: decorating a wall.</strong>
             {artworkBundledWithDigital
-              ? `Digital${styleCount > 0 ? ' bundle' : ' file'} plus any number of prints. £${artworkFee.toFixed(2)} artwork fee waived per print.`
-              : `Digital${styleCount > 0 ? ' bundle' : ' file'} plus any prints. Lyrics print artwork fee (£${artworkFee.toFixed(2)}) charged once per order.`}
+              ? ` Two or more prints + your digital${styleCount > 0 ? ' bundle' : ' file'}. One artwork fee total — save £${artworkFee.toFixed(2)} on every extra print.`
+              : ` Two or more prints + your digital${styleCount > 0 ? ' bundle' : ' file'}. Lyrics print artwork fee (£${artworkFee.toFixed(2)}) charged once for the whole order.`}
           </span>
         </div>
       )}
@@ -320,6 +330,13 @@ function priceLabel(p: number | null): string {
     color: var(--text-muted, #a1a1aa);
     line-height: 1.5;
     margin-top: auto;
+  }
+
+  .pricing-strip__card-use-case {
+    display: block;
+    color: var(--text, #F0EDE6);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
   }
 
   .pricing-strip__cta {

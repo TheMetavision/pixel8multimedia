@@ -962,3 +962,17 @@
   color: var(--text-muted, #a1a1aa);
   font-style: italic;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Path Z — use-case tagline on print path cards
+ *
+ * Bold line above the descriptive paragraph identifying who each card is for
+ * ("Best for: one-off gift." / "Best for: decorating a wall.")
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.cw__path-use-case {
+  display: block;
+  color: var(--text, #F0EDE6);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}

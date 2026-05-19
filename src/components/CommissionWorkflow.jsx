@@ -62,7 +62,7 @@ const FORMAT_LABELS = {
 const ORDER_TYPE_LABELS = {
   digital: 'Digital',
   singlePrint: 'Single Print',
-  bundle: 'Bundle + Prints',
+  bundle: 'Bundle (2+ prints)',
   'animation-music': 'Animation (Music)',
   'animation-vo': 'Animation (Music + Voiceover)',
 };
@@ -743,6 +743,14 @@ export default function CommissionWorkflow({ service }) {
       if (!p.format || !p.size) return `Please choose a format and size for print #${i + 1}.`;
       if (requireStyle && !p.styleKey) return `Please choose a style for print #${i + 1}.`;
     }
+    // Bundle is framed as "2+ prints" — enforce a minimum of two completed print
+    // rows. Customers wanting just one print should use the Single Print path.
+    if (orderType === 'bundle') {
+      const completed = prints.filter((p) => p.format && p.size && (!requireStyle || p.styleKey));
+      if (completed.length < 2) {
+        return 'The Bundle path requires at least 2 prints. Add another print, or switch to Single Print.';
+      }
+    }
     return null;
   }
 
@@ -773,6 +781,13 @@ export default function CommissionWorkflow({ service }) {
     setIncludePrintsWithAnimation(false);
     if (path === 'singlePrint') {
       setPrints((p) => [p[0] || { styleKey: '', format: '', size: '' }]);
+    } else if (path === 'bundle') {
+      // Bundle is framed as "2+ prints" — start with two empty print rows so
+      // the customer immediately sees the multi-print structure.
+      setPrints([
+        { styleKey: '', format: '', size: '' },
+        { styleKey: '', format: '', size: '' },
+      ]);
     } else {
       setPrints([{ styleKey: '', format: '', size: '' }]);
     }
@@ -890,13 +905,16 @@ export default function CommissionWorkflow({ service }) {
 
   const cheapestBundle = useMemo(() => {
     if (!hasDigitalOption || !cheapestStandalonePrint) return null;
-    // If artwork is bundled with digital (default), subtract artwork from print to get shop price
-    // If artwork is NOT bundled (YSYS), the cheapest bundle = digital + standalone print (artwork still applies)
+    // Bundle is framed as "2+ prints + digital." Starting price = digital + 2× print
+    // base, with artwork fee handling per service config:
+    //   - artworkBundledWithDigital (default): one artwork already included in
+    //     digital price; both prints' bases stand alone with no per-print fee
+    //   - !artworkBundledWithDigital (YSYS): artwork charged once for the order
+    const printBaseOnly = Math.max(0, cheapestStandalonePrint - artworkFee);
     if (artworkBundledWithDigital) {
-      return digitalPrice + Math.max(0, cheapestStandalonePrint - artworkFee);
+      return digitalPrice + printBaseOnly * 2;
     } else {
-      // YSYS-style: digital + base + artwork (charged once if perOrder, once for single print either way)
-      return digitalPrice + cheapestStandalonePrint;
+      return digitalPrice + printBaseOnly * 2 + artworkFee;
     }
   }, [digitalPrice, cheapestStandalonePrint, hasDigitalOption, artworkFee, artworkBundledWithDigital]);
 
@@ -966,9 +984,10 @@ export default function CommissionWorkflow({ service }) {
                 <span className="cw__path-title">Single Print</span>
                 <span className="cw__path-price">from {priceLabel(cheapestStandalonePrint)}</span>
                 <span className="cw__path-desc">
+                  <strong className="cw__path-use-case">Best for: one-off gift.</strong>
                   {hasSecondaryCollection
-                    ? `One physical print of any style from either collection. Includes £${artworkFee.toFixed(2)} artwork fee.`
-                    : `One physical print + digital file. Includes £${artworkFee.toFixed(2)} artwork fee.`}
+                    ? ` One print of any style from either collection. Includes the digital file. £${artworkFee.toFixed(2)} artwork fee.`
+                    : ` One print + your digital file. Includes £${artworkFee.toFixed(2)} artwork fee.`}
                 </span>
               </button>
             )}
@@ -977,14 +996,15 @@ export default function CommissionWorkflow({ service }) {
                 className={`cw__path-card cw__path-card--best${orderType === 'bundle' ? ' cw__path-card--selected' : ''}`}
                 onClick={() => selectPath('bundle')}>
                 <span className="cw__path-badge">Best Value</span>
-                <span className="cw__path-title">Bundle + Prints</span>
+                <span className="cw__path-title">Bundle (2+ prints)</span>
                 <span className="cw__path-price">from {priceLabel(cheapestBundle)}</span>
                 <span className="cw__path-desc">
+                  <strong className="cw__path-use-case">Best for: decorating a wall.</strong>
                   {hasSecondaryCollection
-                    ? `Pick a digital collection + add any prints. £${artworkFee.toFixed(2)} artwork fee waived per print.`
-                    : `Digital${styleOptions.length > 0 ? ' bundle' : ' file'} + any prints.${
+                    ? ` Two or more prints + a digital collection. One artwork fee total — save £${artworkFee.toFixed(2)} on every extra print.`
+                    : ` Two or more prints + your digital${styleOptions.length > 0 ? ' bundle' : ' file'}.${
                         artworkBundledWithDigital
-                          ? ` £${artworkFee.toFixed(2)} artwork fee waived per print.`
+                          ? ` One artwork fee total — save £${artworkFee.toFixed(2)} on every extra print.`
                           : artworkFeePerOrder
                             ? ` £${artworkFee.toFixed(2)} artwork fee charged once per order.`
                             : ` £${artworkFee.toFixed(2)} artwork fee applies per print.`
