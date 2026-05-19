@@ -83,6 +83,11 @@ const extParagraphs = service.extendedDescription
 //   - 'collage' — example contains a "Collage"-tagged image. Triggers the SOYL
 //     pattern: source-photos grid above + collage hero below.
 //
+//   - 'collections' — service has two style collections (primary + secondary)
+//     AND the example images include tags from both. Renders the Original
+//     hero, then two labelled sub-grids (one per collection). Used for Back
+//     In Time's Modern Decades + Historical Periods.
+//
 //   - 'uniform' — all images share the same tag (typically "Original"). Renders
 //     as a flat grid with no hero split. Used when an example is a set of
 //     similar reference photos rather than a before/after transformation.
@@ -94,7 +99,7 @@ const extParagraphs = service.extendedDescription
 // NOTE: collage trigger word is strictly "collage" — NOT "digital still",
 // because that tag is widely used across photoreal services (Missing Moment,
 // Crayon, Prankz, Scene Stealer, etc.) for the transformed output image.
-function categoriseImages(images = []) {
+function categoriseImages(images = [], primaryKeys = [], secondaryKeys = []) {
   const valid = images.filter((img) => img.url);
   if (!valid.length) return { mode: 'standard', original: null, rest: [] };
 
@@ -107,6 +112,44 @@ function categoriseImages(images = []) {
   if (collage) {
     const sourcePhotos = valid.filter((img) => img !== collage);
     return { mode: 'collage', sourcePhotos, collage };
+  }
+
+  // Two-collection detection: service exposes a styleOptionsSecondary[] array
+  // AND at least one example image is tagged with a secondary-collection key.
+  // Buckets into Original (hero), primary collection (grid 1), secondary
+  // collection (grid 2). Tag matching is case-insensitive against the keys.
+  const hasTwoCollections = secondaryKeys.length > 0;
+  if (hasTwoCollections) {
+    const primaryKeysLower = primaryKeys.map((k) => String(k).toLowerCase());
+    const secondaryKeysLower = secondaryKeys.map((k) => String(k).toLowerCase());
+
+    const hasAnySecondary = valid.some((img) => {
+      const t = (img.tag || '').toLowerCase();
+      return secondaryKeysLower.includes(t);
+    });
+
+    if (hasAnySecondary) {
+      const original = valid.find(
+        (img) => img.tag && img.tag.toLowerCase().includes('original')
+      ) || null;
+      const primary = valid.filter((img) => {
+        const t = (img.tag || '').toLowerCase();
+        return primaryKeysLower.includes(t);
+      });
+      const secondary = valid.filter((img) => {
+        const t = (img.tag || '').toLowerCase();
+        return secondaryKeysLower.includes(t);
+      });
+      // Anything left over that didn't match Original / primary / secondary —
+      // dropped into a fallback grid so nothing disappears silently
+      const other = valid.filter(
+        (img) =>
+          img !== original &&
+          !primary.includes(img) &&
+          !secondary.includes(img)
+      );
+      return { mode: 'collections', original, primary, secondary, other };
+    }
   }
 
   // Uniform-tag detection: every image has the SAME (non-empty) tag — render
@@ -203,7 +246,11 @@ const serviceForWizard = {
       <section class="service-page__gallery">
         <h2 class="service-page__section-title">Examples</h2>
         {service.examples.map((example) => {
-          const categorised = categoriseImages(example.images || []);
+          const categorised = categoriseImages(
+            example.images || [],
+            (service.styleOptions || []).map((s) => s.key),
+            (service.styleOptionsSecondary || []).map((s) => s.key)
+          );
           return (
             <div class="example-block">
               {example.label && (
@@ -250,6 +297,94 @@ const serviceForWizard = {
                       )}
                     </figure>
                   </div>
+                </>
+              )}
+
+              {/* ─── COLLECTIONS MODE — two-collection services (Back In Time) ─── */}
+              {categorised.mode === 'collections' && (
+                <>
+                  {categorised.original && (
+                    <div class="example-block__original">
+                      <figure class="example-block__figure">
+                        <img
+                          src={categorised.original.url}
+                          alt={`${example.label || service.title} — ${categorised.original.tag || ''}`}
+                          loading="lazy"
+                          class="example-block__image"
+                        />
+                        {categorised.original.tag && (
+                          <figcaption class="example-block__tag">{categorised.original.tag}</figcaption>
+                        )}
+                      </figure>
+                    </div>
+                  )}
+
+                  {categorised.primary.length > 0 && service.collectionLabel && (
+                    <h4 class="example-block__collection-heading">
+                      {service.collectionLabel}
+                    </h4>
+                  )}
+                  {categorised.primary.length > 0 && (
+                    <div class="example-block__images">
+                      {categorised.primary.map((img) => (
+                        <figure class="example-block__figure">
+                          <img
+                            src={img.url}
+                            alt={`${example.label || service.title} — ${img.tag || ''}`}
+                            loading="lazy"
+                            class="example-block__image"
+                          />
+                          {img.tag && (
+                            <figcaption class="example-block__tag">{img.tag}</figcaption>
+                          )}
+                        </figure>
+                      ))}
+                    </div>
+                  )}
+
+                  {categorised.secondary.length > 0 && service.collectionLabelSecondary && (
+                    <h4 class="example-block__collection-heading">
+                      {service.collectionLabelSecondary}
+                    </h4>
+                  )}
+                  {categorised.secondary.length > 0 && (
+                    <div class="example-block__images">
+                      {categorised.secondary.map((img) => (
+                        <figure class="example-block__figure">
+                          <img
+                            src={img.url}
+                            alt={`${example.label || service.title} — ${img.tag || ''}`}
+                            loading="lazy"
+                            class="example-block__image"
+                          />
+                          {img.tag && (
+                            <figcaption class="example-block__tag">{img.tag}</figcaption>
+                          )}
+                        </figure>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Fallback: any untagged or mis-tagged images that didn't
+                      land in either collection — render them in a final grid
+                      so nothing silently disappears */}
+                  {categorised.other.length > 0 && (
+                    <div class="example-block__images">
+                      {categorised.other.map((img) => (
+                        <figure class="example-block__figure">
+                          <img
+                            src={img.url}
+                            alt={`${example.label || service.title} — ${img.tag || ''}`}
+                            loading="lazy"
+                            class="example-block__image"
+                          />
+                          {img.tag && (
+                            <figcaption class="example-block__tag">{img.tag}</figcaption>
+                          )}
+                        </figure>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
 
@@ -522,6 +657,33 @@ const serviceForWizard = {
     margin: 1.5rem 0 1rem;
     text-align: center;
     opacity: 0.85;
+  }
+
+  /* Collections mode — labelled heading above each collection's sub-grid.
+   * Slightly more prominent than section-title since these break up a longer
+   * example block into two named groups (e.g. Modern Decades / Historical
+   * Periods on Back In Time). */
+  .example-block__collection-heading {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text, #fafafa);
+    margin: 2rem 0 1.25rem;
+    text-align: center;
+    position: relative;
+  }
+
+  .example-block__collection-heading::before,
+  .example-block__collection-heading::after {
+    content: '';
+    display: inline-block;
+    width: 2.5rem;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.15);
+    vertical-align: middle;
+    margin: 0 0.75rem;
   }
 
   .example-block__price-tag {
