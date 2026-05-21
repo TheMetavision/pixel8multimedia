@@ -16,7 +16,7 @@
     </button>
   </div>
 
-  <!-- Free shipping progress -->
+  <!-- Free shipping progress (Pixel8 logo gradient: orange → magenta → purple → cyan) -->
   <div id="cart-shipping-progress" class="hidden px-5 py-3 border-b border-edge-line bg-bg-primary">
     <div class="flex items-center justify-between mb-2">
       <span id="shipping-progress-text" class="font-dm text-xs text-mid-grey"></span>
@@ -24,8 +24,8 @@
     </div>
     <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
       <div id="shipping-progress-bar"
-           class="h-full bg-gradient-to-r from-pop-orange to-pixel-cyan transition-all duration-500 ease-out"
-           style="width: 0%"></div>
+           class="h-full transition-all duration-500 ease-out"
+           style="width: 0%; background: linear-gradient(90deg, #F07828 0%, #E91E7B 40%, #6C63FF 70%, #00BCD4 100%);"></div>
     </div>
   </div>
 
@@ -52,21 +52,26 @@
       <button id="continue-shopping" class="flex-1 text-center font-dm text-sm text-mid-grey hover:text-pixel-cyan transition-colors py-2">
         Continue Shopping
       </button>
-      <button id="clear-cart" class="font-dm text-sm text-deep-grey hover:text-red-500 transition-colors py-2">
+      <button id="clear-cart" class="font-dm text-sm text-deep-grey hover:text-hot-magenta transition-colors py-2">
         Clear Cart
       </button>
     </div>
   </div>
 </aside>
 
-<!-- Themed Clear Cart confirmation modal (replaces window.confirm) -->
+<!-- Themed Clear Cart confirmation modal (Pixel8 brand) -->
 <div id="clear-modal-overlay"
      class="fixed inset-0 bg-bg-primary bg-opacity-80 z-[80] hidden items-center justify-center p-4"
      aria-hidden="true">
   <div id="clear-modal"
-       class="bg-bg-secondary border border-edge-line rounded-lg max-w-sm w-full p-6 shadow-2xl"
+       class="bg-bg-secondary border-2 border-hot-magenta rounded-lg max-w-sm w-full p-6 relative overflow-hidden"
+       style="box-shadow: 5px 5px 0 #000, 0 0 20px rgba(233, 30, 123, 0.4);"
        role="dialog" aria-modal="true" aria-labelledby="clear-modal-title">
-    <h3 id="clear-modal-title" class="font-montserrat text-lg font-bold text-off-white uppercase tracking-wider mb-2">
+    <!-- Top accent bar with logo gradient -->
+    <div class="absolute top-0 left-0 right-0 h-1"
+         style="background: linear-gradient(90deg, #F07828 0%, #E91E7B 40%, #6C63FF 70%, #00BCD4 100%);"></div>
+
+    <h3 id="clear-modal-title" class="font-montserrat text-lg font-bold text-off-white uppercase tracking-wider mb-2 mt-2">
       Clear your cart?
     </h3>
     <p class="font-dm text-sm text-mid-grey mb-6">
@@ -74,12 +79,12 @@
     </p>
     <div class="flex gap-3">
       <button id="clear-cancel"
-              class="flex-1 font-dm text-sm text-off-white border border-edge-line hover:border-pixel-cyan transition-colors py-2 rounded">
+              class="flex-1 font-montserrat text-sm text-off-white uppercase tracking-wider border-2 border-edge-line hover:border-pixel-cyan transition-colors py-2.5 rounded">
         Cancel
       </button>
       <button id="clear-confirm"
-              class="flex-1 font-dm text-sm text-off-white bg-red-600 hover:bg-red-700 transition-colors py-2 rounded font-semibold">
-        Yes, clear it
+              class="flex-1 font-montserrat text-sm text-off-white uppercase tracking-wider bg-hot-magenta hover:bg-pop-orange transition-colors py-2.5 rounded font-semibold">
+        Clear It
       </button>
     </div>
   </div>
@@ -196,13 +201,12 @@
             <span class="font-mono text-sm text-pop-orange font-bold">£${(item.unitPrice * item.quantity).toFixed(2)}</span>
           </div>
         </div>
-        <button class="remove-btn text-deep-grey hover:text-red-500 transition-colors flex-shrink-0" data-id="${item.id}" aria-label="Remove item">
+        <button class="remove-btn text-deep-grey hover:text-hot-magenta transition-colors flex-shrink-0" data-id="${item.id}" aria-label="Remove item">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
         </button>
       </div>
     `).join('');
 
-    // Wire up quantity buttons
     cartListEl.querySelectorAll('.qty-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
@@ -268,7 +272,10 @@
       const data = await res.json();
 
       if (data.url) {
-        clearCart();
+        // IMPORTANT: don't clear the cart here. If the user hits Back from
+        // Stripe's checkout, they need to find their cart intact. The cart is
+        // cleared on /order-confirmation only after a successful session_id
+        // arrives in the URL.
         window.location.href = data.url;
       } else {
         throw new Error(data.error || 'Checkout failed');
