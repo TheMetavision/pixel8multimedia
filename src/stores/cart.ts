@@ -1,4 +1,5 @@
 import { atom, computed } from 'nanostores';
+import { persistentAtom } from '@nanostores/persistent';
 import type { ProductFormat, ProductSize } from '../data/products';
 import { PRICES } from '../data/products';
 
@@ -16,7 +17,15 @@ export interface CartItem {
   imageUrl?: string;
 }
 
-export const cartItems = atom<CartItem[]>([]);
+// Persistent cart — survives page navigation via localStorage.
+// Key 'pixel8-cart-v1' is brand-scoped so it can't collide with other sites
+// on the same domain (e.g. preview deploys) or other tabs.
+export const cartItems = persistentAtom<CartItem[]>('pixel8-cart-v1', [], {
+  encode: JSON.stringify,
+  decode: JSON.parse,
+});
+
+// Drawer open/closed is UI state, not persisted.
 export const cartOpen = atom<boolean>(false);
 
 export const cartCount = computed(cartItems, (items) =>

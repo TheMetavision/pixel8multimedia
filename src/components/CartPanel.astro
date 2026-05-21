@@ -9,11 +9,24 @@
 
   <div class="flex items-center justify-between p-5 border-b border-edge-line">
     <h2 class="font-montserrat text-xl font-bold text-off-white uppercase tracking-wider">Your Cart</h2>
-    <button id="cart-close" class="text-mid-grey hover:text-pop-orange transition-colors p-1">
+    <button id="cart-close" class="text-mid-grey hover:text-pop-orange transition-colors p-1" aria-label="Close cart">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
+  </div>
+
+  <!-- Free shipping progress -->
+  <div id="cart-shipping-progress" class="hidden px-5 py-3 border-b border-edge-line bg-bg-primary">
+    <div class="flex items-center justify-between mb-2">
+      <span id="shipping-progress-text" class="font-dm text-xs text-mid-grey"></span>
+      <span id="shipping-progress-amount" class="font-mono text-xs text-pop-orange font-bold"></span>
+    </div>
+    <div class="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+      <div id="shipping-progress-bar"
+           class="h-full bg-gradient-to-r from-pop-orange to-pixel-cyan transition-all duration-500 ease-out"
+           style="width: 0%"></div>
+    </div>
   </div>
 
   <div id="cart-items-container" class="flex-1 overflow-y-auto p-4 space-y-4">
@@ -32,30 +45,75 @@
       <span class="font-montserrat text-sm text-mid-grey uppercase tracking-wider font-semibold">Subtotal</span>
       <span id="cart-subtotal" class="font-mono text-xl text-pop-orange font-bold">£0.00</span>
     </div>
-    <p class="font-dm text-deep-grey text-xs mb-4">Free UK P&P on orders over £50. Made to order.</p>
+    <p id="cart-footer-note" class="font-dm text-deep-grey text-xs mb-4">Free UK P&amp;P on orders over £50. Made to order.</p>
     <button id="checkout-btn" class="btn-primary w-full text-center block mb-3">Checkout</button>
     <p id="checkout-error" class="hidden font-dm text-red-500 text-xs text-center mb-2"></p>
-    <button id="continue-shopping" class="w-full text-center font-dm text-sm text-mid-grey hover:text-pixel-cyan transition-colors py-2">
-      Continue Shopping
-    </button>
+    <div class="flex items-center justify-between gap-3">
+      <button id="continue-shopping" class="flex-1 text-center font-dm text-sm text-mid-grey hover:text-pixel-cyan transition-colors py-2">
+        Continue Shopping
+      </button>
+      <button id="clear-cart" class="font-dm text-sm text-deep-grey hover:text-red-500 transition-colors py-2">
+        Clear Cart
+      </button>
+    </div>
   </div>
 </aside>
+
+<!-- Themed Clear Cart confirmation modal (replaces window.confirm) -->
+<div id="clear-modal-overlay"
+     class="fixed inset-0 bg-bg-primary bg-opacity-80 z-[80] hidden items-center justify-center p-4"
+     aria-hidden="true">
+  <div id="clear-modal"
+       class="bg-bg-secondary border border-edge-line rounded-lg max-w-sm w-full p-6 shadow-2xl"
+       role="dialog" aria-modal="true" aria-labelledby="clear-modal-title">
+    <h3 id="clear-modal-title" class="font-montserrat text-lg font-bold text-off-white uppercase tracking-wider mb-2">
+      Clear your cart?
+    </h3>
+    <p class="font-dm text-sm text-mid-grey mb-6">
+      This will remove every item. You can't undo it.
+    </p>
+    <div class="flex gap-3">
+      <button id="clear-cancel"
+              class="flex-1 font-dm text-sm text-off-white border border-edge-line hover:border-pixel-cyan transition-colors py-2 rounded">
+        Cancel
+      </button>
+      <button id="clear-confirm"
+              class="flex-1 font-dm text-sm text-off-white bg-red-600 hover:bg-red-700 transition-colors py-2 rounded font-semibold">
+        Yes, clear it
+      </button>
+    </div>
+  </div>
+</div>
 
 <script>
   import { cartItems, cartOpen, cartTotal, removeFromCart, updateQuantity, clearCart } from '../stores/cart';
   import { FORMAT_LABELS, SIZE_LABELS } from '../data/products';
   import type { ProductFormat, ProductSize } from '../data/products';
 
+  // Shipping configuration — must mirror netlify/functions/checkout.mjs
+  const FREE_SHIPPING_THRESHOLD = 50;
+  const STANDARD_SHIPPING = 4.95;
+
   const overlay = document.getElementById('cart-overlay');
   const panel = document.getElementById('cart-panel');
   const closeBtn = document.getElementById('cart-close');
   const continueBtn = document.getElementById('continue-shopping');
+  const clearBtn = document.getElementById('clear-cart');
   const cartListEl = document.getElementById('cart-list');
   const cartEmptyEl = document.getElementById('cart-empty');
   const cartFooterEl = document.getElementById('cart-footer');
   const cartSubtotalEl = document.getElementById('cart-subtotal');
   const checkoutBtn = document.getElementById('checkout-btn');
   const checkoutError = document.getElementById('checkout-error');
+
+  const shippingProgressEl = document.getElementById('cart-shipping-progress');
+  const shippingProgressText = document.getElementById('shipping-progress-text');
+  const shippingProgressAmount = document.getElementById('shipping-progress-amount');
+  const shippingProgressBar = document.getElementById('shipping-progress-bar');
+
+  const clearModalOverlay = document.getElementById('clear-modal-overlay');
+  const clearCancel = document.getElementById('clear-cancel');
+  const clearConfirm = document.getElementById('clear-confirm');
 
   function openCart() {
     panel?.classList.remove('translate-x-full');
@@ -74,6 +132,35 @@
   overlay?.addEventListener('click', () => cartOpen.set(false));
   continueBtn?.addEventListener('click', () => cartOpen.set(false));
 
+  // Escape-to-close (closes modal first if open, otherwise closes cart)
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (clearModalOverlay && !clearModalOverlay.classList.contains('hidden')) {
+      closeClearModal();
+      return;
+    }
+    if (cartOpen.get()) cartOpen.set(false);
+  });
+
+  // Themed Clear Cart modal
+  function openClearModal() {
+    clearModalOverlay?.classList.remove('hidden');
+    clearModalOverlay?.classList.add('flex');
+  }
+  function closeClearModal() {
+    clearModalOverlay?.classList.add('hidden');
+    clearModalOverlay?.classList.remove('flex');
+  }
+  clearBtn?.addEventListener('click', openClearModal);
+  clearCancel?.addEventListener('click', closeClearModal);
+  clearModalOverlay?.addEventListener('click', (e) => {
+    if (e.target === clearModalOverlay) closeClearModal();
+  });
+  clearConfirm?.addEventListener('click', () => {
+    clearCart();
+    closeClearModal();
+  });
+
   function renderCart(items: typeof cartItems extends { get(): infer T } ? T : never) {
     if (!cartListEl || !cartEmptyEl || !cartFooterEl) return;
 
@@ -81,6 +168,7 @@
       cartListEl.classList.add('hidden');
       cartEmptyEl.classList.remove('hidden');
       cartFooterEl.classList.add('hidden');
+      shippingProgressEl?.classList.add('hidden');
       return;
     }
 
@@ -101,20 +189,20 @@
           <p class="font-dm text-xs text-deep-grey mt-0.5">${FORMAT_LABELS[item.format as ProductFormat]} — ${SIZE_LABELS[item.size as ProductSize]}</p>
           <div class="flex items-center justify-between mt-2">
             <div class="flex items-center gap-2">
-              <button class="qty-btn w-6 h-6 bg-bg-primary border border-edge-line rounded flex items-center justify-center text-off-white text-xs hover:border-pop-orange transition-colors" data-action="decrease" data-id="${item.id}">−</button>
+              <button class="qty-btn w-6 h-6 bg-bg-primary border border-edge-line rounded flex items-center justify-center text-off-white text-xs hover:border-pop-orange transition-colors" data-action="decrease" data-id="${item.id}" aria-label="Decrease quantity">−</button>
               <span class="font-mono text-xs text-off-white w-4 text-center">${item.quantity}</span>
-              <button class="qty-btn w-6 h-6 bg-bg-primary border border-edge-line rounded flex items-center justify-center text-off-white text-xs hover:border-pop-orange transition-colors" data-action="increase" data-id="${item.id}">+</button>
+              <button class="qty-btn w-6 h-6 bg-bg-primary border border-edge-line rounded flex items-center justify-center text-off-white text-xs hover:border-pop-orange transition-colors" data-action="increase" data-id="${item.id}" aria-label="Increase quantity">+</button>
             </div>
             <span class="font-mono text-sm text-pop-orange font-bold">£${(item.unitPrice * item.quantity).toFixed(2)}</span>
           </div>
         </div>
-        <button class="remove-btn text-deep-grey hover:text-red-500 transition-colors flex-shrink-0" data-id="${item.id}">
+        <button class="remove-btn text-deep-grey hover:text-red-500 transition-colors flex-shrink-0" data-id="${item.id}" aria-label="Remove item">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
         </button>
       </div>
     `).join('');
 
-    // Wire up buttons
+    // Wire up quantity buttons
     cartListEl.querySelectorAll('.qty-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const target = e.currentTarget as HTMLElement;
@@ -134,10 +222,32 @@
     });
   }
 
+  function renderShippingProgress(total: number) {
+    if (!shippingProgressEl) return;
+    if (total <= 0) {
+      shippingProgressEl.classList.add('hidden');
+      return;
+    }
+    shippingProgressEl.classList.remove('hidden');
+
+    if (total >= FREE_SHIPPING_THRESHOLD) {
+      if (shippingProgressText) shippingProgressText.textContent = '🎉 You\'ve unlocked free UK P&P';
+      if (shippingProgressAmount) shippingProgressAmount.textContent = 'FREE';
+      if (shippingProgressBar) shippingProgressBar.style.width = '100%';
+    } else {
+      const remaining = FREE_SHIPPING_THRESHOLD - total;
+      const pct = Math.min(100, (total / FREE_SHIPPING_THRESHOLD) * 100);
+      if (shippingProgressText) shippingProgressText.textContent = `Add £${remaining.toFixed(2)} for free UK P&P`;
+      if (shippingProgressAmount) shippingProgressAmount.textContent = `£${STANDARD_SHIPPING.toFixed(2)} P&P`;
+      if (shippingProgressBar) shippingProgressBar.style.width = `${pct}%`;
+    }
+  }
+
   cartItems.subscribe(renderCart);
 
   cartTotal.subscribe((total) => {
     if (cartSubtotalEl) cartSubtotalEl.textContent = `£${total.toFixed(2)}`;
+    renderShippingProgress(total);
   });
 
   checkoutBtn?.addEventListener('click', async () => {

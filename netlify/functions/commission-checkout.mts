@@ -567,12 +567,34 @@ export default async function handler(req: Request, _context: Context) {
     // For orders involving physical prints, ask Stripe Checkout to collect the
     // shipping address inline. UK only for now. The webhook reads
     // session.shipping_details after payment and patches the commission doc.
+    // Shipping: £50 free / £4.95 standard, mirroring the standard cart.
     if (breakdown.prints.length > 0) {
       sessionParams.shipping_address_collection = {
         allowed_countries: ['GB'],
       };
       // Also collect phone — useful for courier delivery contact
       sessionParams.phone_number_collection = { enabled: true };
+
+      const FREE_SHIPPING_THRESHOLD_GBP = 50;
+      const STANDARD_SHIPPING_PENCE = 495;
+      const freeShipping = breakdown.total >= FREE_SHIPPING_THRESHOLD_GBP;
+
+      sessionParams.shipping_options = [
+        {
+          shipping_rate_data: {
+            type: 'fixed_amount',
+            fixed_amount: {
+              amount: freeShipping ? 0 : STANDARD_SHIPPING_PENCE,
+              currency: 'gbp',
+            },
+            display_name: freeShipping ? 'FREE UK P&P' : 'UK Standard P&P (£4.95)',
+            delivery_estimate: {
+              minimum: { unit: 'business_day', value: 3 },
+              maximum: { unit: 'business_day', value: 6 },
+            },
+          },
+        },
+      ];
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);

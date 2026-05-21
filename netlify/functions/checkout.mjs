@@ -16,6 +16,10 @@ const SIZE_LABELS = {
   large: 'Large (24×16")',
 };
 
+// Free-shipping threshold (GBP) and standard rate (pence)
+const FREE_SHIPPING_THRESHOLD_GBP = 50;
+const STANDARD_SHIPPING_PENCE = 495;
+
 export default async (req, context) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -65,23 +69,26 @@ export default async (req, context) => {
 
     const siteUrl = process.env.URL || process.env.SITE_URL || 'https://pixel8multimedia.co.uk';
 
-    // Calculate if free shipping applies (over £50)
+    // Conditional shipping — free over £50, otherwise £4.95 flat (GB only).
     const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-    const freeShipping = subtotal >= 50;
+    const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD_GBP;
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
       line_items: lineItems,
       shipping_address_collection: {
-        allowed_countries: ['GB', 'IE', 'US', 'CA', 'AU', 'NZ', 'FR', 'DE', 'ES', 'IT', 'NL', 'BE', 'AT', 'SE', 'DK', 'NO', 'FI', 'CH', 'PL', 'PT', 'CZ', 'JP', 'SG', 'AE'],
+        allowed_countries: ['GB'],
       },
       shipping_options: [
         {
           shipping_rate_data: {
             type: 'fixed_amount',
-            fixed_amount: { amount: freeShipping ? 0 : 499, currency: 'gbp' },
-            display_name: freeShipping ? 'Free UK P&P' : 'UK Standard P&P',
+            fixed_amount: {
+              amount: freeShipping ? 0 : STANDARD_SHIPPING_PENCE,
+              currency: 'gbp',
+            },
+            display_name: freeShipping ? 'FREE UK P&P' : 'UK Standard P&P (£4.95)',
             delivery_estimate: {
               minimum: { unit: 'business_day', value: 3 },
               maximum: { unit: 'business_day', value: 6 },
