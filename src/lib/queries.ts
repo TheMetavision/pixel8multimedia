@@ -252,14 +252,21 @@ export const homepageFaqsQuery = `
   }
 `;
 
-// All FAQs (for a dedicated /faqs page if you build one) grouped by category.
+// All FAQs (for the /faqs page) grouped by category. Service-linked FAQs
+// have their service dereferenced inline so the page can group them by
+// service heading under the "Custom Services" category.
 export const allFaqsQuery = `
   *[_type == "faq"] | order(category asc, displayOrder asc) {
     _id,
     question,
     answer,
     category,
-    displayOrder
+    displayOrder,
+    "service": service->{
+      _id,
+      title,
+      "slug": slug.current
+    }
   }
 `;
 

@@ -69,6 +69,26 @@ if (!service) {
   return Astro.redirect('/404');
 }
 
+// ── FAQs linked to this service ────────────────────────────────────────
+// Returns service-specific FAQs in displayOrder. The two general
+// "Custom Services" FAQs (no `service` ref set) appear only on /faqs.
+const serviceFaqs = await sanityClient.fetch(
+  `*[_type == "faq" && service._ref == $serviceId] | order(displayOrder asc) {
+    _id, question, answer, displayOrder
+  }`,
+  { serviceId: service._id }
+);
+
+function slugifyQuestion(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 80);
+}
+
 const seoTitle = `${service.title} | Pixel8 Multimedia`;
 const seoDesc = service.description?.substring(0, 155);
 
@@ -523,6 +543,32 @@ const serviceForWizard = {
       </aside>
     )}
 
+    {/* ── FAQs for this service ─────────────────────────────── */}
+    {serviceFaqs?.length > 0 && (
+      <section class="service-page__faqs">
+        <h2 class="service-page__section-title">Frequently Asked Questions</h2>
+        <div class="service-faqs">
+          {serviceFaqs.map((faq) => {
+            const anchor = slugifyQuestion(faq.question);
+            return (
+              <details class="service-faq" id={`faq-${anchor}`}>
+                <summary class="service-faq__summary">
+                  <span class="service-faq__question">{faq.question}</span>
+                  <svg class="service-faq__chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </summary>
+                <div class="service-faq__answer">{faq.answer}</div>
+              </details>
+            );
+          })}
+        </div>
+        <p class="service-faqs__more">
+          <a href={`/faqs#service-${service.slug.current}`}>See all FAQs →</a>
+        </p>
+      </section>
+    )}
+
     <!-- Commission Workflow -->
     {showCommissionWorkflow ? (
       <section class="service-page__commission" id="commission">
@@ -965,6 +1011,97 @@ const serviceForWizard = {
   }
 
   .commission-paused a {
+    color: #F07828;
+  }
+
+  /* ── Service FAQs ───────────────────────── */
+  .service-page__faqs {
+    max-width: 760px;
+    margin: 0 auto 3rem;
+  }
+
+  .service-faqs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .service-faq {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 200ms ease;
+  }
+
+  .service-faq:hover {
+    border-color: rgba(240, 120, 40, 0.4);
+  }
+
+  .service-faq__summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .service-faq__summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .service-faq__question {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text, #fafafa);
+    line-height: 1.4;
+    flex: 1;
+    transition: color 200ms ease;
+  }
+
+  .service-faq[open] .service-faq__question {
+    color: #F07828;
+  }
+
+  .service-faq__chevron {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: var(--text-muted, #a1a1aa);
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+    transition: transform 200ms ease;
+  }
+
+  .service-faq[open] .service-faq__chevron {
+    transform: rotate(180deg);
+  }
+
+  .service-faq__answer {
+    padding: 0 1.25rem 1.125rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9375rem;
+    color: var(--text-muted, #a1a1aa);
+    line-height: 1.65;
+    white-space: pre-line;
+  }
+
+  .service-faqs__more {
+    text-align: center;
+    margin: 1.5rem 0 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8125rem;
+  }
+
+  .service-faqs__more a {
+    color: var(--text-muted, #a1a1aa);
+    text-decoration: none;
+    transition: color 200ms ease;
+  }
+
+  .service-faqs__more a:hover {
     color: #F07828;
   }
 
