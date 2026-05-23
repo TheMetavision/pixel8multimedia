@@ -42,12 +42,12 @@ const service = await sanityClient.fetch(
     hasFileUpload,
     hasDigitalDelivery,
     hasPrintOrder,
-    "heroImage": heroImage.asset->url,
+    "heroImage": heroImage.asset->url + "?w=1400&auto=format&q=80",
     examples[]{
       label,
       images[]{
         tag,
-        "url": image.asset->url
+        "url": image.asset->url + "?w=900&auto=format&q=78"
       },
       videos[]{
         youtubeId,
@@ -57,7 +57,7 @@ const service = await sanityClient.fetch(
       audioTracks[]{
         title,
         duration,
-        "coverUrl": coverImage.asset->url,
+        "coverUrl": coverImage.asset->url + "?w=400&auto=format&q=80",
         "audioUrl": audioFile.asset->url
       }
     }
