@@ -855,24 +855,22 @@ const serviceForWizard = {
   }
 
   /* Crayon mode — child's photo + drawing side by side as the input pair.
-   * Widened so the two inputs stay visually balanced against the larger
-   * 'Creation' image below. */
+   * Spans the full container so the pair lines up with the video row and
+   * the Creation image below. */
   .example-block__crayon-inputs {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.25rem;
     margin-bottom: 1.5rem;
-    max-width: 1040px;
     margin-left: auto;
     margin-right: auto;
     align-items: start;
   }
 
-  /* Crayon mode — the finished render. Single item, capped at ~500px so it
-   * sits prominently without stretching to the full container width. */
+  /* Crayon mode — the finished render. Spans the full container width so it
+   * matches the combined width of the two video embeds in the row below. */
   .example-block__crayon-result {
     grid-template-columns: 1fr;
-    max-width: 500px;
     margin-left: auto;
     margin-right: auto;
   }
