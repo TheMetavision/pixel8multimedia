@@ -123,6 +123,29 @@ function categoriseImages(images = [], primaryKeys = [], secondaryKeys = []) {
   const valid = images.filter((img) => img.url);
   if (!valid.length) return { mode: 'standard', original: null, rest: [] };
 
+  // Crayon To Creation detection: an image tagged "Original Drawing" means
+  // this example pairs a photo of the child + their actual drawing as the
+  // inputs, then shows the finished render below. Tag matching is
+  // case-insensitive.
+  const drawing = valid.find(
+    (img) => (img.tag || '').toLowerCase() === 'original drawing'
+  );
+  if (drawing) {
+    const photo = valid.find(
+      (img) => (img.tag || '').toLowerCase() === 'original'
+    ) || null;
+    const result = valid.find((img) => {
+      const t = (img.tag || '').toLowerCase();
+      return t.includes('digital still') || t.includes('creation');
+    }) || null;
+    // Anything not photo/drawing/result falls into an extras grid so nothing
+    // is silently dropped.
+    const extras = valid.filter(
+      (img) => img !== photo && img !== drawing && img !== result
+    );
+    return { mode: 'crayon', photo, drawing, result, extras };
+  }
+
   // SOYL detection: any image tagged with a value containing "collage"
   const collage = valid.find((img) => {
     const t = (img.tag || '').toLowerCase();
@@ -317,6 +340,83 @@ const serviceForWizard = {
                       )}
                     </figure>
                   </div>
+                </>
+              )}
+
+              {/* ─── CRAYON MODE — child's photo + drawing (inputs) → render ─── */}
+              {categorised.mode === 'crayon' && (
+                <>
+                  <h4 class="example-block__section-title">The Inspiration</h4>
+                  <div class="example-block__crayon-inputs">
+                    {categorised.photo && (
+                      <figure class="example-block__figure">
+                        <img
+                          src={categorised.photo.url}
+                          alt={`${example.label || service.title} — the child`}
+                          loading="lazy"
+                          class="example-block__image"
+                        />
+                        <figcaption class="example-block__tag">
+                          {categorised.photo.tag || 'Original'}
+                        </figcaption>
+                      </figure>
+                    )}
+                    {categorised.drawing && (
+                      <figure class="example-block__figure">
+                        <img
+                          src={categorised.drawing.url}
+                          alt={`${example.label || service.title} — the child's drawing`}
+                          loading="lazy"
+                          class="example-block__image"
+                        />
+                        <figcaption class="example-block__tag">
+                          {categorised.drawing.tag || 'Original Drawing'}
+                        </figcaption>
+                      </figure>
+                    )}
+                  </div>
+
+                  {categorised.result && (
+                    <>
+                      <h4 class="example-block__section-title">
+                        The Creation
+                        {service.digitalPrice && (
+                          <span class="example-block__price-tag"> — £{service.digitalPrice.toFixed(2)}</span>
+                        )}
+                      </h4>
+                      <div class="example-block__original">
+                        <figure class="example-block__figure">
+                          <img
+                            src={categorised.result.url}
+                            alt={`${example.label || service.title} — finished creation`}
+                            loading="lazy"
+                            class="example-block__image"
+                          />
+                          {categorised.result.tag && (
+                            <figcaption class="example-block__tag">{categorised.result.tag}</figcaption>
+                          )}
+                        </figure>
+                      </div>
+                    </>
+                  )}
+
+                  {categorised.extras.length > 0 && (
+                    <div class="example-block__images">
+                      {categorised.extras.map((img) => (
+                        <figure class="example-block__figure">
+                          <img
+                            src={img.url}
+                            alt={`${example.label || service.title} — ${img.tag || ''}`}
+                            loading="lazy"
+                            class="example-block__image"
+                          />
+                          {img.tag && (
+                            <figcaption class="example-block__tag">{img.tag}</figcaption>
+                          )}
+                        </figure>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
 
@@ -754,6 +854,18 @@ const serviceForWizard = {
     margin-right: auto;
   }
 
+  /* Crayon mode — child's photo + drawing side by side as the input pair */
+  .example-block__crayon-inputs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+    align-items: start;
+  }
+
   .example-block .example-block__source-figure {
     margin: 0;
     position: relative;
@@ -1112,6 +1224,10 @@ const serviceForWizard = {
     }
 
     .example-block__images {
+      grid-template-columns: 1fr;
+    }
+
+    .example-block__crayon-inputs {
       grid-template-columns: 1fr;
     }
 
