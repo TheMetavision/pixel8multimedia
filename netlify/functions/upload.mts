@@ -88,14 +88,20 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
 
     console.log(`upload: receiving ${f.name} (${f.size} bytes, ${f.type}) for field ${fieldKey}`);
 
-    // Read the file bytes. We use Uint8Array rather than Buffer because the
-    // newer Netlify Function runtimes don't expose Node's Buffer global —
-    // Uint8Array is universal and @sanity/client v7 accepts it directly.
+    // Sanity's @sanity/client uses `get-it` under the hood, which expects
+    // the body to be a Node Buffer, Readable stream, Blob, or string —
+    // NOT Uint8Array (it gets treated as a plain object and rejected with
+    // "Request body must be a string, buffer or stream, got object").
+    // Netlify Functions run on Node Lambda where Buffer is a global, so
+    // this is the right path.
+    if (typeof Buffer === 'undefined') {
+      throw new Error('Buffer is not available in this runtime — cannot upload to Sanity.');
+    }
     const arrayBuffer = await f.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
+    const buffer = Buffer.from(arrayBuffer);
 
     console.log(`upload: uploading to Sanity assets API…`);
-    const asset = await sanity.assets.upload('image', bytes, {
+    const asset = await sanity.assets.upload('image', buffer, {
       filename: f.name,
       contentType: f.type,
       // Tag uploads so the orphan-cleanup script can find them. Sanity stores
