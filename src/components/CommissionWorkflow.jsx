@@ -1203,7 +1203,12 @@ export default function CommissionWorkflow({ service }) {
             <p className="cw__shipping-note__heading">📦 Shipping</p>
             <p className="cw__shipping-note__body">
               You'll enter your delivery address on the secure payment page in the
-              next step. We ship to UK addresses only. Free UK P&amp;P.
+              next step. We ship to UK addresses only.
+              {pricing.total >= 50 ? (
+                <> <strong>FREE UK P&amp;P on this order.</strong></>
+              ) : (
+                <> UK P&amp;P is £4.95 standard, <strong>FREE on orders over £50</strong> (add {priceLabel(50 - pricing.total)} more to qualify).</>
+              )}
             </p>
           </div>
 
