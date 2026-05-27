@@ -34,6 +34,10 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Total bytes across all queued uploads for a single field. Netlify Functions
+// have a hard ~6-10MB request payload limit (varies by runtime + multipart
+// overhead), so we cap the combined size at 8MB to stay safely under it.
+const MAX_TOTAL_UPLOAD_SIZE = 8 * 1024 * 1024;
 const CLIENT_RESIZE_MAX_PX = 3000;
 const CLIENT_RESIZE_QUALITY = 0.9;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
@@ -257,6 +261,7 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
   const [resizingCount, setResizingCount] = useState(0);
+  const [error, setError] = useState('');
 
   function handleDrag(e) {
     e.preventDefault(); e.stopPropagation();
@@ -265,8 +270,62 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
   }
 
   async function addFiles(incoming) {
-    const accepted = incoming.filter((f) => ALLOWED_IMAGE_TYPES.includes(f.type) && f.size <= MAX_FILE_SIZE);
+    setError('');
+
+    // Categorise rejects so we can tell the user exactly what's wrong.
+    const wrongType = [];
+    const tooLarge = [];
+    const candidates = [];
+    for (const f of incoming) {
+      if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
+        wrongType.push(f);
+        continue;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        tooLarge.push(f);
+        continue;
+      }
+      candidates.push(f);
+    }
+
+    // Enforce the cumulative cap. Start from the bytes already queued so
+    // adding more later still respects the 8MB ceiling.
+    const currentTotal = files.reduce((s, f) => s + (f.size || 0), 0);
+    const overTotal = [];
+    const accepted = [];
+    let runningTotal = currentTotal;
+    for (const f of candidates) {
+      if (runningTotal + f.size > MAX_TOTAL_UPLOAD_SIZE) {
+        overTotal.push(f);
+        continue;
+      }
+      accepted.push(f);
+      runningTotal += f.size;
+    }
+
+    // Build a single friendly error string covering every reject reason.
+    const errors = [];
+    if (wrongType.length) {
+      errors.push(
+        `${wrongType.length === 1 ? 'This file isn\u2019t' : 'These files aren\u2019t'} a supported format: ${wrongType.map((f) => f.name).join(', ')}. Use JPG, PNG, WebP, or HEIC.`
+      );
+    }
+    if (tooLarge.length) {
+      const names = tooLarge.map((f) => `${f.name} (${formatBytes(f.size)})`).join(', ');
+      errors.push(
+        `${tooLarge.length === 1 ? 'This file is' : 'These files are'} larger than the ${Math.round(MAX_FILE_SIZE / 1024 / 1024)}MB single-file limit: ${names}. Try compressing or resizing before uploading.`
+      );
+    }
+    if (overTotal.length) {
+      const names = overTotal.map((f) => f.name).join(', ');
+      errors.push(
+        `Adding ${overTotal.length === 1 ? 'this file' : 'these files'} would exceed the ${Math.round(MAX_TOTAL_UPLOAD_SIZE / 1024 / 1024)}MB total upload limit: ${names}. Remove or shrink existing files to make room.`
+      );
+    }
+    if (errors.length) setError(errors.join(' '));
+
     if (accepted.length === 0) return;
+
     setResizingCount(accepted.length);
     const resized = await Promise.all(accepted.map(resizeImage));
     setResizingCount(0);
@@ -284,6 +343,11 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
     if (e.target.files?.length) addFiles([...e.target.files]);
     e.target.value = '';
   }
+
+  // Live total so the user can see how much room is left.
+  const totalBytes = files.reduce((s, f) => s + (f.size || 0), 0);
+  const totalMb = (totalBytes / 1024 / 1024).toFixed(1);
+  const limitMb = Math.round(MAX_TOTAL_UPLOAD_SIZE / 1024 / 1024);
 
   return (
     <>
@@ -307,14 +371,20 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
             : multiple ? `Drag & drop ${minFiles}–${maxFiles} photos or click to browse`
             : 'Drag & drop a photo or click to browse'}
         </p>
-        <p className="cw__dropzone-sub">JPG / PNG / WebP / HEIC — auto-resized to 3000px max</p>
+        <p className="cw__dropzone-sub">
+          JPG / PNG / WebP / HEIC — auto-resized to 3000px max ·{' '}
+          {files.length > 0
+            ? `${totalMb}MB of ${limitMb}MB used`
+            : `Max ${limitMb}MB total`}
+        </p>
       </div>
+      {error && <p className="cw__error" style={{ marginTop: '0.5rem' }}>{error}</p>}
       {files.length > 0 && (
         <ul className="cw__file-list">
           {files.map((f, i) => (
             <li key={`${f.name}-${f.size}-${i}`} className="cw__file-item">
               <span className="cw__file-name">{f.name} <span className="cw__file-size">({formatBytes(f.size)})</span></span>
-              <button type="button" onClick={() => onChange(files.filter((_, idx) => idx !== i))}
+              <button type="button" onClick={() => { setError(''); onChange(files.filter((_, idx) => idx !== i)); }}
                 className="cw__file-remove" aria-label={`Remove ${f.name}`}>×</button>
             </li>
           ))}
