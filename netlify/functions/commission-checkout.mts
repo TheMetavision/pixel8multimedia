@@ -367,58 +367,73 @@ export default async function handler(req: Request, _context: Context) {
   }
 
   try {
-    const formData = await req.formData();
+    // The wizard uploads photos to Sanity via /.netlify/functions/upload
+    // first, then POSTs JSON here with asset references. We no longer
+    // accept multipart files directly — that allows arbitrarily many
+    // uploads on a single order without hitting Netlify's payload limit.
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Expected JSON body.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const serviceSlug = formData.get('serviceSlug') as string;
-    const serviceTitle = formData.get('serviceTitle') as string;
-    const name = formData.get('name') as string;
-    const email = formData.get('email') as string;
-    const phone = (formData.get('phone') as string) || undefined;
-    const brief = (formData.get('brief') as string) || '';
+    const serviceSlug = String(body.serviceSlug || '');
+    const serviceTitle = String(body.serviceTitle || '');
+    const name = String(body.name || '');
+    const email = String(body.email || '');
+    const phone = body.phone ? String(body.phone) : undefined;
+    const brief = String(body.brief || '');
     // shippingAddress is now collected by Stripe Checkout via
     // shipping_address_collection; webhook patches it onto the commission doc
-    // after payment. Nothing to parse from the form here.
-    const orderType = (formData.get('orderType') as string) || '';
-    const includePrintsWithAnimation = (formData.get('includePrintsWithAnimation') as string) === 'true';
-    const bundleCollectionRaw = (formData.get('bundleCollection') as string) || 'primary';
+    // after payment. Nothing to parse from the body here.
+    const orderType = String(body.orderType || '');
+    const includePrintsWithAnimation = body.includePrintsWithAnimation === true;
+    const bundleCollectionRaw = String(body.bundleCollection || 'primary');
     const bundleCollection: BundleCollection =
       bundleCollectionRaw === 'secondary' || bundleCollectionRaw === 'both'
         ? bundleCollectionRaw
         : 'primary';
 
-    const legacyDeliveryType = (formData.get('deliveryType') as string) || '';
-    const legacyPrintFormat = (formData.get('printFormat') as string) || undefined;
-    const legacyPrintSize = (formData.get('printSize') as string) || undefined;
+    // Legacy deliveryType path stays supported in case older clients post
+    // against this endpoint during a rolling deploy.
+    const legacyDeliveryType = String(body.deliveryType || '');
+    const legacyPrintFormat = body.printFormat ? String(body.printFormat) : undefined;
+    const legacyPrintSize = body.printSize ? String(body.printSize) : undefined;
 
     let prints: ParsedPrint[] = [];
-    const printsRaw = formData.get('prints') as string | null;
-    if (printsRaw) {
-      try {
-        const parsed = JSON.parse(printsRaw);
-        if (Array.isArray(parsed)) {
-          prints = parsed.map((p) => ({
-            styleKey: p.styleKey ? String(p.styleKey) : undefined,
-            format: p.format ? String(p.format) : undefined,
-            size: p.size ? String(p.size) : undefined,
-          }));
-        }
-      } catch (e) { console.warn('Invalid prints JSON:', e); }
+    if (Array.isArray(body.prints)) {
+      prints = body.prints.map((p: any) => ({
+        styleKey: p.styleKey ? String(p.styleKey) : undefined,
+        format: p.format ? String(p.format) : undefined,
+        size: p.size ? String(p.size) : undefined,
+      }));
     }
 
-    const briefDataRaw = formData.get('briefData') as string | null;
     let briefData: Array<{ key: string; label: string; value: string }> = [];
-    if (briefDataRaw) {
-      try {
-        const parsed = JSON.parse(briefDataRaw);
-        if (Array.isArray(parsed)) {
-          briefData = parsed
-            .filter((b) => b && typeof b === 'object' && b.key)
-            .map((b) => ({
-              key: String(b.key), label: String(b.label || b.key),
-              value: b.value == null ? '' : String(b.value),
-            }));
-        }
-      } catch (e) { console.warn('Invalid briefData JSON:', e); }
+    if (Array.isArray(body.briefData)) {
+      briefData = body.briefData
+        .filter((b: any) => b && typeof b === 'object' && b.key)
+        .map((b: any) => ({
+          key: String(b.key),
+          label: String(b.label || b.key),
+          value: b.value == null ? '' : String(b.value),
+        }));
+    }
+
+    // Photos uploaded ahead of time. Shape: { fieldKey, assetId, originalName }
+    let uploadedAssetsIn: Array<{ fieldKey: string; assetId: string; originalName: string }> = [];
+    if (Array.isArray(body.uploadedAssets)) {
+      uploadedAssetsIn = body.uploadedAssets
+        .filter((a: any) => a && typeof a === 'object' && a.assetId)
+        .map((a: any) => ({
+          fieldKey: String(a.fieldKey || 'unknown'),
+          assetId: String(a.assetId),
+          originalName: String(a.originalName || 'upload'),
+        }));
     }
 
     if (!serviceSlug || !name || !email) {
@@ -448,38 +463,21 @@ export default async function handler(req: Request, _context: Context) {
         { status: 403, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // Upload files to Sanity. New: filename prefix like "fieldKey__realname"
-    // tells us which briefing field each file came from. Preserved in metadata
-    // for the team email and Studio review.
-    const files = formData.getAll('files') as File[];
+    // Photos were uploaded to Sanity ahead of time via /api/upload. We
+    // just need to reshape them into the embedded-object format the
+    // commission doc's `uploadedFiles` field expects.
     const uploadedAssets: Array<{
       _type: 'object'; _key: string;
       fieldKey: string;
       asset: { _type: 'reference'; _ref: string };
       originalName: string;
-    }> = [];
-
-    for (const file of files) {
-      if (!file.size) continue;
-      const buffer = Buffer.from(await file.arrayBuffer());
-
-      // Parse "fieldKey__originalName" filename pattern
-      const parts = file.name.split('__');
-      const fieldKey = parts.length > 1 ? parts[0] : 'unknown';
-      const originalName = parts.length > 1 ? parts.slice(1).join('__') : file.name;
-
-      const asset = await sanity.assets.upload('image', buffer, {
-        filename: originalName,
-        contentType: file.type,
-      });
-      uploadedAssets.push({
-        _type: 'object',
-        _key: nanoid(8),
-        fieldKey,
-        originalName,
-        asset: { _type: 'reference', _ref: asset._id },
-      });
-    }
+    }> = uploadedAssetsIn.map((a) => ({
+      _type: 'object',
+      _key: nanoid(8),
+      fieldKey: a.fieldKey,
+      originalName: a.originalName,
+      asset: { _type: 'reference', _ref: a.assetId },
+    }));
 
     const orderRef = `PX-${nanoid(8).toUpperCase()}`;
 

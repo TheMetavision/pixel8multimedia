@@ -34,13 +34,43 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-// Total bytes across all queued uploads for a single field. Netlify Functions
-// have a hard ~6-10MB request payload limit (varies by runtime + multipart
-// overhead), so we cap the combined size at 8MB to stay safely under it.
-const MAX_TOTAL_UPLOAD_SIZE = 8 * 1024 * 1024;
+// Cap on cumulative bytes queued for a single field, applied AFTER client-side
+// resize. Each file uploads independently via /api/upload so there's no
+// hard Netlify limit, but we still want to keep the customer's total payload
+// reasonable. Set generously — the resize step typically shrinks 5MB phone
+// photos to ~1MB, so 32MB easily covers 12+ photos.
+const MAX_TOTAL_UPLOAD_SIZE = 32 * 1024 * 1024;
 const CLIENT_RESIZE_MAX_PX = 3000;
 const CLIENT_RESIZE_QUALITY = 0.9;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+
+// POST a single file to /.netlify/functions/upload, returning the Sanity
+// asset metadata. Surfaces server-side validation errors so the dropzone
+// can show them to the customer.
+async function uploadFileToSanity(file, fieldKey) {
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  fd.append('fieldKey', fieldKey);
+  let res;
+  try {
+    res = await fetch('/.netlify/functions/upload', { method: 'POST', body: fd });
+  } catch (e) {
+    throw new Error('Network error while uploading. Please check your connection and try again.');
+  }
+  let body;
+  try { body = await res.json(); } catch { body = {}; }
+  if (!res.ok || !body.ok) {
+    throw new Error(body.error || `Upload failed (status ${res.status}).`);
+  }
+  return {
+    assetId: body.assetId,
+    url: body.url,
+    originalName: body.originalName || file.name,
+    name: body.originalName || file.name,
+    size: file.size,
+    type: file.type,
+  };
+}
 
 const LEGACY_AJ_SWATCHES = [
   { key: 'A', color: '#FF00FF' }, { key: 'B', color: '#FFFFFF' },
@@ -257,10 +287,16 @@ function BriefField({ field, value, onChange, files, onFilesChange, styleOptions
 }
 
 // ─── Photo dropzone (used for fieldType=photo and photos) ───────────────────
+// Files are uploaded to Sanity via /.netlify/functions/upload as soon as
+// they're added. `files` is an array of metadata objects:
+//   { assetId, url, originalName, name, size, type }
+// The submit handler then sends just these references (small JSON) to
+// commission-checkout, avoiding the Netlify Function payload limit.
 function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, onChange }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
-  const [resizingCount, setResizingCount] = useState(0);
+  const [busyCount, setBusyCount] = useState(0);
+  const [progressLabel, setProgressLabel] = useState('');
   const [error, setError] = useState('');
 
   function handleDrag(e) {
@@ -272,38 +308,39 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
   async function addFiles(incoming) {
     setError('');
 
-    // Categorise rejects so we can tell the user exactly what's wrong.
+    // ── Categorise incoming files by reason ─────────────────────────────
     const wrongType = [];
     const tooLarge = [];
     const candidates = [];
     for (const f of incoming) {
-      if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
-        wrongType.push(f);
-        continue;
-      }
-      if (f.size > MAX_FILE_SIZE) {
-        tooLarge.push(f);
-        continue;
-      }
+      if (!ALLOWED_IMAGE_TYPES.includes(f.type)) { wrongType.push(f); continue; }
+      if (f.size > MAX_FILE_SIZE) { tooLarge.push(f); continue; }
       candidates.push(f);
     }
 
-    // Enforce the cumulative cap. Start from the bytes already queued so
-    // adding more later still respects the 8MB ceiling.
+    // Cumulative cap is enforced against the bytes already accepted on this
+    // field so adding more later still respects MAX_TOTAL_UPLOAD_SIZE.
     const currentTotal = files.reduce((s, f) => s + (f.size || 0), 0);
     const overTotal = [];
     const accepted = [];
     let runningTotal = currentTotal;
     for (const f of candidates) {
-      if (runningTotal + f.size > MAX_TOTAL_UPLOAD_SIZE) {
-        overTotal.push(f);
-        continue;
-      }
+      if (runningTotal + f.size > MAX_TOTAL_UPLOAD_SIZE) { overTotal.push(f); continue; }
       accepted.push(f);
       runningTotal += f.size;
     }
 
-    // Build a single friendly error string covering every reject reason.
+    // Enforce max-files cap before uploading (no point uploading photo 11
+    // when the field caps at 10)
+    let toUpload = accepted;
+    if (multiple) {
+      const slotsLeft = Math.max(0, (maxFiles || Infinity) - files.length);
+      if (toUpload.length > slotsLeft) toUpload = toUpload.slice(0, slotsLeft);
+    } else {
+      toUpload = toUpload.slice(0, 1);
+    }
+
+    // Build a single error string from all reject reasons
     const errors = [];
     if (wrongType.length) {
       errors.push(
@@ -324,13 +361,41 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
     }
     if (errors.length) setError(errors.join(' '));
 
-    if (accepted.length === 0) return;
+    if (toUpload.length === 0) return;
 
-    setResizingCount(accepted.length);
-    const resized = await Promise.all(accepted.map(resizeImage));
-    setResizingCount(0);
-    let combined = multiple ? [...files, ...resized] : [resized[0]];
-    if (multiple && combined.length > maxFiles) combined = combined.slice(0, maxFiles);
+    // ── Resize then upload, one at a time, with progress ────────────────
+    setBusyCount(toUpload.length);
+    const uploaded = [];
+    for (let i = 0; i < toUpload.length; i++) {
+      const original = toUpload[i];
+      setProgressLabel(`Processing photo ${i + 1} of ${toUpload.length}…`);
+      let resized;
+      try {
+        resized = await resizeImage(original);
+      } catch {
+        resized = original; // fall back to original on any resize hiccup
+      }
+      setProgressLabel(`Uploading photo ${i + 1} of ${toUpload.length}…`);
+      try {
+        const meta = await uploadFileToSanity(resized, fieldKey);
+        uploaded.push(meta);
+      } catch (uploadErr) {
+        setError(`Couldn\u2019t upload ${original.name}: ${uploadErr.message}`);
+        // Stop processing further files in this batch — let the customer
+        // see what failed and retry rather than silently uploading some
+        // and skipping others.
+        break;
+      }
+    }
+    setBusyCount(0);
+    setProgressLabel('');
+
+    if (uploaded.length === 0) return;
+
+    let combined = multiple ? [...files, ...uploaded] : [uploaded[0]];
+    if (multiple && combined.length > (maxFiles || Infinity)) {
+      combined = combined.slice(0, maxFiles);
+    }
     onChange(combined);
   }
 
@@ -344,19 +409,23 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
     e.target.value = '';
   }
 
-  // Live total so the user can see how much room is left.
+  // Live total so the user can see how much room is left
   const totalBytes = files.reduce((s, f) => s + (f.size || 0), 0);
   const totalMb = (totalBytes / 1024 / 1024).toFixed(1);
   const limitMb = Math.round(MAX_TOTAL_UPLOAD_SIZE / 1024 / 1024);
+  const isBusy = busyCount > 0;
 
   return (
     <>
-      <div className={`cw__dropzone${dragActive ? ' cw__dropzone--active' : ''}`}
-        onDragEnter={handleDrag} onDragOver={handleDrag} onDragLeave={handleDrag}
-        onDrop={handleDrop} onClick={() => inputRef.current?.click()}
-        role="button" tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}>
-        <input ref={inputRef} type="file" multiple={multiple}
+      <div className={`cw__dropzone${dragActive ? ' cw__dropzone--active' : ''}${isBusy ? ' cw__dropzone--busy' : ''}`}
+        onDragEnter={isBusy ? undefined : handleDrag}
+        onDragOver={isBusy ? undefined : handleDrag}
+        onDragLeave={isBusy ? undefined : handleDrag}
+        onDrop={isBusy ? undefined : handleDrop}
+        onClick={() => !isBusy && inputRef.current?.click()}
+        role="button" tabIndex={0} aria-disabled={isBusy}
+        onKeyDown={(e) => !isBusy && e.key === 'Enter' && inputRef.current?.click()}>
+        <input ref={inputRef} type="file" multiple={multiple} disabled={isBusy}
           accept={accept || ALLOWED_IMAGE_TYPES.join(',')} onChange={handleInput}
           className="cw__file-input" aria-label={`Upload photos for ${fieldKey}`} />
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -366,7 +435,7 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
           <line x1="12" y1="3" x2="12" y2="15" />
         </svg>
         <p className="cw__dropzone-text">
-          {resizingCount > 0 ? `Optimising ${resizingCount} photo${resizingCount > 1 ? 's' : ''}…`
+          {isBusy ? progressLabel
             : dragActive ? 'Drop here…'
             : multiple ? `Drag & drop ${minFiles}–${maxFiles} photos or click to browse`
             : 'Drag & drop a photo or click to browse'}
@@ -382,9 +451,13 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
       {files.length > 0 && (
         <ul className="cw__file-list">
           {files.map((f, i) => (
-            <li key={`${f.name}-${f.size}-${i}`} className="cw__file-item">
-              <span className="cw__file-name">{f.name} <span className="cw__file-size">({formatBytes(f.size)})</span></span>
-              <button type="button" onClick={() => { setError(''); onChange(files.filter((_, idx) => idx !== i)); }}
+            <li key={`${f.assetId || f.name}-${f.size}-${i}`} className="cw__file-item">
+              <span className="cw__file-name">
+                {f.name} <span className="cw__file-size">({formatBytes(f.size)})</span>
+                {f.assetId && <span className="cw__file-status" aria-label="Uploaded"> ✓</span>}
+              </span>
+              <button type="button"
+                onClick={() => { setError(''); onChange(files.filter((_, idx) => idx !== i)); }}
                 className="cw__file-remove" aria-label={`Remove ${f.name}`}>×</button>
             </li>
           ))}
@@ -395,6 +468,12 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
 }
 
 // ─── Generic file dropzone (for audio, video, document uploads) ─────────────
+// NOTE: This dropzone still stores raw File objects rather than uploading
+// them via /api/upload. No live service currently uses fieldType='file', so
+// this hasn't been migrated. If you ever add a service with non-image file
+// uploads, swap the addFiles() body to call uploadFileToSanity() the way
+// PhotoDropzone does — commission-checkout already expects asset references,
+// not files in the request body.
 function FileDropzone({ fieldKey, accept, maxSizeBytes, files, onChange }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
@@ -878,19 +957,26 @@ export default function CommissionWorkflow({ service }) {
     setError('');
     setSubmitting(true);
     try {
-      const fd = new FormData();
-      fd.append('serviceSlug', service.slug);
-      fd.append('serviceTitle', service.title);
-      fd.append('orderType', orderType);
-      fd.append('includePrintsWithAnimation', includePrintsWithAnimation ? 'true' : 'false');
-      fd.append('bundleCollection', bundleCollection);
+      // Photos uploaded to Sanity already (by PhotoDropzone via /api/upload).
+      // Each entry in briefFiles[fieldKey] now holds asset metadata, not a
+      // raw File. We collect them into a flat array for the checkout function
+      // to attach as references on the commission doc.
+      const uploadedAssets = [];
+      Object.entries(briefFiles).forEach(([fieldKey, arr]) => {
+        (arr || []).forEach((meta) => {
+          if (meta?.assetId) {
+            uploadedAssets.push({
+              fieldKey,
+              assetId: meta.assetId,
+              originalName: meta.originalName || meta.name || 'upload',
+            });
+          }
+        });
+      });
 
       const name = briefValues.customerName || '';
       const email = briefValues.customerEmail || '';
       const phone = briefValues.customerPhone || '';
-      fd.append('name', name);
-      fd.append('email', email);
-      if (phone) fd.append('phone', phone);
 
       const briefSummary = filteredBriefingFields
         .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
@@ -906,7 +992,6 @@ export default function CommissionWorkflow({ service }) {
           return `${f.label}: ${display}`;
         })
         .join('\n');
-      fd.append('brief', briefSummary);
 
       const briefData = filteredBriefingFields
         .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
@@ -917,23 +1002,30 @@ export default function CommissionWorkflow({ service }) {
           else v = raw || '';
           return { key: f.key, label: f.label, value: v };
         });
-      fd.append('briefData', JSON.stringify(briefData));
 
-      if (orderInvolvesPrints) {
-        const validPrints = (orderType === 'singlePrint' ? prints.slice(0, 1) : prints)
-          .filter((p) => p.format && p.size);
-        fd.append('prints', JSON.stringify(validPrints));
-      }
+      const validPrints = orderInvolvesPrints
+        ? (orderType === 'singlePrint' ? prints.slice(0, 1) : prints)
+            .filter((p) => p.format && p.size)
+        : [];
 
-      Object.entries(briefFiles).forEach(([fieldKey, arr]) => {
-        (arr || []).forEach((f) => {
-          // Tag every uploaded file with its source field so the function knows
-          // whether it's the original photo, subject refs, location refs, or a generic file.
-          fd.append('files', f, `${fieldKey}__${f.name}`);
-        });
+      const payload = {
+        serviceSlug: service.slug,
+        serviceTitle: service.title,
+        orderType,
+        includePrintsWithAnimation: !!includePrintsWithAnimation,
+        bundleCollection,
+        name, email, phone,
+        brief: briefSummary,
+        briefData,
+        prints: validPrints,
+        uploadedAssets,
+      };
+
+      const res = await fetch('/.netlify/functions/commission-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
-
-      const res = await fetch('/.netlify/functions/commission-checkout', { method: 'POST', body: fd });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || 'Something went wrong. Please try again.');
