@@ -86,9 +86,16 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
       });
     }
 
-    const buffer = Buffer.from(await f.arrayBuffer());
+    console.log(`upload: receiving ${f.name} (${f.size} bytes, ${f.type}) for field ${fieldKey}`);
 
-    const asset = await sanity.assets.upload('image', buffer, {
+    // Read the file bytes. We use Uint8Array rather than Buffer because the
+    // newer Netlify Function runtimes don't expose Node's Buffer global —
+    // Uint8Array is universal and @sanity/client v7 accepts it directly.
+    const arrayBuffer = await f.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+
+    console.log(`upload: uploading to Sanity assets API…`);
+    const asset = await sanity.assets.upload('image', bytes, {
       filename: f.name,
       contentType: f.type,
       // Tag uploads so the orphan-cleanup script can find them. Sanity stores
@@ -99,6 +106,8 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
       title: `${fieldKey}: ${f.name}`,
     });
 
+    console.log(`upload: success, assetId=${asset._id}`);
+
     return jsonResponse(200, {
       ok: true,
       assetId: asset._id,
@@ -107,7 +116,13 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
       fieldKey,
     });
   } catch (err: any) {
-    console.error('upload error:', err);
+    // Log liberally so we can diagnose from function logs. Different
+    // runtimes surface errors differently; we want at least one of these
+    // to appear in the dashboard.
+    console.error('upload error message:', err?.message);
+    console.error('upload error name:', err?.name);
+    console.error('upload error stack:', err?.stack);
+    console.error('upload error full:', JSON.stringify(err, Object.getOwnPropertyNames(err || {})));
     return jsonResponse(500, {
       ok: false,
       error: err?.message || 'Upload failed. Please try again.',
