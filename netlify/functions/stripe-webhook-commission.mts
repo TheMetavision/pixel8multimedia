@@ -4,7 +4,7 @@
 //   1. Marks the Sanity commission doc paid (idempotent — skips if already paid)
 //   2. Records paymentId + paidAt + shipping address (as text) + phone
 //   3. Emails the customer a branded order confirmation
-//   4. Emails the Pixel8 team a "new commission" notification
+//   4. Emails the Pixel8 team a branded "new commission" notification
 
 import type { Context } from '@netlify/functions';
 import Stripe from 'stripe';
@@ -25,6 +25,7 @@ const sanity = createClient({
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
+const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 const FROM_EMAIL = 'Pixel8 Multimedia <hello@pixel8multimedia.co.uk>';
 const TEAM_EMAIL = process.env.TEAM_EMAIL || 'hello@pixel8multimedia.co.uk';
 
@@ -71,15 +72,16 @@ function customerEmailHtml(args: {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:40px 20px;">
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <!-- Header (dark block + logo + tagline) -->
         <tr>
-          <td style="background:linear-gradient(135deg,#7c3aed 0%,#a855f7 100%);padding:32px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:800;letter-spacing:-0.5px;">Pixel8 Multimedia</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:13px;letter-spacing:0.5px;">POP. ART. MOTION.</p>
+          <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
+            <img src="${LOGO_URL}" width="180" alt="Pixel8 Multimedia" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;">
+            <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>
         <tr>
           <td style="padding:40px;">
-            <h2 style="margin:0 0 8px;font-size:20px;color:#1a1a2e;">Order confirmed \u2014 thank you! \u{1F389}</h2>
+            <h2 style="margin:0 0 8px;font-size:20px;color:#1a1a2e;">Thanks for your order \u2014 confirmed! \u{1F389}</h2>
             <p style="margin:0 0 24px;color:#6b7280;font-size:15px;line-height:1.6;">
               Hi ${customerName},<br><br>
               Thanks for your order. We\u2019ve received your <strong>${serviceTitle}</strong> commission and payment in full.
@@ -119,7 +121,7 @@ function customerEmailHtml(args: {
 </html>`;
 }
 
-// ── Team notification email ──────────────────────────────────────────────────
+// ── Team notification email (branded) ────────────────────────────────────────
 function teamEmailHtml(args: {
   serviceTitle: string;
   orderRef: string;
@@ -137,31 +139,53 @@ function teamEmailHtml(args: {
   } = args;
   const studioUrl = `https://pixel8multimedia.sanity.studio/structure/commission;${commissionId}`;
   return `
-<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;">
-  <div style="background:#7c3aed;padding:16px;text-align:center;">
-    <h1 style="color:#fff;margin:0;font-size:22px;">NEW PAID COMMISSION</h1>
-  </div>
-  <div style="padding:24px;">
-    <p style="margin:0 0 4px;font-size:18px;"><strong>${serviceTitle}</strong></p>
-    <p style="margin:0 0 16px;color:#666;">Ref: <strong>${orderRef}</strong> \u00B7 \u00A3${total.toFixed(2)} \u00B7 ${deliveryType.toUpperCase()}</p>
-    <p style="margin:0 0 4px;"><strong>Customer:</strong> ${customerName}</p>
-    <p style="margin:0 0 4px;"><strong>Email:</strong> ${customerEmail}</p>
-    ${customerPhone ? `<p style="margin:0 0 4px;"><strong>Phone:</strong> ${customerPhone}</p>` : ''}
-    ${
-      shippingAddress
-        ? `<div style="margin:16px 0;padding:14px 16px;background:#f5f5f5;border-radius:6px;">
-             <strong>Ship to:</strong><br/>${shippingAddress.replace(/\n/g, '<br/>')}
-           </div>`
-        : `<p style="margin:16px 0;color:#999;">No shipping address (digital-only order).</p>`
-    }
-    <div style="margin-top:20px;padding:16px;background:#f3e8ff;border-left:4px solid #7c3aed;border-radius:4px;">
-      <strong>Next steps:</strong><br/>
-      1. Open in <a href="${studioUrl}" style="color:#7c3aed;">Sanity Studio</a><br/>
-      2. Create the artwork<br/>
-      3. Upload to "Finished File" and set status to <strong>Complete</strong> to trigger customer delivery
-    </div>
-  </div>
-</div>`;
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <!-- Header (dark block + logo + tagline) -->
+        <tr>
+          <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
+            <img src="${LOGO_URL}" width="180" alt="Pixel8 Multimedia" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;">
+            <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;">
+            <p style="margin:0 0 16px;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#7c3aed;">New paid commission</p>
+            <p style="margin:0 0 4px;font-size:18px;color:#1a1a2e;"><strong>${serviceTitle}</strong></p>
+            <p style="margin:0 0 16px;color:#6b7280;font-size:14px;">Ref: <strong>${orderRef}</strong> \u00B7 \u00A3${total.toFixed(2)} \u00B7 ${deliveryType.toUpperCase()}</p>
+            <p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Customer:</strong> ${customerName}</p>
+            <p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Email:</strong> ${customerEmail}</p>
+            ${customerPhone ? `<p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Phone:</strong> ${customerPhone}</p>` : ''}
+            ${
+              shippingAddress
+                ? `<div style="margin:16px 0;padding:14px 16px;background:#f9fafb;border-radius:6px;color:#1a1a2e;font-size:14px;">
+                     <strong>Ship to:</strong><br/>${shippingAddress.replace(/\n/g, '<br/>')}
+                   </div>`
+                : `<p style="margin:16px 0;color:#9ca3af;font-size:14px;">No shipping address (digital-only order).</p>`
+            }
+            <div style="margin-top:20px;padding:16px;background:#f3e8ff;border-left:4px solid #7c3aed;border-radius:4px;color:#1a1a2e;font-size:14px;line-height:1.6;">
+              <strong>Next steps:</strong><br/>
+              1. Open in <a href="${studioUrl}" style="color:#7c3aed;">Sanity Studio</a><br/>
+              2. Create the artwork<br/>
+              3. Upload to "Finished File" and set status to <strong>Complete</strong> to trigger customer delivery
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
+            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">Pixel8 Multimedia \u2014 internal notification</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 export default async function handler(req: Request, _context: Context) {

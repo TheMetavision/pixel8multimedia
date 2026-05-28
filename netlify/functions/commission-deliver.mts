@@ -21,6 +21,7 @@ const sanity = createClient({
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
+const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 const DOWNLOAD_SECRET = process.env.DOWNLOAD_LINK_SECRET!;
 const DOWNLOAD_EXPIRY_HOURS = 72;
 
@@ -57,7 +58,7 @@ function generateSignedUrl(commissionId: string, fileRef: string): string {
   return `${SITE_URL}/.netlify/functions/commission-download?${params.toString()}`;
 }
 
-// ── Branded email HTML ───────────────────
+// ── Branded email HTML (shared Pixel8 shell: dark header + logo + tagline) ──
 function buildEmailHtml(
   customerName: string,
   serviceTitle: string,
@@ -72,11 +73,11 @@ function buildEmailHtml(
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:40px 20px;">
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-        <!-- Header -->
+        <!-- Header (dark block + logo + tagline) -->
         <tr>
-          <td style="background:linear-gradient(135deg,#7c3aed 0%,#a855f7 100%);padding:32px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:800;letter-spacing:-0.5px;">Pixel8 Multimedia</h1>
-            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:13px;letter-spacing:0.5px;">POP. ART. MOTION.</p>
+          <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
+            <img src="${LOGO_URL}" width="180" alt="Pixel8 Multimedia" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;">
+            <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>
 
