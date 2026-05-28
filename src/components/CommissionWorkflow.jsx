@@ -449,18 +449,52 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
       </div>
       {error && <p className="cw__error" style={{ marginTop: '0.5rem' }}>{error}</p>}
       {files.length > 0 && (
-        <ul className="cw__file-list">
-          {files.map((f, i) => (
-            <li key={`${f.assetId || f.name}-${f.size}-${i}`} className="cw__file-item">
-              <span className="cw__file-name">
-                {f.name} <span className="cw__file-size">({formatBytes(f.size)})</span>
-                {f.assetId && <span className="cw__file-status" aria-label="Uploaded"> ✓</span>}
-              </span>
-              <button type="button"
-                onClick={() => { setError(''); onChange(files.filter((_, idx) => idx !== i)); }}
-                className="cw__file-remove" aria-label={`Remove ${f.name}`}>×</button>
-            </li>
-          ))}
+        <ul className="cw__thumb-grid">
+          {files.map((f, i) => {
+            // HEIC/HEIF can't render in <img> in most browsers — show a tile.
+            const isHeic = /heic|heif/i.test(f.type || '') || /\.hei[cf]$/i.test(f.name || '');
+            // Build a lightweight square crop from the Sanity CDN url.
+            const thumbSrc = f.url
+              ? `${f.url}${f.url.includes('?') ? '&' : '?'}w=240&h=240&fit=crop&auto=format`
+              : null;
+            const ext = (f.name?.split('.').pop() || 'img').toUpperCase();
+            return (
+              <li key={`${f.assetId || f.name}-${f.size}-${i}`} className="cw__thumb-card">
+                <div className="cw__thumb-media">
+                  {thumbSrc && !isHeic ? (
+                    <img className="cw__thumb-img" src={thumbSrc} alt={f.name} loading="lazy" />
+                  ) : (
+                    <div className="cw__thumb-fallback">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      <span className="cw__thumb-fallback-ext">{ext}</span>
+                    </div>
+                  )}
+
+                  {f.assetId && (
+                    <span className="cw__thumb-badge" aria-label="Uploaded">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Uploaded
+                    </span>
+                  )}
+
+                  <button type="button"
+                    onClick={() => { setError(''); onChange(files.filter((_, idx) => idx !== i)); }}
+                    className="cw__thumb-remove" aria-label={`Remove ${f.name}`}>×</button>
+                </div>
+                <div className="cw__thumb-meta">
+                  <p className="cw__thumb-name" title={f.name}>{f.name}</p>
+                  <p className="cw__thumb-size">{formatBytes(f.size)}</p>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </>
