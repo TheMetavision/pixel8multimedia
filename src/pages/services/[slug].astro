@@ -49,6 +49,10 @@ const service = await sanityClient.fetch(
         tag,
         "url": image.asset->url + "?w=900&auto=format&q=78"
       },
+      "collageStills": {
+        "portraitUrl": collageStills.portrait.asset->url + "?w=900&auto=format&q=80",
+        "landscapeUrl": collageStills.landscape.asset->url + "?w=1400&auto=format&q=80"
+      },
       videos[]{
         youtubeId,
         tag,
@@ -119,8 +123,28 @@ const extParagraphs = service.extendedDescription
 // NOTE: collage trigger word is strictly "collage" — NOT "digital still",
 // because that tag is widely used across photoreal services (Missing Moment,
 // Crayon, Prankz, Scene Stealer, etc.) for the transformed output image.
-function categoriseImages(images = [], primaryKeys = [], secondaryKeys = []) {
+function categoriseImages(images = [], primaryKeys = [], secondaryKeys = [], collageStills = null) {
   const valid = images.filter((img) => img.url);
+
+  // ── New SOYL pattern (Option B) ───────────────────────────────────────
+  // If the example carries a structured collageStills object with at least
+  // one of portraitUrl / landscapeUrl populated, that takes priority over the
+  // legacy "image tagged 'collage'" detection below. Source photos are still
+  // pulled from images[] (typically all tagged "Original").
+  const portraitUrl = collageStills?.portraitUrl || null;
+  const landscapeUrl = collageStills?.landscapeUrl || null;
+  if (portraitUrl || landscapeUrl) {
+    return {
+      mode: 'collage',
+      sourcePhotos: valid,
+      // Keep legacy `collage` slot null when using the new pattern — the
+      // template branches on portraitUrl/landscapeUrl first.
+      collage: null,
+      portraitUrl,
+      landscapeUrl,
+    };
+  }
+
   if (!valid.length) return { mode: 'standard', original: null, rest: [] };
 
   // Crayon To Creation detection: an image tagged "Original Drawing" means
@@ -292,7 +316,8 @@ const serviceForWizard = {
           const categorised = categoriseImages(
             example.images || [],
             (service.styleOptions || []).map((s) => s.key),
-            (service.styleOptionsSecondary || []).map((s) => s.key)
+            (service.styleOptionsSecondary || []).map((s) => s.key),
+            example.collageStills || null
           );
           return (
             <div class="example-block">
@@ -327,19 +352,50 @@ const serviceForWizard = {
                       <span class="example-block__price-tag"> — £{service.digitalPrice.toFixed(2)}</span>
                     )}
                   </h4>
-                  <div class="example-block__original">
-                    <figure class="example-block__figure">
-                      <img
-                        src={categorised.collage.url}
-                        alt={`${example.label || service.title} — Digital Still`}
-                        loading="lazy"
-                        class="example-block__image"
-                      />
-                      {categorised.collage.tag && (
-                        <figcaption class="example-block__tag">{categorised.collage.tag}</figcaption>
+
+                  {/* New SOYL pattern — portrait + landscape collage stills.
+                       Falls back to legacy single-image collage if neither
+                       new-style URL is present. */}
+                  {(categorised.portraitUrl || categorised.landscapeUrl) ? (
+                    <div class="example-block__collage-pair">
+                      {categorised.portraitUrl && (
+                        <figure class="example-block__figure example-block__figure--portrait">
+                          <img
+                            src={categorised.portraitUrl}
+                            alt={`${example.label || service.title} — Digital Still (Portrait)`}
+                            loading="lazy"
+                            class="example-block__image"
+                          />
+                          <figcaption class="example-block__tag">Portrait</figcaption>
+                        </figure>
                       )}
-                    </figure>
-                  </div>
+                      {categorised.landscapeUrl && (
+                        <figure class="example-block__figure example-block__figure--landscape">
+                          <img
+                            src={categorised.landscapeUrl}
+                            alt={`${example.label || service.title} — Digital Still (Landscape)`}
+                            loading="lazy"
+                            class="example-block__image"
+                          />
+                          <figcaption class="example-block__tag">Landscape</figcaption>
+                        </figure>
+                      )}
+                    </div>
+                  ) : (
+                    <div class="example-block__original">
+                      <figure class="example-block__figure">
+                        <img
+                          src={categorised.collage.url}
+                          alt={`${example.label || service.title} — Digital Still`}
+                          loading="lazy"
+                          class="example-block__image"
+                        />
+                        {categorised.collage.tag && (
+                          <figcaption class="example-block__tag">{categorised.collage.tag}</figcaption>
+                        )}
+                      </figure>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -875,6 +931,34 @@ const serviceForWizard = {
     margin-right: auto;
   }
 
+  /* Collage pair — SOYL portrait + landscape digital stills shown together.
+   * Auto-fit so a single-orientation example (only portrait OR only landscape)
+   * fills the row; with both present they sit side-by-side and stack on mobile. */
+  .example-block__collage-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+    width: 100%;
+    max-width: 1060px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  /* When only one orientation is supplied, collapse to a single column so it
+   * doesn't sit in half the row staring at empty space. */
+  .example-block__collage-pair:has(> .example-block__figure:only-child) {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 720px;
+  }
+
+  .example-block__figure--portrait img,
+  .example-block__figure--landscape img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+  }
   .example-block .example-block__source-figure {
     margin: 0;
     position: relative;
@@ -1237,6 +1321,10 @@ const serviceForWizard = {
     }
 
     .example-block__crayon-inputs {
+      grid-template-columns: 1fr;
+    }
+
+    .example-block__collage-pair {
       grid-template-columns: 1fr;
     }
 
