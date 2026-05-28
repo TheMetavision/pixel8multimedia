@@ -6,6 +6,7 @@
 
 import type { Context } from '@netlify/functions';
 import { createClient } from '@sanity/client';
+import { isValidSignature, SIGNATURE_HEADER_NAME } from '@sanity/webhook';
 import { Resend } from 'resend';
 import crypto from 'crypto';
 
@@ -24,12 +25,18 @@ const DOWNLOAD_SECRET = process.env.DOWNLOAD_LINK_SECRET!;
 const DOWNLOAD_EXPIRY_HOURS = 72;
 
 // ── Verify Sanity webhook signature ──────
-function verifySanityWebhook(body: string, signature: string | null, secret: string): boolean {
+// Sanity sends the signature as "t=<timestamp>,v1=<base64url-hmac>" where the
+// HMAC is computed over "<timestamp>.<body>". The official isValidSignature
+// helper parses and verifies this correctly (the previous hand-rolled version
+// compared raw buffers of mismatched length and threw ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH).
+async function verifySanityWebhook(body: string, signature: string | null, secret: string): Promise<boolean> {
   if (!signature) return false;
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(body);
-  const digest = hmac.digest('base64');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
+  try {
+    return await isValidSignature(body, signature, secret);
+  } catch (err) {
+    console.error('Signature validation error:', err);
+    return false;
+  }
 }
 
 // ── Generate signed download URL ─────────
@@ -125,8 +132,8 @@ export default async function handler(req: Request, _context: Context) {
   const body = await req.text();
   const sanitySecret = process.env.SANITY_WEBHOOK_SECRET;
   if (sanitySecret) {
-    const sig = req.headers.get('sanity-webhook-signature');
-    if (!verifySanityWebhook(body, sig, sanitySecret)) {
+    const sig = req.headers.get(SIGNATURE_HEADER_NAME) || req.headers.get('sanity-webhook-signature');
+    if (!(await verifySanityWebhook(body, sig, sanitySecret))) {
       return new Response('Invalid signature', { status: 401 });
     }
   }
