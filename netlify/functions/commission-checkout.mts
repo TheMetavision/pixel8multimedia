@@ -481,6 +481,22 @@ export default async function handler(req: Request, _context: Context) {
 
     const orderRef = `PX-${nanoid(8).toUpperCase()}`;
 
+    // Map the order type to the schema's deliveryType (digital | print | both)
+    // so commission-deliver.mts knows whether to send a download link, mark
+    // print-only, or both. Without this the deliver function can't tell a
+    // physical order from a digital one.
+    function deriveDeliveryType(): 'digital' | 'print' | 'both' {
+      const hasPrints = prints.filter((p) => p.format && p.size).length > 0;
+      if (orderType === 'singlePrint') return 'print';
+      if (orderType === 'bundle') return 'both';
+      if (orderType === 'animation-music' || orderType === 'animation-vo') {
+        return includePrintsWithAnimation && hasPrints ? 'both' : 'digital';
+      }
+      // digital, digital-secondary, digital-both
+      return hasPrints ? 'both' : 'digital';
+    }
+    const deliveryType = deriveDeliveryType();
+
     let breakdown: PriceBreakdown;
     let stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
 
@@ -509,6 +525,7 @@ export default async function handler(req: Request, _context: Context) {
       customerPhone: phone,
       brief,
       orderType: breakdown.orderType,
+      deliveryType,
       bundleCollection: bundleCollection,
       // shippingAddress is patched onto this doc by the Stripe webhook after
       // payment completes. Stripe collects it directly on the checkout page.
@@ -596,6 +613,15 @@ export default async function handler(req: Request, _context: Context) {
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
+
+    // Record the Stripe session id on the commission so the webhook can find
+    // this doc even in edge cases where metadata is absent. Best-effort — a
+    // failure here shouldn't block the customer reaching payment.
+    try {
+      await sanity.patch(commission._id).set({ stripeSessionId: session.id }).commit();
+    } catch (e) {
+      console.warn('Could not store stripeSessionId on commission:', e);
+    }
 
     return new Response(JSON.stringify({ url: session.url, orderRef }), {
       status: 200, headers: { 'Content-Type': 'application/json' },
