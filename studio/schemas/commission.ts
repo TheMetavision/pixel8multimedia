@@ -49,6 +49,21 @@ export default defineType({
         layout: 'radio',
       },
       initialValue: 'pending',
+      validation: (Rule) =>
+        Rule.custom((status, context) => {
+          const doc = context.document as any;
+          // H2: completing a digital/both order emails the customer their
+          // download link, which needs the file. Block Complete until it's
+          // uploaded. Print-only orders have no download, so they're exempt.
+          if (
+            status === 'complete' &&
+            doc?.deliveryType !== 'print' &&
+            !doc?.finishedFile?.asset?._ref
+          ) {
+            return 'Upload a Finished File before setting status to Complete — completing emails the customer their download link.';
+          }
+          return true;
+        }),
     }),
     defineField({
       name: 'notifyError',
