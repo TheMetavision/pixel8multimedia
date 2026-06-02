@@ -50,6 +50,15 @@ export default defineType({
       },
       initialValue: 'pending',
     }),
+    defineField({
+      name: 'notifyError',
+      title: 'Notification Error',
+      type: 'string',
+      group: 'order',
+      readOnly: true,
+      description:
+        'Set automatically if a confirmation or team-notification email failed to send for this order. If populated, the customer may not have received confirmation - follow up manually.',
+    }),
 
     // ── Customer Info ──────────────────────────
     defineField({
@@ -342,8 +351,9 @@ export default defineType({
       customerName: 'customerName',
       status: 'status',
       service: 'service.title',
+      notifyError: 'notifyError',
     },
-    prepare({ title, customerName, status, service }) {
+    prepare({ title, customerName, status, service, notifyError }) {
       const emoji: Record<string, string> = {
         pending: '⏳',
         paid: '💷',
@@ -356,7 +366,7 @@ export default defineType({
         delivered: '📬',
         refunded: '↩️',
       };
-      const displayTitle = title || customerName || 'Untitled';
+      const displayTitle = (notifyError ? '[!] ' : '') + (title || customerName || 'Untitled');
       return {
         title: `${emoji[status || ''] || '❓'} ${displayTitle}`,
         subtitle: `${service || 'Manual commission'} — ${customerName || ''}`,

@@ -207,12 +207,27 @@ export default async function handler(req: Request, _context: Context) {
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
-  if (event.type !== 'checkout.session.completed') {
+  // H4: also handle delayed/async settlement (e.g. Klarna), which arrives as a
+  // separate event after the session first completes.
+  if (
+    event.type !== 'checkout.session.completed' &&
+    event.type !== 'checkout.session.async_payment_succeeded'
+  ) {
     return new Response('OK', { status: 200 });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
   const commissionId = session.metadata?.commissionId;
+
+  // H4: for delayed methods (Klarna etc.) the session can complete while still
+  // unpaid. Don't mark paid or start work until the money has actually settled;
+  // Stripe fires checkout.session.async_payment_succeeded when it does.
+  if (commissionId && session.payment_status !== 'paid') {
+    console.log(
+      `Commission ${commissionId} not yet paid (payment_status=${session.payment_status}) - waiting`
+    );
+    return new Response('OK - awaiting settlement', { status: 200 });
+  }
 
   if (!commissionId) {
     // Not a commission checkout — standard shop handles its own webhook.
@@ -223,7 +238,7 @@ export default async function handler(req: Request, _context: Context) {
     // ── Idempotency: if already processed, do nothing (Stripe retries safely) ──
     const existing = await sanity.fetch(
       `*[_type == "commission" && _id == $id][0]{
-        _id, status, orderRef, customerName, customerEmail, amount, deliveryType,
+        _id, status, paidAt, orderRef, customerName, customerEmail, amount, deliveryType,
         "serviceTitle": service->title
       }`,
       { id: commissionId }
@@ -234,7 +249,7 @@ export default async function handler(req: Request, _context: Context) {
       return new Response('Commission not found', { status: 404 });
     }
 
-    if (existing.status === 'paid' || existing.status === 'complete' || existing.status === 'delivered') {
+    if (existing.paidAt) {
       console.log(`Commission ${commissionId} already processed (${existing.status}) — skipping`);
       return new Response('Already processed', { status: 200 });
     }
@@ -251,10 +266,16 @@ export default async function handler(req: Request, _context: Context) {
       shippingDetails?.address
     );
 
+    // G6: record the actual amount Stripe captured (incl. shipping). amount_total
+    // is in pence; fall back to the stored goods total only if it's absent.
+    const amountPaid =
+      session.amount_total != null ? session.amount_total / 100 : (existing.amount ?? 0);
+
     const patch: Record<string, unknown> = {
       status: 'paid',
       stripePaymentId: session.payment_intent as string,
       paidAt: new Date().toISOString(),
+      amount: amountPaid,
     };
     // shippingAddress on the commission schema is a TEXT field — write a string.
     if (shippingAddressText) {
@@ -271,11 +292,17 @@ export default async function handler(req: Request, _context: Context) {
     // ── Emails (best-effort — a failure here shouldn't 500 the webhook,
     //    or Stripe will retry the whole event and we'd double-send) ─────────
     const serviceTitle = existing.serviceTitle || 'your commission';
-    const total = existing.amount ?? 0;
+    const total = amountPaid;
     const deliveryType = existing.deliveryType || 'digital';
 
+    // C3: capture BOTH thrown errors and Resend's returned { error } object.
+    // A Resend API failure (bad domain, rate limit) returns an error object
+    // WITHOUT throwing, so the old try/catch alone missed it and the order
+    // looked notified when it wasn't.
+    const emailErrors: string[] = [];
+
     try {
-      await resend.emails.send({
+      const { error } = await resend.emails.send({
         from: FROM_EMAIL,
         to: existing.customerEmail,
         subject: `Order confirmed \u2014 ${existing.orderRef}`,
@@ -288,12 +315,17 @@ export default async function handler(req: Request, _context: Context) {
           hasShipping: !!shippingAddressText,
         }),
       });
-    } catch (e) {
-      console.error('Customer confirmation email failed:', e);
+      if (error) {
+        console.error('Customer confirmation email failed:', error);
+        emailErrors.push(`customer: ${error.message || 'unknown'}`);
+      }
+    } catch (e: any) {
+      console.error('Customer confirmation email threw:', e);
+      emailErrors.push(`customer: ${e?.message || e}`);
     }
 
     try {
-      await resend.emails.send({
+      const { error } = await resend.emails.send({
         from: FROM_EMAIL,
         to: TEAM_EMAIL,
         replyTo: existing.customerEmail,
@@ -310,8 +342,27 @@ export default async function handler(req: Request, _context: Context) {
           commissionId,
         }),
       });
-    } catch (e) {
-      console.error('Team notification email failed:', e);
+      if (error) {
+        console.error('Team notification email failed:', error);
+        emailErrors.push(`team: ${error.message || 'unknown'}`);
+      }
+    } catch (e: any) {
+      console.error('Team notification email threw:', e);
+      emailErrors.push(`team: ${e?.message || e}`);
+    }
+
+    // C3: surface any failure in Studio so a silent send failure becomes a
+    // visible flag on the order. The Paid - Awaiting Start list stays the
+    // source of truth; this makes a missed notification obvious there.
+    if (emailErrors.length) {
+      try {
+        await sanity
+          .patch(commissionId)
+          .set({ notifyError: `${new Date().toISOString()} - ${emailErrors.join('; ')}` })
+          .commit();
+      } catch (e) {
+        console.error('Failed to record notifyError on commission:', e);
+      }
     }
 
     return new Response('OK', { status: 200 });
