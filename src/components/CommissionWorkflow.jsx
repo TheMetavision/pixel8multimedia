@@ -42,6 +42,11 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_TOTAL_UPLOAD_SIZE = 32 * 1024 * 1024;
 const CLIENT_RESIZE_MAX_PX = 3000;
 const CLIENT_RESIZE_QUALITY = 0.9;
+// Re-encoded JPEGs are compressed below this size before upload, keeping each
+// file safely under Netlify's ~6MB function request-body limit. A raw PNG can
+// be 8-12MB even at small dimensions (e.g. Higgsfield exports), so we always
+// re-encode to JPEG rather than trusting the pixel cap alone.
+const CLIENT_UPLOAD_TARGET_BYTES = Math.round(4.5 * 1024 * 1024);
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
 // POST a single file to /.netlify/functions/upload, returning the Sanity
@@ -120,28 +125,72 @@ function formatToSanityKey(f) {
 }
 
 async function resizeImage(file) {
-  if (file.type === 'image/heic' || !file.type.startsWith('image/')) return file;
+  // HEIC/HEIF can't be decoded by <canvas> in most browsers, and non-images
+  // have nothing to re-encode — pass them straight through.
+  if (
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    !file.type.startsWith('image/')
+  ) {
+    return file;
+  }
+
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const { width, height } = img;
+      let { width, height } = img;
       const longSide = Math.max(width, height);
-      if (longSide <= CLIENT_RESIZE_MAX_PX) { resolve(file); return; }
-      const scale = CLIENT_RESIZE_MAX_PX / longSide;
-      const newW = Math.round(width * scale);
-      const newH = Math.round(height * scale);
+
+      // Fast path: an already-small JPEG under the size target keeps its
+      // original quality — no point recompressing it.
+      if (
+        file.type === 'image/jpeg' &&
+        longSide <= CLIENT_RESIZE_MAX_PX &&
+        file.size <= CLIENT_UPLOAD_TARGET_BYTES
+      ) {
+        resolve(file);
+        return;
+      }
+
+      // Downscale dimensions only when over the pixel cap.
+      if (longSide > CLIENT_RESIZE_MAX_PX) {
+        const scale = CLIENT_RESIZE_MAX_PX / longSide;
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
       const canvas = document.createElement('canvas');
-      canvas.width = newW; canvas.height = newH;
-      canvas.getContext('2d').drawImage(img, 0, 0, newW, newH);
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) { resolve(file); return; }
-          resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
-        },
-        'image/jpeg', CLIENT_RESIZE_QUALITY
-      );
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(file); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Always re-encode to JPEG, stepping quality down until the result is
+      // under the upload size target. This is what shrinks large PNGs — which
+      // stay multi-MB even at small dimensions — so they no longer exceed
+      // Netlify's ~6MB function body limit and 400 on upload.
+      const jpgName = file.name.replace(/\.\w+$/, '') + '.jpg';
+      let quality = CLIENT_RESIZE_QUALITY;
+
+      const attempt = () => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) { resolve(file); return; }
+            if (blob.size <= CLIENT_UPLOAD_TARGET_BYTES || quality <= 0.5) {
+              resolve(new File([blob], jpgName, { type: 'image/jpeg' }));
+            } else {
+              quality = Math.max(0.5, quality - 0.1);
+              attempt();
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      attempt();
     };
     img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
     img.src = url;
