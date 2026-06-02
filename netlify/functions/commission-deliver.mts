@@ -382,11 +382,16 @@ export default async function handler(req: Request, _context: Context) {
   // ── Verify webhook ─────────────────────
   const body = await req.text();
   const sanitySecret = process.env.SANITY_WEBHOOK_SECRET;
-  if (sanitySecret) {
-    const sig = req.headers.get(SIGNATURE_HEADER_NAME) || req.headers.get('sanity-webhook-signature');
-    if (!(await verifySanityWebhook(body, sig, sanitySecret))) {
-      return new Response('Invalid signature', { status: 401 });
-    }
+  // Fail closed: if no secret is configured, refuse rather than accept
+  // unauthenticated webhooks. Requires SANITY_WEBHOOK_SECRET to be set in
+  // Netlify AND to match the Secret on the Sanity webhook, or NOTHING delivers.
+  if (!sanitySecret) {
+    console.error('SANITY_WEBHOOK_SECRET not set — refusing to process webhook');
+    return new Response('Webhook secret not configured', { status: 500 });
+  }
+  const sig = req.headers.get(SIGNATURE_HEADER_NAME) || req.headers.get('sanity-webhook-signature');
+  if (!(await verifySanityWebhook(body, sig, sanitySecret))) {
+    return new Response('Invalid signature', { status: 401 });
   }
 
   const payload = JSON.parse(body);
