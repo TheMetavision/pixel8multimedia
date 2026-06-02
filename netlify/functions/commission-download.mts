@@ -50,7 +50,11 @@ export default async function handler(req: Request, _context: Context) {
   hmac.update(payload);
   const expectedSig = hmac.digest('hex');
 
-  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSig);
+  // timingSafeEqual throws on length mismatch, so length-check first — a wrong
+  // length is simply an invalid signature, not a 500.
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
     return new Response(errorPage('Invalid link', 'This download link is invalid or has been tampered with.'), {
       status: 403,
       headers: { 'Content-Type': 'text/html' },

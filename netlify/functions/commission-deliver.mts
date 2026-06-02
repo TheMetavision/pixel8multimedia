@@ -35,7 +35,7 @@ const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
 const FROM_EMAIL = 'Pixel8 Multimedia <hello@pixel8multimedia.co.uk>';
 const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 const DOWNLOAD_SECRET = process.env.DOWNLOAD_LINK_SECRET!;
-const DOWNLOAD_EXPIRY_HOURS = 72;
+const DOWNLOAD_EXPIRY_DAYS = 30;
 
 // ── Verify Sanity webhook signature ──────
 // Sanity signs "t=<timestamp>,v1=<base64url-hmac>" over "<timestamp>.<body>".
@@ -53,7 +53,7 @@ async function verifySanityWebhook(body: string, signature: string | null, secre
 
 // ── Generate signed download URL (delivery) ──
 function generateSignedUrl(commissionId: string, fileRef: string): string {
-  const expiry = Date.now() + DOWNLOAD_EXPIRY_HOURS * 60 * 60 * 1000;
+  const expiry = Date.now() + DOWNLOAD_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
   const payload = `${commissionId}:${fileRef}:${expiry}`;
   const hmac = crypto.createHmac('sha256', DOWNLOAD_SECRET);
   hmac.update(payload);
@@ -141,7 +141,7 @@ function buildDeliveryEmailHtml(
             </table>
 
             <p style="margin:0 0 4px;color:#9ca3af;font-size:13px;">
-              ⏱ This link expires in ${DOWNLOAD_EXPIRY_HOURS} hours for security.
+              ⏱ This link stays active for ${DOWNLOAD_EXPIRY_DAYS} days.
             </p>
             <p style="margin:0;color:#9ca3af;font-size:13px;">
               If you have any questions, reply to this email and we'll be happy to help.
