@@ -207,13 +207,24 @@ function calculatePricing(args: {
   if (shouldAddPrints) {
     const validPrints = prints.filter((p) => p.format && p.size);
 
+    // G8: a print row carrying only one of {format, size} is a malformed
+    // selection. Reject it rather than silently dropping it from the charge
+    // and leaving a mismatched record on the order.
+    const malformedPrints = prints.filter((p) => (!!p.format !== !!p.size));
+    if (malformedPrints.length > 0) {
+      throw new Error('Please choose both a format and a size for each print (or remove the incomplete one) and try again.');
+    }
+
     if (orderType === 'singlePrint') {
       const p = validPrints[0];
-      if (!p) throw new Error('Single print path requires a format and size');
+      if (!p) throw new Error('Please select a print format and size before checking out.');
       const sanityFmt = FORMAT_TO_SANITY_KEY[p.format!];
       const sizeKey = SIZE_KEY_MAP[p.size!] || (p.size as 'small' | 'medium' | 'large');
       const basePrintPrice = Number(service.printUpcharges?.[sanityFmt]?.[sizeKey]) || 0;
-      if (basePrintPrice <= 0) throw new Error(`No price configured for ${p.format} / ${sizeKey}`);
+      if (basePrintPrice <= 0) {
+        console.error(`[PRICE-GAP] ${service.title}: no print price for ${sanityFmt}/${sizeKey} (single).`);
+        throw new Error('That print option isn’t available to order right now. Please pick another size or format, or contact us.');
+      }
 
       // Standalone print = base + artwork fee
       const total1 = basePrintPrice + artworkFee;
@@ -246,7 +257,10 @@ function calculatePricing(args: {
         const sanityFmt = FORMAT_TO_SANITY_KEY[p.format!];
         const sizeKey = SIZE_KEY_MAP[p.size!] || (p.size as 'small' | 'medium' | 'large');
         const basePrintPrice = Number(service.printUpcharges?.[sanityFmt]?.[sizeKey]) || 0;
-        if (basePrintPrice <= 0) continue;
+        if (basePrintPrice <= 0) {
+          console.error(`[PRICE-GAP] ${service.title}: no print price for ${sanityFmt}/${sizeKey} (bundle/animation).`);
+          throw new Error('One of the print options you selected isn’t available right now. Please choose a different size or format, or contact us.');
+        }
 
         const styleLabel = labelForStyle(p.styleKey);
         const lineLabel = pretty(service, p.format!, sizeKey, styleLabel);
@@ -527,18 +541,40 @@ export default async function handler(req: Request, _context: Context) {
     let breakdown: PriceBreakdown;
     let stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
 
-    if (orderType) {
-      ({ breakdown, stripeLineItems } = calculatePricing({
-        orderType: orderType as OrderType, service, prints, includePrintsWithAnimation, bundleCollection,
-      }));
-    } else if (legacyDeliveryType) {
-      ({ breakdown, stripeLineItems } = legacyCalculatePricing({
-        deliveryType: legacyDeliveryType,
-        printFormat: legacyPrintFormat, printSize: legacyPrintSize, service,
-      }));
-    } else {
+    if (!orderType && !legacyDeliveryType) {
       return new Response(JSON.stringify({ error: 'Missing orderType or deliveryType.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // G4/G8: pricing throws on malformed print rows or unpriced options. These
+    // are order/config problems, not server faults — surface them as 422 with a
+    // usable message rather than a generic 500.
+    try {
+      if (orderType) {
+        ({ breakdown, stripeLineItems } = calculatePricing({
+          orderType: orderType as OrderType, service, prints, includePrintsWithAnimation, bundleCollection,
+        }));
+      } else {
+        ({ breakdown, stripeLineItems } = legacyCalculatePricing({
+          deliveryType: legacyDeliveryType!,
+          printFormat: legacyPrintFormat, printSize: legacyPrintSize, service,
+        }));
+      }
+    } catch (e: any) {
+      console.error('commission-checkout pricing error:', e);
+      return new Response(
+        JSON.stringify({ error: e.message || 'We couldn’t price this order. Please re-check your selections or contact us.' }),
+        { status: 422, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // G4: never attempt a Stripe charge below its minimum (£0.30). A total this
+    // low means a pricing-config gap — fail clearly instead of letting Stripe
+    // 500 the session, and don't leave an orphan pending doc behind.
+    if (breakdown.total < 0.30) {
+      console.error(`[PRICE-GAP] commission-checkout: total £${breakdown.total} below Stripe minimum for ${serviceSlug} / ${orderType || legacyDeliveryType}.`);
+      return new Response(
+        JSON.stringify({ error: 'We hit a pricing problem with this order and can’t take payment for it. Please contact us and we’ll sort it out.' }),
+        { status: 422, headers: { 'Content-Type': 'application/json' } });
     }
 
     // Build commission doc
