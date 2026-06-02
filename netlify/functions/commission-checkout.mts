@@ -396,7 +396,6 @@ export default async function handler(req: Request, _context: Context) {
     }
 
     const serviceSlug = String(body.serviceSlug || '');
-    const serviceTitle = String(body.serviceTitle || '');
     const name = String(body.name || '');
     const email = String(body.email || '').trim();
     const phone = body.phone ? String(body.phone) : undefined;
@@ -625,6 +624,34 @@ export default async function handler(req: Request, _context: Context) {
       }));
     }
 
+    // Low: double-submit backstop. If an identical pending order from this
+    // customer was created moments ago (rapid re-click / retried POST), reuse
+    // its existing checkout session instead of creating a duplicate doc +
+    // session. The primary fix belongs client-side (disable the submit button);
+    // this is the server safety net.
+    const DEDUP_WINDOW_SECONDS = 120;
+    const dedupSince = new Date(Date.now() - DEDUP_WINDOW_SECONDS * 1000).toISOString();
+    const recentDup = await sanity.fetch(
+      `*[_type == "commission" && status == "pending" && customerEmail == $email
+         && service._ref == $serviceId && orderType == $orderType && amount == $amount
+         && _createdAt > $since && defined(stripeSessionId)] | order(_createdAt desc)[0]{ orderRef, stripeSessionId }`,
+      { email, serviceId: service._id, orderType: breakdown.orderType, amount: breakdown.total, since: dedupSince }
+    );
+    if (recentDup?.stripeSessionId) {
+      try {
+        const existing = await stripe.checkout.sessions.retrieve(recentDup.stripeSessionId);
+        if (existing.status === 'open' && existing.url) {
+          console.log(`commission-checkout: reusing session for ${recentDup.orderRef} (double-submit within ${DEDUP_WINDOW_SECONDS}s)`);
+          return new Response(JSON.stringify({ url: existing.url, orderRef: recentDup.orderRef }), {
+            status: 200, headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      } catch (e) {
+        // Couldn't re-use it — fall through and create a fresh order.
+        console.warn('commission-checkout: dedup session retrieve failed, creating new:', e);
+      }
+    }
+
     const commission = await sanity.create(commissionDoc);
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
@@ -677,9 +704,11 @@ export default async function handler(req: Request, _context: Context) {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    // Record the Stripe session id on the commission so the webhook can find
-    // this doc even in edge cases where metadata is absent. Best-effort — a
-    // failure here shouldn't block the customer reaching payment.
+    // Store the Stripe session id on the commission for reference and
+    // reconciliation — e.g. matching a doc to its payment in the Stripe
+    // dashboard. Best-effort; a failure here shouldn't block the customer
+    // reaching payment. (The webhook locates this doc via commissionId in the
+    // session metadata, which is always set above.)
     try {
       await sanity.patch(commission._id).set({ stripeSessionId: session.id }).commit();
     } catch (e) {
