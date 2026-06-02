@@ -456,6 +456,20 @@ export default async function handler(req: Request, _context: Context) {
       );
     }
 
+    // C4: a paid commission must never arrive with no source material.
+    // Every commission service requires at least one uploaded photo EXCEPT
+    // Your Song Your Story's audio-only path — but if that order includes a
+    // print (the lyrics-poster option), a photo is required again.
+    const PHOTO_OPTIONAL_SERVICES = new Set(['your-song-your-story']);
+    const orderHasPrint = prints.filter((p) => p.format && p.size).length > 0;
+    const photoRequired = !PHOTO_OPTIONAL_SERVICES.has(serviceSlug) || orderHasPrint;
+    if (photoRequired && uploadedAssetsIn.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Please add at least one photo before continuing.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Look up service doc with all new fields
     const service = await sanity.fetch(
       `*[_type == "service" && slug.current == $slug][0]{
