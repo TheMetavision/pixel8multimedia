@@ -384,7 +384,7 @@ export default async function handler(req: Request, _context: Context) {
     const serviceSlug = String(body.serviceSlug || '');
     const serviceTitle = String(body.serviceTitle || '');
     const name = String(body.name || '');
-    const email = String(body.email || '');
+    const email = String(body.email || '').trim();
     const phone = body.phone ? String(body.phone) : undefined;
     const brief = String(body.brief || '');
     // shippingAddress is now collected by Stripe Checkout via
@@ -439,6 +439,19 @@ export default async function handler(req: Request, _context: Context) {
     if (!serviceSlug || !name || !email) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields.' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // C1: validate email format before creating anything. The download link and
+    // every customer email go to this address, so a structurally bad address
+    // means a paid-but-undeliverable order. (Catches missing @/domain/TLD and
+    // stray whitespace; a valid-but-wrong domain like "gmial.con" is caught
+    // downstream by surfacing Resend bounces — see C3.)
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_RE.test(email)) {
+      return new Response(
+        JSON.stringify({ error: 'Please enter a valid email address.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
