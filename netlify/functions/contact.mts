@@ -28,6 +28,7 @@ const resend = new Resend(process.env.RESEND_API_KEY!);
 const TEAM_EMAIL = process.env.TEAM_EMAIL || 'hello@pixel8multimedia.co.uk';
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Pixel8 Multimedia <hello@pixel8multimedia.co.uk>';
 const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
+const LOGO_URL = process.env.EMAIL_LOGO_URL || 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -58,9 +59,9 @@ function buildTeamEmail(opts: {
   const subjectLabel = SUBJECT_LABELS[opts.subject] || opts.subject;
   return `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 640px; margin: 0 auto; background: #f4f4f7;">
-  <div style="background: linear-gradient(135deg, #F07828, #FF00FF); padding: 24px; text-align: center; color: #000;">
-    <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">NEW CONTACT MESSAGE</h1>
-    <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.85;">Pixel8 Multimedia · Reference ${opts.refCode}</p>
+  <div style="background: #000; padding: 24px; text-align: center;">
+    <img src="${LOGO_URL}" alt="Pixel8 Multimedia" width="180" style="display: block; width: 180px; max-width: 60%; height: auto; margin: 0 auto; border: 0;" />
+    <p style="margin: 14px 0 0; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: #9aa0aa;">New Contact Message · Ref ${opts.refCode}</p>
   </div>
   <div style="background: #fff; padding: 28px;">
     <h2 style="margin: 0 0 4px; font-size: 18px;">${escapeHtml(opts.name)}</h2>
@@ -83,9 +84,8 @@ function buildTeamEmail(opts: {
 function buildAckEmail(opts: { name: string; refCode: string }): string {
   return `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; background: #f4f4f7;">
-  <div style="background: linear-gradient(135deg, #F07828, #FF00FF); padding: 24px; text-align: center; color: #000;">
-    <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">PIXEL8 MULTIMEDIA</h1>
-    <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.85;">Pop. Art. Motion.</p>
+  <div style="background: #000; padding: 24px; text-align: center;">
+    <img src="${LOGO_URL}" alt="Pixel8 Multimedia" width="200" style="display: block; width: 200px; max-width: 64%; height: auto; margin: 0 auto; border: 0;" />
   </div>
   <div style="background: #fff; padding: 32px;">
     <h2 style="margin: 0 0 12px; font-size: 20px;">Thanks for getting in touch, ${escapeHtml(opts.name)}.</h2>
