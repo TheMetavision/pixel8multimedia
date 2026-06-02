@@ -256,7 +256,7 @@ async function handleComplete(commissionId: string): Promise<Response> {
   const commission = await sanity.fetch(
     `*[_type == "commission" && _id == $id][0]{
       _id, orderRef, customerName, customerEmail,
-      deliveryType, status,
+      deliveryType, status, deliveredAt,
       "serviceTitle": service->title,
       "fileRef": finishedFile.asset._ref
     }`,
@@ -269,6 +269,15 @@ async function handleComplete(commissionId: string): Promise<Response> {
 
   if (commission.status !== 'complete') {
     return new Response('Not in complete status — skipping', { status: 200 });
+  }
+
+  // G10: idempotency — never deliver twice. Status flips to 'delivered' after a
+  // digital send, but a manual re-toggle back to 'complete' could otherwise
+  // re-fire this handler. deliveredAt is the durable guard (mirrors
+  // dispatchedAt on the shipped path).
+  if (commission.deliveredAt) {
+    console.log(`Commission ${commissionId} already delivered at ${commission.deliveredAt} — skipping`);
+    return new Response('Already delivered', { status: 200 });
   }
 
   // Print-only — just mark delivered, no download email.
