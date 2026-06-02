@@ -1,45 +1,108 @@
 ---
 // src/pages/commission/success.astro
-// Shown after successful Stripe Checkout for a commission order
+// Shown after Stripe Checkout redirects back. Reflects the REAL order state
+// rather than always claiming success: the payment webhook may not have
+// recorded the order yet (timing), or the ref may be unknown. Only the order
+// status is read here — no customer details — since the ref sits in the URL.
 export const prerender = false;
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { sanityClient } from '../../lib/sanity';
 
 const ref = Astro.url.searchParams.get('ref') || '';
+
+let state: 'confirmed' | 'pending' | 'unknown' = 'unknown';
+let deliveryType = '';
+
+if (ref) {
+  try {
+    const order = await sanityClient.fetch(
+      `*[_type == "commission" && orderRef == $ref][0]{ status, deliveryType }`,
+      { ref }
+    );
+    if (order) {
+      deliveryType = order.deliveryType || '';
+      // The doc is created at checkout as "pending"; the webhook flips it once
+      // payment is recorded. Anything past "pending" means it's confirmed.
+      state = order.status && order.status !== 'pending' ? 'confirmed' : 'pending';
+    }
+  } catch {
+    // Lookup failed — payment itself happened at Stripe, so reassure rather
+    // than error, but don't assert a confirmation we couldn't verify.
+    state = 'pending';
+  }
+}
+
+const posted = deliveryType === 'print' || deliveryType === 'both';
+const finalStep = posted ? 'Finished & posted to you' : 'Finished & sent to your inbox';
+
+const titleByState: Record<typeof state, string> = {
+  confirmed: 'Order Confirmed — Pixel8 Multimedia',
+  pending: 'Order Received — Pixel8 Multimedia',
+  unknown: 'Order — Pixel8 Multimedia',
+};
 ---
 
-<BaseLayout title="Order Confirmed — Pixel8 Multimedia" description="Your commission order has been placed successfully.">
+<BaseLayout title={titleByState[state]} description="Your Pixel8 commission order.">
   <main class="success-page">
     <div class="success-page__card">
-      <div class="success-page__icon">✅</div>
-      <h1 class="success-page__title">You're all set!</h1>
-      {ref && (
-        <p class="success-page__ref">
-          Order reference: <strong>{ref}</strong>
-        </p>
+
+      {state === 'confirmed' && (
+        <>
+          <div class="success-page__icon">✅</div>
+          <h1 class="success-page__title">You're all set!</h1>
+          {ref && <p class="success-page__ref">Order reference: <strong>{ref}</strong></p>}
+          <p class="success-page__message">
+            Thanks for your order! We've received your brief and files and we'll get started shortly.
+            A confirmation email is on its way, and we'll let you know the moment your piece is ready.
+          </p>
+          <div class="success-page__timeline">
+            <div class="success-page__step success-page__step--done"><span class="success-page__dot"></span><span>Payment received</span></div>
+            <div class="success-page__step"><span class="success-page__dot"></span><span>We get to work</span></div>
+            <div class="success-page__step"><span class="success-page__dot"></span><span>{finalStep}</span></div>
+          </div>
+        </>
       )}
-      <p class="success-page__message">
-        Thanks for your order! We've received your brief and files and will get started shortly.
-        You'll receive an email confirmation, and we'll notify you at each stage of progress.
-      </p>
-      <div class="success-page__timeline">
-        <div class="success-page__step success-page__step--done">
-          <span class="success-page__dot"></span>
-          <span>Payment received</span>
-        </div>
-        <div class="success-page__step">
-          <span class="success-page__dot"></span>
-          <span>Work begins</span>
-        </div>
-        <div class="success-page__step">
-          <span class="success-page__dot"></span>
-          <span>Review &amp; final touches</span>
-        </div>
-        <div class="success-page__step">
-          <span class="success-page__dot"></span>
-          <span>Delivered to your inbox</span>
-        </div>
-      </div>
+
+      {state === 'pending' && (
+        <>
+          <div class="success-page__icon">⏳</div>
+          <h1 class="success-page__title">Payment received</h1>
+          {ref && <p class="success-page__ref">Order reference: <strong>{ref}</strong></p>}
+          <p class="success-page__message">
+            Thanks — your payment's gone through and we're just finalising your order.
+            Your confirmation email will land shortly. This page will update on its own in a few seconds.
+          </p>
+          <div class="success-page__timeline">
+            <div class="success-page__step success-page__step--done"><span class="success-page__dot"></span><span>Payment received</span></div>
+            <div class="success-page__step"><span class="success-page__dot"></span><span>We get to work</span></div>
+            <div class="success-page__step"><span class="success-page__dot"></span><span>{finalStep}</span></div>
+          </div>
+          <script is:inline define:vars={{ ref }}>
+            // Upgrade to the confirmed view once the webhook lands. Capped so it
+            // can't loop forever if the order genuinely stays unconfirmed.
+            const key = 'px-suc-tries-' + ref;
+            const tries = +(sessionStorage.getItem(key) || 0);
+            if (tries < 3) {
+              sessionStorage.setItem(key, tries + 1);
+              setTimeout(() => location.reload(), 5000);
+            }
+          </script>
+        </>
+      )}
+
+      {state === 'unknown' && (
+        <>
+          <div class="success-page__icon">📦</div>
+          <h1 class="success-page__title">Thanks for your order</h1>
+          {ref && <p class="success-page__ref">Order reference: <strong>{ref}</strong></p>}
+          <p class="success-page__message">
+            If you've just completed payment, your confirmation email is on its way.
+            If you reached this page by mistake, or something doesn't look right, email us and we'll check it out.
+          </p>
+        </>
+      )}
+
       <p class="success-page__contact">
         Questions? Email us at
         <a href="mailto:hello@pixel8multimedia.co.uk">hello@pixel8multimedia.co.uk</a>
