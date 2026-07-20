@@ -129,7 +129,7 @@ const jsonLd = [
       </div>
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {(categories.length > 0 ? categories : CATEGORIES).map((cat: any, i: number) => (
-          <a href={`/store?category=${cat.slug}`}
+          <a href={cat.slug === 'personalised' ? '/services' : `/store?category=${cat.slug}`}
              class={`bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange transition-all duration-300 reveal stagger-${Math.min(i + 1, 4)}`}>
             <div class="aspect-[4/3] bg-bg-tertiary flex items-center justify-center">
               {cat.coverImage?.asset ? (
