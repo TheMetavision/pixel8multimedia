@@ -206,6 +206,24 @@ export function couponIdFor(serviceSlug: string, valuePence: number): string {
   return `groupon-${serviceSlug}-${valuePence}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 }
 
+/** Stripe caps a coupon name at 40 characters and rejects the whole request
+ *  over it. Service titles vary in length, so build the name to fit rather
+ *  than hoping: the amount is what identifies the coupon in the dashboard, so
+ *  it is kept whole and the title gives way. */
+export const COUPON_NAME_MAX = 40;
+
+export function couponNameFor(serviceTitle: string | undefined, serviceSlug: string, valuePence: number): string {
+  const money = `£${(valuePence / 100).toFixed(2)}`;
+  const prefix = `Groupon ${money} - `;
+  const title = (serviceTitle || serviceSlug || '').trim();
+  const room = COUPON_NAME_MAX - prefix.length;
+  if (room <= 0) return prefix.slice(0, COUPON_NAME_MAX);
+  const fitted = title.length <= room
+    ? title
+    : `${title.slice(0, Math.max(1, room - 1)).trimEnd()}…`;
+  return `${prefix}${fitted}`.slice(0, COUPON_NAME_MAX);
+}
+
 export async function ensureCoupon(
   stripe: Stripe,
   serviceSlug: string,
@@ -225,7 +243,7 @@ export async function ensureCoupon(
       amount_off: valuePence,
       currency: 'gbp',
       duration: 'once',
-      name: `Groupon voucher — ${serviceTitle || serviceSlug} (£${(valuePence / 100).toFixed(2)})`,
+      name: couponNameFor(serviceTitle, serviceSlug, valuePence),
       metadata: { source: 'groupon', serviceSlug, valuePence: String(valuePence) },
     });
   } catch (err: any) {
