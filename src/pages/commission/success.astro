@@ -11,6 +11,13 @@ import { sanityClient } from '../../lib/sanity';
 
 const ref = Astro.url.searchParams.get('ref') || '';
 
+// The voucher claim has done its job by the time we reach this page. Clear the
+// HttpOnly cookie so it can never attach itself to an unrelated later order.
+Astro.response.headers.append(
+  'Set-Cookie',
+  'p8_groupon_claim=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax'
+);
+
 let state: 'confirmed' | 'pending' | 'unknown' = 'unknown';
 let deliveryType = '';
 
@@ -247,3 +254,8 @@ const titleByState: Record<typeof state, string> = {
     box-shadow: 0 0 20px rgba(240, 120, 40, 0.3);
   }
 </style>
+
+<script>
+  // Matching cleanup for the sessionStorage copy of the claim.
+  try { sessionStorage.removeItem('pixel8-groupon-claim'); } catch { /* ignore */ }
+</script>

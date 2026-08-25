@@ -1,0 +1,203 @@
+---
+// /groupon — where a Groupon customer lands to turn their voucher into an order.
+//
+// This page does one job and does it plainly: take the code, check it, and send
+// the customer into the normal commission wizard with the entitlement attached.
+// Everything after this point is the standard Pixel8 flow, so there is only one
+// production pipeline to maintain.
+export const prerender = false;
+
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { sanityClient } from '../lib/sanity';
+
+// Pre-fill from the QR/short link printed on the voucher instructions, e.g.
+// /groupon?code=ABC123
+const prefill = (Astro.url.searchParams.get('code') || '').toUpperCase().slice(0, 24);
+
+const services = await sanityClient.fetch(
+  `*[_type == "service" && commissionEnabled != false] | order(title asc){
+    title, "slug": slug.current
+  }`
+);
+---
+
+<BaseLayout
+  title="Redeem your Groupon voucher"
+  description="Bought a Pixel8 Multimedia deal on Groupon? Enter your voucher code here to start your order."
+>
+  <section class="relative bg-bg-secondary py-16 overflow-hidden">
+    <div class="absolute top-0 left-0 right-0 h-1 bg-pop-orange"></div>
+    <div class="absolute inset-0" style="background: radial-gradient(circle at 80% 50%, rgba(236,0,140,0.1) 0%, transparent 50%);"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <nav class="flex items-center gap-2 font-dm text-sm text-gray-500 mb-6">
+        <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
+        <span>/</span>
+        <span class="text-off-white">Redeem Groupon voucher</span>
+      </nav>
+      <h1
+        class="font-montserrat font-bold text-4xl md:text-6xl text-off-white tracking-wide mb-4"
+        style="text-shadow: 4px 4px 0 rgba(0,0,0,0.5);"
+      >
+        REDEEM YOUR <span class="text-pop-orange">VOUCHER</span>
+      </h1>
+      <p class="font-dm text-gray-300 text-lg max-w-2xl">
+        Enter the code from your Groupon voucher and we'll take you straight to the
+        order form. Your voucher covers the deal you bought — you'll only pay if you
+        choose to add anything on top, like a framed print.
+      </p>
+    </div>
+  </section>
+
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <form id="groupon-form" class="bg-bg-secondary border border-white/10 rounded-2xl p-6 md:p-8">
+      <label for="groupon-code" class="block font-montserrat font-bold text-off-white text-lg mb-2">
+        Groupon voucher code
+      </label>
+      <p class="font-dm text-sm text-gray-400 mb-4">
+        You'll find this on your Groupon voucher, in the Groupon app under
+        <em>My Stuff</em>, or in your confirmation email. Capital letters and spaces don't matter.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input
+          id="groupon-code"
+          name="code"
+          type="text"
+          inputmode="latin"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          maxlength="32"
+          value={prefill}
+          placeholder="e.g. GN4B7KQ2X9"
+          class="flex-1 rounded-lg bg-black/40 border border-white/15 px-4 py-3 font-mono text-lg tracking-widest text-off-white placeholder:text-gray-600 focus:outline-none focus:border-pop-orange"
+        />
+        <button
+          type="submit"
+          id="groupon-submit"
+          class="rounded-lg bg-pop-orange px-6 py-3 font-montserrat font-bold text-black hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          Continue
+        </button>
+      </div>
+
+      <p id="groupon-error" class="hidden mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 font-dm text-sm text-red-300"></p>
+      <p id="groupon-ok" class="hidden mt-4 rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 font-dm text-sm text-green-300"></p>
+    </form>
+
+    <div class="mt-10 grid gap-6 md:grid-cols-3">
+      <div class="rounded-xl border border-white/10 p-5">
+        <div class="font-montserrat font-bold text-pop-orange mb-2">1. Enter your code</div>
+        <p class="font-dm text-sm text-gray-400">We check it against the voucher you bought on Groupon.</p>
+      </div>
+      <div class="rounded-xl border border-white/10 p-5">
+        <div class="font-montserrat font-bold text-pop-orange mb-2">2. Tell us what you want</div>
+        <p class="font-dm text-sm text-gray-400">Upload your photo and answer a few short questions about your brief.</p>
+      </div>
+      <div class="rounded-xl border border-white/10 p-5">
+        <div class="font-montserrat font-bold text-pop-orange mb-2">3. We get to work</div>
+        <p class="font-dm text-sm text-gray-400">Your voucher covers the deal price at the last step. Nothing more to pay unless you add extras.</p>
+      </div>
+    </div>
+
+    <div class="mt-10 rounded-xl border border-white/10 p-5">
+      <p class="font-dm text-sm text-gray-400">
+        Trouble with your code? Email
+        <a href="mailto:hello@pixel8multimedia.co.uk" class="text-pop-orange hover:underline">hello@pixel8multimedia.co.uk</a>
+        with your Groupon order number and we'll sort it out by hand.
+      </p>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ services }}>
+  const form = document.getElementById('groupon-form');
+  const input = document.getElementById('groupon-code');
+  const button = document.getElementById('groupon-submit');
+  const errorEl = document.getElementById('groupon-error');
+  const okEl = document.getElementById('groupon-ok');
+
+  const slugSet = new Set((services || []).map((s) => s.slug));
+
+  function showError(message) {
+    okEl.classList.add('hidden');
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+  }
+
+  function showOk(message) {
+    errorEl.classList.add('hidden');
+    okEl.textContent = message;
+    okEl.classList.remove('hidden');
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const code = (input.value || '').trim();
+    if (!code) {
+      showError('Please enter your Groupon voucher code.');
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = 'Checking…';
+    errorEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+
+    try {
+      const res = await fetch('/.netlify/functions/groupon-redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.ok) {
+        showError(data.error || 'We could not check that code. Please try again in a moment.');
+        return;
+      }
+
+      if (!slugSet.has(data.serviceSlug)) {
+        showError(
+          'That voucher is valid, but the service it belongs to is not accepting orders online right now. ' +
+          'Please email hello@pixel8multimedia.co.uk with your Groupon order number and we will set it up by hand.'
+        );
+        return;
+      }
+
+      // The claim token is deliberately short-lived and never persisted beyond
+      // this browser. sessionStorage rather than localStorage: it should not
+      // outlive the tab, and it must not be shared with another Groupon
+      // customer using the same machine later.
+      try {
+        sessionStorage.setItem(
+          'pixel8-groupon-claim',
+          JSON.stringify({
+            token: data.claimToken,
+            serviceSlug: data.serviceSlug,
+            valuePence: data.valuePence,
+            optionLabel: data.optionLabel || null,
+            campaignName: data.campaignName || null,
+            entitlementOrderType: data.entitlementOrderType || null,
+            expiresAt: data.claimExpiresAt,
+          })
+        );
+      } catch {
+        // Private-browsing modes can block site data. The claim also travels as
+        // an HttpOnly cookie set by groupon-redeem, so the discount still
+        // applies at checkout — the customer just won't see the banner.
+      }
+
+      showOk('Voucher accepted. Taking you to your order form…');
+      const url = new URL(`/services/${data.serviceSlug}`, window.location.origin);
+      url.searchParams.set('groupon', '1');
+      url.hash = 'commission';
+      window.location.href = url.toString();
+    } catch {
+      showError('We could not reach the server. Please check your connection and try again.');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Continue';
+    }
+  });
+</script>

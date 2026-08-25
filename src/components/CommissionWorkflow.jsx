@@ -702,6 +702,37 @@ export default function CommissionWorkflow({ service }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // ─── Groupon voucher claim ────────────────────────────────────────────────
+  // Set by /groupon after the customer's code checked out. Held in
+  // sessionStorage so a refresh mid-wizard doesn't lose it, and re-validated
+  // here: a claim for a different service, or one past its window, is ignored
+  // rather than sent to the server to be rejected at the last step.
+  const [grouponClaim, setGrouponClaim] = useState(null);
+
+  useEffect(() => {
+    let raw = null;
+    try {
+      raw = sessionStorage.getItem('pixel8-groupon-claim');
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    try {
+      const claim = JSON.parse(raw);
+      if (!claim || !claim.token) return;
+      if (claim.serviceSlug !== service.slug) return;
+      if (claim.expiresAt && Date.parse(claim.expiresAt) < Date.now()) {
+        try { sessionStorage.removeItem('pixel8-groupon-claim'); } catch { /* ignore */ }
+        return;
+      }
+      setGrouponClaim(claim);
+    } catch {
+      /* malformed — ignore it and let the customer order normally */
+    }
+  }, [service.slug]);
+
+  const grouponValue = grouponClaim ? (Number(grouponClaim.valuePence) || 0) / 100 : 0;
+
   // Ref + effect: when the step changes, scroll the wizard's top into view.
   // Without this, mobile users carry over their scroll position from the
   // (tall) prints step into the (shorter) review step and land at the bottom
@@ -1102,6 +1133,7 @@ export default function CommissionWorkflow({ service }) {
         briefData,
         prints: validPrints,
         uploadedAssets,
+        ...(grouponClaim ? { grouponClaimToken: grouponClaim.token } : {}),
       };
 
       const res = await fetch('/.netlify/functions/commission-checkout', {
@@ -1115,6 +1147,10 @@ export default function CommissionWorkflow({ service }) {
       }
       const { url } = await res.json();
       if (!url) throw new Error('Checkout URL missing from response.');
+      // Deliberately NOT clearing the Groupon claim here. Stripe's cancel_url
+      // lands the customer back on this wizard, and a claim dropped at this
+      // point would mean they silently re-order at full price. It is cleared on
+      // the success page instead, and expires on its own regardless.
       window.location.href = url;
     } catch (err) {
       setError(err.message || 'Something went wrong.');
@@ -1165,6 +1201,29 @@ export default function CommissionWorkflow({ service }) {
 
   return (
     <div className="cw" ref={wizardRef}>
+      {grouponClaim && (
+        <div
+          className="cw__groupon-banner"
+          role="status"
+          style={{
+            display: 'flex', gap: '0.75rem', alignItems: 'flex-start',
+            border: '1px solid rgba(74,222,128,0.4)', background: 'rgba(74,222,128,0.08)',
+            borderRadius: '0.75rem', padding: '0.9rem 1.1rem', marginBottom: '1.25rem',
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: '1.25rem', lineHeight: 1.2 }}>🎟️</span>
+          <div>
+            <strong style={{ display: 'block', color: '#4ade80' }}>
+              Groupon voucher applied{grouponValue > 0 ? ` — £${grouponValue.toFixed(2)} credit` : ''}
+            </strong>
+            <span style={{ fontSize: '0.9rem', opacity: 0.85 }}>
+              {grouponClaim.optionLabel ? `${grouponClaim.optionLabel}. ` : ''}
+              Your credit comes off at the last step. You'll only pay for anything you add
+              on top{grouponValue > 0 ? ', or the difference if you pick a bigger option' : ''}.
+            </span>
+          </div>
+        </div>
+      )}
       <header className="cw__header">
         <h2 className="cw__title">Start Your Commission</h2>
         <div className="cw__stepper" aria-label={`Step ${displayStepIndex + 1} of ${totalSteps}`}>

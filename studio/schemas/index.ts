@@ -9,6 +9,7 @@ import service from './service'
 import siteSettings from './siteSettings'
 import contactSubmission from './contactSubmission'
 import newsletterSubscriber from './newsletterSubscriber'
+import grouponVoucher from './grouponVoucher'
 
 export const schemaTypes = [
   product,
@@ -22,4 +23,5 @@ export const schemaTypes = [
   siteSettings,
   contactSubmission,
   newsletterSubscriber,
+  grouponVoucher,
 ]

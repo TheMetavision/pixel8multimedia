@@ -9,6 +9,7 @@ export default defineType({
     { name: 'brief', title: 'Customer Brief' },
     { name: 'delivery', title: 'Delivery' },
     { name: 'payment', title: 'Payment' },
+    { name: 'source', title: 'Source' },
     { name: 'legacy', title: 'Legacy Fields' },
   ],
   fields: [
@@ -298,6 +299,51 @@ export default defineType({
       readOnly: true,
     }),
 
+    // ── Source / attribution ─────────────────────────
+    defineField({
+      name: 'source',
+      title: 'Order Source',
+      type: 'string',
+      group: 'source',
+      readOnly: true,
+      options: {
+        list: [
+          { title: 'Direct (pixel8multimedia.co.uk)', value: 'direct' },
+          { title: 'Groupon voucher', value: 'groupon' },
+          { title: 'Etsy', value: 'etsy' },
+          { title: 'Amazon', value: 'amazon' },
+        ],
+      },
+      initialValue: 'direct',
+      description: 'Where this order came from. Set automatically at checkout.',
+    }),
+    defineField({
+      name: 'grouponVoucher',
+      title: 'Groupon Voucher',
+      type: 'reference',
+      to: [{ type: 'grouponVoucher' }],
+      group: 'source',
+      readOnly: true,
+      hidden: ({ document }) => document?.source !== 'groupon',
+    }),
+    defineField({
+      name: 'grouponCode',
+      title: 'Groupon Code',
+      type: 'string',
+      group: 'source',
+      readOnly: true,
+      hidden: ({ document }) => document?.source !== 'groupon',
+    }),
+    defineField({
+      name: 'discountPence',
+      title: 'Voucher Discount Applied (pence)',
+      type: 'number',
+      group: 'source',
+      readOnly: true,
+      description: 'How much of the total was covered by a voucher. The rest is what the customer paid us directly.',
+      hidden: ({ document }) => document?.source !== 'groupon',
+    }),
+
     // ── Legacy Fields (kept for backwards compat) ──
     defineField({
       name: 'serviceType',
@@ -365,8 +411,9 @@ export default defineType({
       status: 'status',
       service: 'service.title',
       notifyError: 'notifyError',
+      source: 'source',
     },
-    prepare({ title, customerName, status, service, notifyError }) {
+    prepare({ title, customerName, status, service, notifyError, source }) {
       const emoji: Record<string, string> = {
         pending: '⏳',
         paid: '💷',
@@ -379,7 +426,8 @@ export default defineType({
         delivered: '📬',
         refunded: '↩️',
       };
-      const displayTitle = (notifyError ? '[!] ' : '') + (title || customerName || 'Untitled');
+      const sourceTag = source === 'groupon' ? '[GRPN] ' : '';
+      const displayTitle = (notifyError ? '[!] ' : '') + sourceTag + (title || customerName || 'Untitled');
       return {
         title: `${emoji[status || ''] || '❓'} ${displayTitle}`,
         subtitle: `${service || 'Manual commission'} — ${customerName || ''}`,

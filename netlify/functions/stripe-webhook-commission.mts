@@ -222,7 +222,14 @@ export default async function handler(req: Request, _context: Context) {
   // H4: for delayed methods (Klarna etc.) the session can complete while still
   // unpaid. Don't mark paid or start work until the money has actually settled;
   // Stripe fires checkout.session.async_payment_succeeded when it does.
-  if (commissionId && session.payment_status !== 'paid') {
+  // A fully-covered voucher order costs £0, so Stripe reports
+  // 'no_payment_required' rather than 'paid'. That is a completed order and
+  // must flow on exactly like a paid one — anything else strands it silently.
+  const settled =
+    session.payment_status === 'paid' ||
+    session.payment_status === 'no_payment_required';
+
+  if (commissionId && !settled) {
     console.log(
       `Commission ${commissionId} not yet paid (payment_status=${session.payment_status}) - waiting`
     );
@@ -273,10 +280,26 @@ export default async function handler(req: Request, _context: Context) {
 
     const patch: Record<string, unknown> = {
       status: 'paid',
-      stripePaymentId: session.payment_intent as string,
       paidAt: new Date().toISOString(),
       amount: amountPaid,
     };
+    // Null on a £0 (fully voucher-covered) session. Record the session id
+    // either way — for those orders it is the ONLY trace in the Stripe
+    // dashboard, and checkout's own attempt to store it is best-effort.
+    if (session.payment_intent) {
+      patch.stripePaymentId = session.payment_intent as string;
+    }
+    patch.stripeSessionId = session.id;
+
+    // ── Groupon: record what the voucher actually covered ────────────────
+    // total_details.amount_discount is the number that matters for the
+    // Groupon business case: subtotal minus it is what the customer chose to
+    // pay us on top of the deal they bought.
+    const discountPence = (session as any).total_details?.amount_discount ?? 0;
+    const grouponVoucherId = session.metadata?.grouponVoucherId;
+    if (grouponVoucherId) {
+      patch.discountPence = discountPence;
+    }
     // shippingAddress on the commission schema is a TEXT field — write a string.
     if (shippingAddressText) {
       patch.shippingAddress = shippingAddressText;
@@ -289,10 +312,52 @@ export default async function handler(req: Request, _context: Context) {
     await sanity.patch(commissionId).set(patch).commit();
     console.log(`Commission ${commissionId} marked paid${shippingAddressText ? ' (with address)' : ''}`);
 
+    // ── Finalise the Groupon voucher ──────────────────────────────────────
+    // This is the point of no return for the voucher: the order exists and is
+    // paid, so the code is spent. Best-effort — a failure here must not 500
+    // the webhook (Stripe would retry the whole event and we'd double-send
+    // the customer's emails). `groupon-vouchers.mjs sweep` repairs any voucher
+    // left behind — it detects a paid commission behind an unfinalised voucher
+    // and completes it.
+    if (grouponVoucherId) {
+      try {
+        const upgradePaidPence = Math.max(
+          0,
+          (session.amount_total ?? 0)
+        );
+        await sanity
+          .patch(grouponVoucherId)
+          .set({
+            status: 'redeemed',
+            redeemedAt: new Date().toISOString(),
+            orderRef: existing.orderRef,
+            customerEmail: existing.customerEmail,
+            commission: { _type: 'reference', _ref: commissionId },
+            discountAppliedPence: discountPence,
+            upgradePaidPence,
+          })
+          // The claim is spent — clear it so the token can never be replayed.
+          .unset(['claimTokenHash', 'claimExpiresAt'])
+          .commit();
+        console.log(
+          `Groupon voucher ${grouponVoucherId} redeemed on ${existing.orderRef} ` +
+          `(covered ${discountPence}p, customer paid ${upgradePaidPence}p on top)`
+        );
+      } catch (e) {
+        console.error(
+          `[GROUPON] Could not finalise voucher ${grouponVoucherId} for ${existing.orderRef} — ` +
+          `run "node scripts/groupon-vouchers.mjs reconcile" to repair:`, e
+        );
+      }
+    }
+
     // ── Emails (best-effort — a failure here shouldn't 500 the webhook,
     //    or Stripe will retry the whole event and we'd double-send) ─────────
     const serviceTitle = existing.serviceTitle || 'your commission';
-    const total = amountPaid;
+    // Show the ORDER's value, not the cash captured. A fully voucher-covered
+    // job captures £0, and a "£0.00" confirmation reads as a broken order to
+    // the customer and as nothing-to-do to whoever picks it up.
+    const total = amountPaid + discountPence / 100;
     const deliveryType = existing.deliveryType || 'digital';
 
     // C3: capture BOTH thrown errors and Resend's returned { error } object.

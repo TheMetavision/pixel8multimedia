@@ -13,6 +13,21 @@ import type { Context } from '@netlify/functions';
 import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
 import { nanoid } from 'nanoid';
+import {
+  sha256,
+  hashesMatch,
+  isPast,
+  readCookie,
+  CLAIM_COOKIE,
+  clearClaimCookie,
+  effectiveDiscountPence,
+  ensureCoupon,
+  mintPromotionCode,
+  deactivatePromotionCode,
+  CHECKOUT_TTL_MINUTES,
+  minutesFromNow,
+  type VoucherDoc,
+} from './_shared/groupon.mts';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 
@@ -404,6 +419,19 @@ export default async function handler(req: Request, _context: Context) {
     // shipping_address_collection; webhook patches it onto the commission doc
     // after payment. Nothing to parse from the body here.
     const orderType = String(body.orderType || '');
+    // Groupon: the claim token minted by groupon-redeem when the customer
+    // entered their voucher code. Opaque to the browser; verified below.
+    //
+    // Two channels. The body is the normal one. The HttpOnly cookie is the
+    // backstop for browsers that block sessionStorage — without it, a customer
+    // in a private window would be charged full price while holding a voucher.
+    // They are NOT equivalent: a body token is an explicit "use my voucher", so
+    // a mismatch is an error the customer must see; a cookie token is ambient,
+    // so a mismatch is simply ignored in case it is left over from earlier.
+    const bodyClaimToken = body.grouponClaimToken ? String(body.grouponClaimToken) : '';
+    const cookieClaimToken = readCookie(req, CLAIM_COOKIE) || '';
+    const grouponClaimToken = bodyClaimToken || cookieClaimToken;
+    const claimFromCookieOnly = !bodyClaimToken && !!cookieClaimToken;
     const includePrintsWithAnimation = body.includePrintsWithAnimation === true;
     const bundleCollectionRaw = String(body.bundleCollection || 'primary');
     const bundleCollection: BundleCollection =
@@ -489,6 +517,8 @@ export default async function handler(req: Request, _context: Context) {
         _id, title, price, digitalPrice, printUpcharges, styleOptions,
         animationMusicPrice, animationVoPrice, artworkFee, printSizeLabels,
         artworkBundledWithDigital, artworkFeePerOrder,
+        digitalPriceSecondary, digitalPriceBoth, styleOptionsSecondary,
+        collectionLabel, collectionLabelSecondary,
         commissionEnabled
       }`,
       { slug: serviceSlug }
@@ -501,6 +531,79 @@ export default async function handler(req: Request, _context: Context) {
     if (service.commissionEnabled === false) {
       return new Response(JSON.stringify({ error: 'This service is not currently accepting new commissions.' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // ── Groupon voucher validation ────────────────────────────────────────
+    // Runs before anything is created. A bad token fails the order outright
+    // rather than quietly charging full price — a customer who thinks they are
+    // redeeming a voucher must never be billed as if they weren't.
+    let voucher: VoucherDoc | null = null;
+    if (grouponClaimToken) {
+      const tokenHash = sha256(grouponClaimToken);
+      voucher = await sanity.fetch(
+        `*[_type == "grouponVoucher" && claimTokenHash == $hash][0]{
+          _id, _rev, code, status, serviceSlug, entitlementOrderType, valuePence,
+          expiresAt, claimTokenHash, claimExpiresAt, claimCount, campaignName,
+          optionLabel, stripeCouponId, stripePromotionCodeId, stripeSessionId, verified,
+          orderRef,
+          "commissionPaidAt": commission->paidAt
+        }`,
+        { hash: tokenHash }
+      );
+
+      const voucherError = (() => {
+        if (!voucher) return 'That voucher session has expired. Please enter your Groupon code again.';
+        if (!hashesMatch(voucher.claimTokenHash, tokenHash)) return 'That voucher session is not valid. Please enter your Groupon code again.';
+        // A paid order is the truth, even if the webhook never got round to
+        // moving the status. Without this a voucher whose finalisation failed
+        // could fund a second order.
+        if (voucher.status === 'redeemed' || voucher.commissionPaidAt) return 'That voucher has already been redeemed.';
+        if (voucher.status === 'refunded' || voucher.status === 'void') return 'That voucher is no longer valid.';
+        if (isPast(voucher.expiresAt)) return 'That voucher has passed its expiry date.';
+        if (isPast(voucher.claimExpiresAt)) return 'That voucher session has timed out. Please enter your Groupon code again.';
+        if (voucher.serviceSlug !== serviceSlug) return `That voucher is for a different service (${voucher.campaignName || voucher.serviceSlug}). Please start from that service page.`;
+        if (!(voucher.valuePence > 0)) return 'That voucher has no value recorded against it. Please contact us and we will sort it out.';
+        return null;
+      })();
+
+      if (voucherError) {
+        if (claimFromCookieOnly) {
+          // Ambient, not requested. Treat this as a normal full-price order
+          // rather than blocking it, and drop the stale cookie.
+          console.log(`commission-checkout: ignoring stale voucher cookie — ${voucherError}`);
+          voucher = null;
+        } else {
+          console.log(`commission-checkout: groupon voucher refused — ${voucherError}`);
+          return new Response(JSON.stringify({ error: voucherError, grouponVoucherInvalid: true }),
+            { status: 409, headers: { 'Content-Type': 'application/json' } });
+        }
+      }
+    }
+
+    // ── Resume an in-flight voucher checkout ──────────────────────────────
+    // The customer pressed Back from Stripe, double-submitted, or duplicated
+    // the tab. Whatever the cause, the answer is the SAME session — never a
+    // second one, which would put two discounted orders against one voucher.
+    if (voucher && voucher.status === 'checkout' && voucher.stripeSessionId) {
+      try {
+        const inFlight = await stripe.checkout.sessions.retrieve(voucher.stripeSessionId);
+        if (inFlight.status === 'complete') {
+          return new Response(
+            JSON.stringify({ error: 'That voucher has already been redeemed.', grouponVoucherInvalid: true }),
+            { status: 409, headers: { 'Content-Type': 'application/json' } });
+        }
+        if (inFlight.status === 'open' && inFlight.url) {
+          console.log(`commission-checkout: resuming voucher session for ${voucher.code}`);
+          return new Response(JSON.stringify({ url: inFlight.url, orderRef: voucher.orderRef }), {
+            status: 200, headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        // Expired — the old promotion code is dead weight.
+        await deactivatePromotionCode(stripe, voucher.stripePromotionCodeId);
+      } catch (e) {
+        console.warn('commission-checkout: could not inspect in-flight voucher session:', e);
+        await deactivatePromotionCode(stripe, voucher.stripePromotionCodeId);
+      }
     }
 
     // Photos were uploaded to Sanity ahead of time via /api/upload. We
@@ -585,6 +688,13 @@ export default async function handler(req: Request, _context: Context) {
       customerName: name,
       customerEmail: email,
       customerPhone: phone,
+      source: voucher ? 'groupon' : 'direct',
+      ...(voucher
+        ? {
+            grouponVoucher: { _type: 'reference', _ref: voucher._id },
+            grouponCode: voucher.code,
+          }
+        : {}),
       brief,
       orderType: breakdown.orderType,
       deliveryType,
@@ -702,7 +812,120 @@ export default async function handler(req: Request, _context: Context) {
       ];
     }
 
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    // ── Apply the Groupon entitlement ─────────────────────────────────────
+    let promotionCodeId: string | undefined;
+    let couponId: string | undefined;
+    let voucherClaimed = false;
+
+    if (voucher) {
+      // The voucher buys the SERVICE, not the basket. Cap the discount at the
+      // base tier the customer actually chose so prints and shipping stay
+      // chargeable — a £109.99 animation voucher spent on a £14.99 digital
+      // tier plus a canvas takes £14.99 off, not £109.99.
+      const baseTierGbp =
+        (breakdown.digitalBundle?.amount ?? 0) + (breakdown.animation?.amount ?? 0);
+      const baseTierPence = Math.round(baseTierGbp * 100);
+      const discountPence = effectiveDiscountPence(voucher.valuePence, baseTierPence);
+
+      if (discountPence <= 0) {
+        // Print-only order against a voucher for a digital service. Charging
+        // full price silently would be the worst outcome — say what's wrong.
+        return new Response(
+          JSON.stringify({
+            error:
+              `Your Groupon voucher covers ${service.title} itself, so your order needs to include it. ` +
+              `Add the ${service.title} option to your order and the voucher will come off at checkout.`,
+            grouponVoucherInvalid: true,
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      // Compare-and-swap on the document revision. Only one concurrent request
+      // can hold the voucher's current _rev, so two tabs racing here cannot
+      // both proceed — this, not the Stripe promotion code, is what makes
+      // double-spending impossible.
+      try {
+        await sanity
+          .patch(voucher._id)
+          .ifRevisionId(voucher._rev!)
+          .set({ status: 'checkout', claimExpiresAt: minutesFromNow(CHECKOUT_TTL_MINUTES) })
+          .commit();
+        voucherClaimed = true;
+      } catch (e: any) {
+        console.log(`commission-checkout: lost the race for voucher ${voucher.code}`);
+        return new Response(
+          JSON.stringify({
+            error: 'That voucher is being used in another window. Finish that order, or close it and try again in a few minutes.',
+            grouponVoucherInvalid: true,
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      try {
+        const coupon = await ensureCoupon(stripe, voucher.serviceSlug, discountPence, service.title);
+        couponId = coupon.id;
+        const promo = await mintPromotionCode(stripe, coupon, voucher, CHECKOUT_TTL_MINUTES);
+        promotionCodeId = promo.id;
+        sessionParams.discounts = [{ promotion_code: promo.id }];
+        sessionParams.metadata = {
+          ...(sessionParams.metadata || {}),
+          source: 'groupon',
+          grouponVoucherId: voucher._id,
+          grouponCode: voucher.code,
+          grouponValuePence: String(voucher.valuePence),
+          grouponDiscountPence: String(discountPence),
+        };
+        // The session must expire before the promotion code does, or the
+        // customer reaches a page whose discount Stripe will refuse. Stripe
+        // requires at least 30 minutes, so never let tuning push it below that.
+        const sessionMinutes = Math.max(31, CHECKOUT_TTL_MINUTES - 5);
+        sessionParams.expires_at = Math.floor(Date.now() / 1000) + sessionMinutes * 60;
+      } catch (e: any) {
+        console.error('commission-checkout: failed to build Groupon discount:', e);
+        await releaseVoucher();
+        return new Response(
+          JSON.stringify({ error: 'We could not apply your Groupon voucher just now. Please try again in a moment — your voucher has not been used.' }),
+          { status: 502, headers: { 'Content-Type': 'application/json' } });
+      }
+    }
+
+    // Hand the voucher back if we claimed it and then couldn't finish. Leaving
+    // it in `checkout` would lock the customer out for the full window.
+    async function releaseVoucher() {
+      if (!voucher || !voucherClaimed) return;
+      try {
+        await sanity.patch(voucher._id).set({ status: 'claimed' }).commit();
+      } catch (e) {
+        console.warn('commission-checkout: could not release voucher after failure:', e);
+      }
+    }
+
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create(sessionParams);
+    } catch (e) {
+      // Don't strand a live single-use promotion code on a session that never
+      // existed, and don't hold the voucher hostage.
+      await deactivatePromotionCode(stripe, promotionCodeId);
+      await releaseVoucher();
+      throw e;
+    }
+
+    if (voucher) {
+      try {
+        await sanity.patch(voucher._id).set({
+          stripeSessionId: session.id,
+          stripeCouponId: couponId,
+          stripePromotionCodeId: promotionCodeId,
+          commission: { _type: 'reference', _ref: commission._id },
+          orderRef,
+          customerEmail: email,
+        }).commit();
+      } catch (e) {
+        // Non-fatal: the webhook finalises the voucher from session metadata.
+        console.warn('commission-checkout: could not attach session to voucher:', e);
+      }
+    }
 
     // Store the Stripe session id on the commission for reference and
     // reconciliation — e.g. matching a doc to its payment in the Stripe
