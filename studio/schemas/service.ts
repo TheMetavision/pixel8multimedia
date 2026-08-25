@@ -53,6 +53,16 @@ export default defineType({
             }],
           },
           {
+            name: 'collageStills',
+            title: 'Digital Collage Stills',
+            type: 'object',
+            description: 'The finished digital collage shown to the customer — a portrait and a landscape version of the same composition. Used by Story Of Your Life; leave blank for other services.',
+            fields: [
+              { name: 'portrait', title: 'Portrait', type: 'image', options: { hotspot: true } },
+              { name: 'landscape', title: 'Landscape', type: 'image', options: { hotspot: true } },
+            ],
+          },
+          {
             name: 'videos',
             title: 'YouTube Videos',
             type: 'array',

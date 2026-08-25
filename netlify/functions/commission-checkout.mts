@@ -545,7 +545,7 @@ export default async function handler(req: Request, _context: Context) {
           _id, _rev, code, status, serviceSlug, entitlementOrderType, valuePence,
           expiresAt, claimTokenHash, claimExpiresAt, claimCount, campaignName,
           optionLabel, stripeCouponId, stripePromotionCodeId, stripeSessionId, verified,
-          orderRef,
+          verificationStatus, declaredDealKey, orderRef,
           "commissionPaidAt": commission->paidAt
         }`,
         { hash: tokenHash }
@@ -693,6 +693,9 @@ export default async function handler(req: Request, _context: Context) {
         ? {
             grouponVoucher: { _type: 'reference', _ref: voucher._id },
             grouponCode: voucher.code,
+            // Held until the code is confirmed against Groupon. Cleared by the
+            // verify command, or by hand after a Merchant Center lookup.
+            awaitingVoucherCheck: voucher.verificationStatus !== 'verified',
           }
         : {}),
       brief,

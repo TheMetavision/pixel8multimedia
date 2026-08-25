@@ -1,24 +1,52 @@
 ---
-// /groupon — where a Groupon customer lands to turn their voucher into an order.
+// /groupon — where a Groupon customer turns their voucher into an order.
 //
-// This page does one job and does it plainly: take the code, check it, and send
-// the customer into the normal commission wizard with the entitlement attached.
-// Everything after this point is the standard Pixel8 flow, so there is only one
-// production pipeline to maintain.
+// Two things have to happen here, and the second is the one that matters:
+// take the code, and establish WHICH DEAL it belongs to. We cannot ask Groupon
+// (no API exists), so either our imported list already knows, or the customer
+// tells us and the order is held until it has been confirmed.
+//
+// The deal is normally carried in the link printed on their own voucher
+// (/groupon?deal=cartoonify-me-1499), so most customers only confirm what is
+// already selected.
 export const prerender = false;
 
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { sanityClient } from '../lib/sanity';
+import campaignData from '../data/groupon-campaigns.json';
 
-// Pre-fill from the QR/short link printed on the voucher instructions, e.g.
-// /groupon?code=ABC123
-const prefill = (Astro.url.searchParams.get('code') || '').toUpperCase().slice(0, 24);
+const prefillCode = (Astro.url.searchParams.get('code') || '').toUpperCase().slice(0, 24);
+const prefillDeal = (Astro.url.searchParams.get('deal') || '').trim();
 
 const services = await sanityClient.fetch(
-  `*[_type == "service" && commissionEnabled != false] | order(title asc){
-    title, "slug": slug.current
+  `*[_type == "service" && commissionEnabled != false && count(briefingFields) > 0]{
+    "slug": slug.current
   }`
 );
+const orderable = new Set(services.map((s: any) => s.slug));
+
+// Flatten the campaign map into pickable deals, dropping any whose service
+// can't currently take an order.
+const deals = Object.entries(campaignData.campaigns as Record<string, any>)
+  .flatMap(([, c]) =>
+    (c.options || []).map((o: any) => ({
+      key: o.key,
+      label: o.label,
+      valuePence: o.valuePence,
+      campaignName: c.campaignName,
+      serviceSlug: c.serviceSlug,
+    }))
+  )
+  .filter((d) => orderable.has(d.serviceSlug))
+  .sort((a, b) => a.campaignName.localeCompare(b.campaignName) || a.valuePence - b.valuePence);
+
+const grouped = deals.reduce((acc: Record<string, any[]>, d) => {
+  (acc[d.campaignName] ||= []).push(d);
+  return acc;
+}, {});
+
+const knownDeal = deals.find((d) => d.key === prefillDeal) || null;
+const money = (p: number) => `£${(p / 100).toFixed(2)}`;
 ---
 
 <BaseLayout
@@ -51,36 +79,64 @@ const services = await sanityClient.fetch(
 
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <form id="groupon-form" class="bg-bg-secondary border border-white/10 rounded-2xl p-6 md:p-8">
+
+      <!-- ── Step 1: the code ─────────────────────────────────────────── -->
       <label for="groupon-code" class="block font-montserrat font-bold text-off-white text-lg mb-2">
-        Groupon voucher code
+        1. Your Groupon voucher code
       </label>
       <p class="font-dm text-sm text-gray-400 mb-4">
-        You'll find this on your Groupon voucher, in the Groupon app under
-        <em>My Stuff</em>, or in your confirmation email. Capital letters and spaces don't matter.
+        In the Groupon app under <em>My Stuff</em>, or in your confirmation email.
+        Capital letters and spaces don't matter.
       </p>
+      <input
+        id="groupon-code"
+        name="code"
+        type="text"
+        inputmode="latin"
+        autocomplete="off"
+        autocapitalize="characters"
+        spellcheck="false"
+        maxlength="32"
+        value={prefillCode}
+        placeholder="e.g. GN4B7KQ2X9"
+        class="w-full rounded-lg bg-black/40 border border-white/15 px-4 py-3 font-mono text-lg tracking-widest text-off-white placeholder:text-gray-600 focus:outline-none focus:border-pop-orange"
+      />
 
-      <div class="flex flex-col sm:flex-row gap-3">
-        <input
-          id="groupon-code"
-          name="code"
-          type="text"
-          inputmode="latin"
-          autocomplete="off"
-          autocapitalize="characters"
-          spellcheck="false"
-          maxlength="32"
-          value={prefill}
-          placeholder="e.g. GN4B7KQ2X9"
-          class="flex-1 rounded-lg bg-black/40 border border-white/15 px-4 py-3 font-mono text-lg tracking-widest text-off-white placeholder:text-gray-600 focus:outline-none focus:border-pop-orange"
-        />
-        <button
-          type="submit"
-          id="groupon-submit"
-          class="rounded-lg bg-pop-orange px-6 py-3 font-montserrat font-bold text-black hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition"
+      <!-- ── Step 2: which deal ───────────────────────────────────────── -->
+      <div class="mt-8">
+        <label for="groupon-deal" class="block font-montserrat font-bold text-off-white text-lg mb-2">
+          2. Which deal did you buy?
+        </label>
+        <p class="font-dm text-sm text-gray-400 mb-4">
+          {knownDeal
+            ? "We've picked this from your voucher link — change it if it's not right."
+            : 'Pick the deal exactly as it appeared on Groupon, so we apply the right credit.'}
+        </p>
+        <select
+          id="groupon-deal"
+          name="deal"
+          class="w-full rounded-lg bg-black/40 border border-white/15 px-4 py-3 font-dm text-off-white focus:outline-none focus:border-pop-orange"
         >
-          Continue
-        </button>
+          <option value="">Choose your deal…</option>
+          {Object.entries(grouped).map(([campaign, opts]) => (
+            <optgroup label={campaign}>
+              {opts.map((d) => (
+                <option value={d.key} selected={d.key === prefillDeal}>
+                  {d.label} — {money(d.valuePence)}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
       </div>
+
+      <button
+        type="submit"
+        id="groupon-submit"
+        class="mt-8 w-full rounded-lg bg-pop-orange px-6 py-3 font-montserrat font-bold text-black hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition"
+      >
+        Start my order
+      </button>
 
       <p id="groupon-error" class="hidden mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 font-dm text-sm text-red-300"></p>
       <p id="groupon-ok" class="hidden mt-4 rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 font-dm text-sm text-green-300"></p>
@@ -88,15 +144,15 @@ const services = await sanityClient.fetch(
 
     <div class="mt-10 grid gap-6 md:grid-cols-3">
       <div class="rounded-xl border border-white/10 p-5">
-        <div class="font-montserrat font-bold text-pop-orange mb-2">1. Enter your code</div>
-        <p class="font-dm text-sm text-gray-400">We check it against the voucher you bought on Groupon.</p>
+        <div class="font-montserrat font-bold text-pop-orange mb-2">Enter your code</div>
+        <p class="font-dm text-sm text-gray-400">Tell us the code and which deal you bought.</p>
       </div>
       <div class="rounded-xl border border-white/10 p-5">
-        <div class="font-montserrat font-bold text-pop-orange mb-2">2. Tell us what you want</div>
+        <div class="font-montserrat font-bold text-pop-orange mb-2">Tell us what you want</div>
         <p class="font-dm text-sm text-gray-400">Upload your photo and answer a few short questions about your brief.</p>
       </div>
       <div class="rounded-xl border border-white/10 p-5">
-        <div class="font-montserrat font-bold text-pop-orange mb-2">3. We get to work</div>
+        <div class="font-montserrat font-bold text-pop-orange mb-2">We get to work</div>
         <p class="font-dm text-sm text-gray-400">Your voucher covers the deal price at the last step. Nothing more to pay unless you add a poster or canvas.</p>
       </div>
     </div>
@@ -111,19 +167,21 @@ const services = await sanityClient.fetch(
   </div>
 </BaseLayout>
 
-<script define:vars={{ services }}>
+<script define:vars={{ deals }}>
   const form = document.getElementById('groupon-form');
-  const input = document.getElementById('groupon-code');
+  const codeInput = document.getElementById('groupon-code');
+  const dealInput = document.getElementById('groupon-deal');
   const button = document.getElementById('groupon-submit');
   const errorEl = document.getElementById('groupon-error');
   const okEl = document.getElementById('groupon-ok');
 
-  const slugSet = new Set((services || []).map((s) => s.slug));
+  const dealByKey = new Map((deals || []).map((d) => [d.key, d]));
 
   function showError(message) {
     okEl.classList.add('hidden');
     errorEl.textContent = message;
     errorEl.classList.remove('hidden');
+    errorEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   function showOk(message) {
@@ -134,11 +192,11 @@ const services = await sanityClient.fetch(
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const code = (input.value || '').trim();
-    if (!code) {
-      showError('Please enter your Groupon voucher code.');
-      return;
-    }
+    const code = (codeInput.value || '').trim();
+    const dealKey = dealInput.value;
+
+    if (!code) { showError('Please enter your Groupon voucher code.'); return; }
+    if (!dealKey) { showError('Please tell us which deal you bought.'); return; }
 
     button.disabled = true;
     button.textContent = 'Checking…';
@@ -149,7 +207,7 @@ const services = await sanityClient.fetch(
       const res = await fetch('/.netlify/functions/groupon-redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, dealKey }),
       });
       const data = await res.json().catch(() => ({}));
 
@@ -158,18 +216,19 @@ const services = await sanityClient.fetch(
         return;
       }
 
-      if (!slugSet.has(data.serviceSlug)) {
-        showError(
-          'That voucher is valid, but the service it belongs to is not accepting orders online right now. ' +
-          'Please email hello@pixel8multimedia.co.uk with your Groupon order number and we will set it up by hand.'
+      // Our own record beat the customer's pick. Say so rather than silently
+      // sending them to a service they didn't choose.
+      if (data.correctedFromDeal) {
+        const chose = dealByKey.get(data.correctedFromDeal);
+        showOk(
+          `That code is for ${data.campaignName || data.serviceSlug}` +
+          (chose ? `, not ${chose.campaignName}` : '') +
+          '. Taking you to the right order form…'
         );
-        return;
+      } else {
+        showOk('Voucher accepted. Taking you to your order form…');
       }
 
-      // The claim token is deliberately short-lived and never persisted beyond
-      // this browser. sessionStorage rather than localStorage: it should not
-      // outlive the tab, and it must not be shared with another Groupon
-      // customer using the same machine later.
       try {
         sessionStorage.setItem(
           'pixel8-groupon-claim',
@@ -185,20 +244,19 @@ const services = await sanityClient.fetch(
         );
       } catch {
         // Private-browsing modes can block site data. The claim also travels as
-        // an HttpOnly cookie set by groupon-redeem, so the discount still
-        // applies at checkout — the customer just won't see the banner.
+        // an HttpOnly cookie, so the credit still applies at checkout — the
+        // customer just won't see the banner on the way there.
       }
 
-      showOk('Voucher accepted. Taking you to your order form…');
       const url = new URL(`/services/${data.serviceSlug}`, window.location.origin);
       url.searchParams.set('groupon', '1');
       url.hash = 'commission';
-      window.location.href = url.toString();
+      setTimeout(() => { window.location.href = url.toString(); }, data.correctedFromDeal ? 2200 : 600);
     } catch {
       showError('We could not reach the server. Please check your connection and try again.');
     } finally {
       button.disabled = false;
-      button.textContent = 'Continue';
+      button.textContent = 'Start my order';
     }
   });
 </script>

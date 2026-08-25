@@ -10,31 +10,91 @@ doesn't. Everything here is live in the repo; nothing depends on a spreadsheet.
 ```
 Groupon sells a voucher
         │
-        │  you export the voucher list from Merchant Center
         ▼
-  import  ──►  Sanity: grouponVoucher (status: imported)
+  customer visits pixel8multimedia.co.uk/groupon
+  enters their code + which deal they bought
         │
-        │  customer visits pixel8multimedia.co.uk/groupon and types their code
+        │  code known to us?  ── yes ──►  our record wins (service, option, value)
+        │                    ── no  ──►  take their word, flag for checking
         ▼
-  groupon-redeem  ──►  status: claimed  +  a 2-hour claim token
-        │
-        │  customer goes through the normal commission wizard
-        ▼
-  commission-checkout  ──►  status: checkout
-        │                    Stripe coupon (amount_off) + single-use promo code
-        │                    commission doc created, source = "groupon"
-        ▼
-  Stripe Checkout  ──►  £0.00 if the voucher covers it, or the upgrade difference
+  the normal commission wizard  ──►  Stripe (£0, or the extras)
         │
         ▼
-  stripe-webhook-commission  ──►  status: redeemed, commission marked paid
+  order created.  Unconfirmed codes are HELD: the order cannot be
+  moved past Paid, and delivery refuses to fire.
         │
+        │  you confirm the code — in bulk from an export, or by
+        │  looking it up in Merchant Center
         ▼
-  the existing pipeline takes over — Sanity delivery webhook, Resend, download link
+  hold clears  ──►  existing pipeline: work, deliver, done
 ```
 
-The Groupon order joins the normal pipeline at the point of payment. There is
-one production process, not two.
+**Groupon publishes no API for validating a voucher code.** That single fact
+shapes everything here. We cannot check a code at the moment a customer types
+it, so we accept it, take the order, and hold the work until the code has been
+confirmed. A bad code costs a minute of checking. It never costs a delivered
+commission.
+
+The real validation lives in Merchant Center: paste the code into its Redeem
+function and it shows the voucher's validity *and* which deal and option was
+bought — which is also the step Groupon expects you to perform for every
+voucher, so it is not extra work you would otherwise avoid.
+
+---
+
+## Confirming codes without it eating your day
+
+This is designed so the per-order lookup is the exception, not the routine.
+
+**The queue.** Everything waiting on you, oldest first:
+
+```bash
+node --env-file=.env scripts/groupon-vouchers.mjs pending
+```
+
+**Bulk release — the one that scales.** Any Groupon export containing a code
+column will do. Every order the export explains is released in one pass:
+
+```bash
+node --env-file=.env scripts/groupon-vouchers.mjs verify export.csv
+```
+
+It reports three groups, and they mean different things:
+
+| Result | Meaning | Action |
+|---|---|---|
+| Released | Code is real and matches what they ordered | None — the order is now workable |
+| Mismatch | Real code, but they ordered a different deal from the one they bought | Contact the customer. The credit applied was wrong |
+| Unexplained | The export doesn't cover it | Re-export with a wider date range, then look up whatever still won't match |
+
+**The import releases orders too.** Any held code that shows up in a routine
+import is confirmed automatically, because an import *is* Groupon telling you
+the voucher is real. In practice most holds clear on the next import without
+you doing anything specific about them.
+
+**One-offs**, after a Merchant Center lookup:
+
+```bash
+node --env-file=.env scripts/groupon-vouchers.mjs confirm GN4B7KQ2X9
+node --env-file=.env scripts/groupon-vouchers.mjs confirm GN4B7KQ2X9 --reject
+```
+
+At volume the shape is: import daily-ish, run `verify` against whatever export
+you have, and only hand-check the handful of codes that neither covers.
+
+---
+
+## What the hold actually stops
+
+Three independent layers, because the work is the thing you cannot take back:
+
+1. **Studio validation** refuses to move a held order to In Progress, Review,
+   Complete, Shipped or Delivered.
+2. **The delivery function** re-checks for itself before sending anything. The
+   Studio rule can be bypassed by an API patch or a bulk edit; delivery is
+   irreversible, so it does not take that on trust.
+3. **The Studio list** shows held orders as `[ON HOLD]` and held vouchers as
+   `NEEDS CHECKING`, so the queue is visible without running anything.
 
 ---
 
@@ -65,11 +125,17 @@ all of them deliberate:
 
 ---
 
-## Weekly: importing vouchers
+## Importing vouchers
 
-Groupon does not push voucher data to us, so the import is the one recurring
-manual step. Do it at least as often as vouchers sell — a customer whose code
-hasn't been imported cannot redeem.
+The import is no longer a gate — a customer can redeem the moment they buy,
+whether or not we've imported their code. What the import buys you is
+*certainty*: an imported code carries an authoritative service, option and
+value, so the customer's own declaration is overridden and there is nothing to
+confirm later. It also releases any orders already held against those codes.
+
+Import as often as is convenient. Daily makes most holds disappear before you
+ever look at them; weekly means a slightly longer `pending` queue. Neither
+turns a customer away.
 
 1. Merchant Center → your campaign → export the voucher list as CSV.
 2. Line the columns up with the template:
@@ -156,7 +222,8 @@ node --env-file=.env scripts/groupon-vouchers.mjs lookup GN4B7KQ2X9
 
 The status tells you which of these it is:
 
-- **not found** — not imported yet. Import, then tell them to try again.
+- **not found** — the code has never been entered. They mistyped it, or the
+  voucher is not ours. Nothing to fix on our side.
 - **claimed / checkout with a live window** — they have it open in another tab,
   or abandoned a checkout. It frees itself within the hour; `set-status <code>
   imported` releases it immediately.
@@ -197,10 +264,13 @@ What is in place:
 - Codes are checked against imported records only. An unknown code is refused,
   and the refusal message is identical whether the code is malformed or simply
   unknown — nothing leaks the format.
-- The claim token is single-use, expires in two hours, and is stored only as a
+- The claim token is single-use, expires after a day, and is stored only as a
   SHA-256 hash. It never appears in a URL. It travels in sessionStorage and, as
   a backstop for browsers that block site data, in an HttpOnly cookie — so a
   customer in a private window is never silently charged full price.
+- **Claiming a code is not exclusive.** A customer who starts on a phone and
+  finishes on a laptop is never told their own voucher is in use elsewhere.
+  Exclusivity lives at checkout only.
 - **Double-spending is blocked by a compare-and-swap on the voucher's document
   revision**, not by hope. Two tabs submitting at once cannot both win the
   `_rev`; the loser is told the voucher is in use. The single-use Stripe
@@ -218,11 +288,13 @@ What is in place:
 - Redemption attempts are rate-limited per IP.
 - Repeated claims on one code raise a `repeat-claims` flag rather than blocking —
   worth a look, not worth punishing an honest customer with a flaky connection.
+- One address can only hold a few unconfirmed vouchers at once, so inventing
+  codes in bulk stops quickly.
 
-`GROUPON_ALLOW_UNVERIFIED` turns off the first of those. It exists for the case
-where Groupon volume outruns the import cadence and customers are being turned
-away. It is off by default and should stay off. If it goes on, check the
-unverified queue every day and reconcile weekly, not monthly.
+The residual risk is a customer who redeems a fake code and abandons the order
+before you check it — which costs nothing but a line in the `pending` queue. The
+thing to never do is work an order that is still on hold, and that is precisely
+what the three layers above prevent.
 
 ---
 
@@ -231,11 +303,17 @@ unverified queue every day and reconcile weekly, not monthly.
 - [ ] **Deploy the Studio schema.** `grouponVoucher` won't appear until the studio
       is redeployed (`cd studio && npx sanity deploy`).
 - [ ] **Test the whole flow in Stripe test mode** — see the checklist below.
-- [ ] **Set the voucher instructions on each Groupon campaign** to point at
-      `https://pixel8multimedia.co.uk/groupon`. Currently they point at the
-      service URLs, which sends customers to a page that will charge them full
-      price. This is the one change that must happen before a single voucher
-      sells.
+- [ ] **Set the voucher instructions on each Groupon campaign** to its own
+      deal link, so the customer arrives with the right deal pre-selected:
+      `https://pixel8multimedia.co.uk/groupon?deal=<key>` — the keys are in
+      `src/data/groupon-campaigns.json` (e.g. `cartoonify-me-1499`). They
+      currently point at the service URLs, which sends customers to a page that
+      will charge them full price. This is the one change that must happen
+      before a single voucher sells.
+- [ ] **Ask Ross two things:** whether marking a voucher redeemed in Merchant
+      Center is what triggers payout, and whether an online-only merchant can get
+      an automated voucher feed. A yes to the second would remove most of the
+      confirmation work entirely.
 - [ ] **Decide the import cadence** and put it in the calendar.
 - [ ] Nothing here depends on the Groupon commission dispute resolving — the
       flow works at any commission rate.

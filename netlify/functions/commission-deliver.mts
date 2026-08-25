@@ -256,7 +256,7 @@ async function handleComplete(commissionId: string): Promise<Response> {
   const commission = await sanity.fetch(
     `*[_type == "commission" && _id == $id][0]{
       _id, orderRef, customerName, customerEmail,
-      deliveryType, status, deliveredAt,
+      deliveryType, status, deliveredAt, awaitingVoucherCheck,
       "serviceTitle": service->title,
       "fileRef": finishedFile.asset._ref
     }`,
@@ -265,6 +265,17 @@ async function handleComplete(commissionId: string): Promise<Response> {
 
   if (!commission) {
     return new Response('Commission not found', { status: 404 });
+  }
+
+  // An unconfirmed Groupon code must never reach delivery. The Studio blocks
+  // the status change, but delivery is the irreversible step — once the file is
+  // sent it cannot be recalled — so it refuses for itself rather than trusting
+  // that nothing else patched the document.
+  if (commission.awaitingVoucherCheck === true) {
+    console.warn(
+      `[GROUPON] Refusing to deliver ${commission.orderRef} — its voucher has not been confirmed.`
+    );
+    return new Response('Blocked: voucher not confirmed', { status: 200 });
   }
 
   if (commission.status !== 'complete') {
@@ -327,7 +338,7 @@ async function handleShipped(commissionId: string): Promise<Response> {
   const commission = await sanity.fetch(
     `*[_type == "commission" && _id == $id][0]{
       _id, orderRef, customerName, customerEmail,
-      deliveryType, status, carrier, trackingNumber, dispatchedAt,
+      deliveryType, status, carrier, trackingNumber, dispatchedAt, awaitingVoucherCheck,
       "serviceTitle": service->title
     }`,
     { id: commissionId }
@@ -335,6 +346,17 @@ async function handleShipped(commissionId: string): Promise<Response> {
 
   if (!commission) {
     return new Response('Commission not found', { status: 404 });
+  }
+
+  // An unconfirmed Groupon code must never reach delivery. The Studio blocks
+  // the status change, but delivery is the irreversible step — once the file is
+  // sent it cannot be recalled — so it refuses for itself rather than trusting
+  // that nothing else patched the document.
+  if (commission.awaitingVoucherCheck === true) {
+    console.warn(
+      `[GROUPON] Refusing to deliver ${commission.orderRef} — its voucher has not been confirmed.`
+    );
+    return new Response('Blocked: voucher not confirmed', { status: 200 });
   }
 
   if (commission.status !== 'shipped') {

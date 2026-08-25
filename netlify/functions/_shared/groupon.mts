@@ -11,9 +11,49 @@
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type Stripe from 'stripe';
+import campaignData from '../../../src/data/groupon-campaigns.json' with { type: 'json' };
 
-export const CLAIM_TTL_MINUTES = 120;      // customer has 2h to get through the wizard
+export const CLAIM_TTL_MINUTES = 1440;     // a day to get through the wizard, on any device
 export const CHECKOUT_TTL_MINUTES = 60;    // and 1h more to finish paying
+
+export interface DealOption {
+  key: string;
+  label: string;
+  valuePence: number;
+  dealPence: number | null;
+  orderType: string;
+  match: string;
+  dealId: string;
+  campaignName: string;
+  serviceSlug: string;
+}
+
+/** Every sellable Groupon option, flattened. */
+export function allDealOptions(): DealOption[] {
+  const out: DealOption[] = [];
+  const campaigns = (campaignData as any).campaigns || {};
+  for (const [dealId, c] of Object.entries<any>(campaigns)) {
+    for (const o of c.options || []) {
+      out.push({
+        key: o.key,
+        label: o.label,
+        valuePence: o.valuePence,
+        dealPence: o.dealPence ?? null,
+        orderType: o.orderType,
+        match: o.match || '',
+        dealId,
+        campaignName: c.campaignName,
+        serviceSlug: c.serviceSlug,
+      });
+    }
+  }
+  return out;
+}
+
+export function dealOptionByKey(key: string): DealOption | null {
+  if (!key) return null;
+  return allDealOptions().find((o) => o.key === key) || null;
+}
 
 export type VoucherStatus =
   | 'imported'
@@ -44,7 +84,17 @@ export interface VoucherDoc {
   verified?: boolean;
   /** Denormalised from commission->paidAt. Set means the voucher is spent, whatever its status says. */
   commissionPaidAt?: string | null;
+  /**
+   * Whether this code has been confirmed against Groupon. Separate from `status`
+   * on purpose: a voucher can be fully redeemed here and still not confirmed as
+   * real, and it is the confirmation — not the redemption — that releases the
+   * work to be made.
+   */
+  verificationStatus?: VerificationStatus;
+  declaredDealKey?: string;
 }
+
+export type VerificationStatus = 'unchecked' | 'verified' | 'mismatch' | 'rejected';
 
 /**
  * Normalise anything a customer might type into the canonical stored form.
@@ -103,11 +153,11 @@ export function isClaimable(v: VoucherDoc): boolean {
   // move the voucher to `redeemed`, its status is stale — trusting it would
   // hand a spent voucher back to the pool.
   if (v.commissionPaidAt) return false;
-  if (v.status === 'imported') return true;
-  if (v.status === 'claimed' || v.status === 'checkout') {
-    return isPast(v.claimExpiresAt);
-  }
-  return false;
+  // Claiming is deliberately NOT exclusive. A customer who starts on a phone and
+  // finishes on a laptop must not be told their own voucher is "in use
+  // elsewhere" — that lockout generated support mail and protected nothing.
+  // Exclusivity belongs at checkout, where the compare-and-swap enforces it.
+  return v.status === 'imported' || v.status === 'claimed' || v.status === 'checkout';
 }
 
 export type VoucherRejection =
@@ -115,8 +165,7 @@ export type VoucherRejection =
   | 'already-redeemed'
   | 'expired'
   | 'refunded'
-  | 'void'
-  | 'in-use';
+  | 'void';
 
 /** Why a voucher can't be used right now — or null if it can. */
 export function rejectionFor(v: VoucherDoc): VoucherRejection | null {
@@ -124,7 +173,7 @@ export function rejectionFor(v: VoucherDoc): VoucherRejection | null {
   if (v.status === 'refunded') return 'refunded';
   if (v.status === 'void') return 'void';
   if (v.status === 'expired' || isPast(v.expiresAt)) return 'expired';
-  if (!isClaimable(v)) return 'in-use';
+  if (!isClaimable(v)) return 'already-redeemed';
   return null;
 }
 
@@ -143,8 +192,6 @@ export const REJECTION_MESSAGE: Record<VoucherRejection, string> = {
   refunded:
     'That voucher was refunded by Groupon, so it can no longer be redeemed here.',
   void: 'That voucher is no longer valid. Please email hello@pixel8multimedia.co.uk.',
-  'in-use':
-    'That voucher is being used in another window right now. Finish that order, or wait a couple of hours and try again.',
 };
 
 /**

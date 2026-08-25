@@ -263,13 +263,47 @@ export default defineType({
       description: 'Identifies the import run this voucher arrived in — used to undo a bad import.',
     }),
     defineField({
+      name: 'verificationStatus',
+      title: 'Confirmed Against Groupon',
+      type: 'string',
+      group: 'admin',
+      options: {
+        list: [
+          { title: 'Not checked yet — order is on hold', value: 'unchecked' },
+          { title: 'Confirmed — real voucher, right deal', value: 'verified' },
+          { title: 'Mismatch — real code, different deal', value: 'mismatch' },
+          { title: 'Rejected — Groupon has no such voucher', value: 'rejected' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'unchecked',
+      description:
+        'Groupon offers no way to check a code automatically, so this is set either by matching a Groupon export or by looking the code up in Merchant Center. Until it reads Confirmed, the order attached to this voucher cannot be worked.',
+    }),
+    defineField({
+      name: 'declaredDealKey',
+      title: 'Deal the Customer Declared',
+      type: 'string',
+      group: 'admin',
+      readOnly: true,
+      description:
+        'Which deal the customer said they bought, for codes accepted before confirmation. Compare against what Merchant Center shows.',
+    }),
+    defineField({
+      name: 'claimIp',
+      title: 'Claimed From',
+      type: 'string',
+      group: 'admin',
+      readOnly: true,
+      description: 'Address the code was entered from. Used to limit how many unconfirmed vouchers one source can have in flight.',
+    }),
+    defineField({
       name: 'verified',
-      title: 'Verified Against Groupon',
+      title: 'Verified (legacy flag)',
       type: 'boolean',
       group: 'admin',
-      initialValue: true,
-      description:
-        'False when the code was accepted without appearing in an import (unverified mode). These MUST be reconciled against a Groupon report before the work is delivered.',
+      hidden: true,
+      description: 'Superseded by Confirmed Against Groupon. Kept so older records still read correctly.',
     }),
     defineField({
       name: 'reconciledAt',
@@ -312,8 +346,9 @@ export default defineType({
       campaignName: 'campaignName',
       optionLabel: 'optionLabel',
       orderRef: 'orderRef',
+      verificationStatus: 'verificationStatus',
     },
-    prepare({ code, status, campaignName, optionLabel, orderRef }) {
+    prepare({ code, status, campaignName, optionLabel, orderRef, verificationStatus }) {
       const emoji: Record<string, string> = {
         imported: '🎟️',
         claimed: '✋',
@@ -323,8 +358,13 @@ export default defineType({
         refunded: '↩️',
         void: '🚫',
       };
+      const check =
+        verificationStatus === 'unchecked' ? ' · ⏸ NEEDS CHECKING'
+        : verificationStatus === 'mismatch' ? ' · ⚠ MISMATCH'
+        : verificationStatus === 'rejected' ? ' · ✗ REJECTED'
+        : '';
       return {
-        title: `${emoji[status || ''] || '❓'} ${code || '(no code)'}`,
+        title: `${emoji[status || ''] || '❓'} ${code || '(no code)'}${check}`,
         subtitle: [campaignName, optionLabel, orderRef].filter(Boolean).join(' — '),
       };
     },
@@ -334,5 +374,6 @@ export default defineType({
     { title: 'Newest First', name: 'createdDesc', by: [{ field: '_createdAt', direction: 'desc' }] },
     { title: 'Status', name: 'statusAsc', by: [{ field: 'status', direction: 'asc' }] },
     { title: 'Campaign', name: 'campaignAsc', by: [{ field: 'campaignName', direction: 'asc' }] },
+    { title: 'Needs Checking First', name: 'checkFirst', by: [{ field: 'verificationStatus', direction: 'asc' }, { field: '_createdAt', direction: 'desc' }] },
   ],
 });

@@ -28,7 +28,7 @@ import { dirname, resolve } from 'node:path';
 import { createClient } from '@sanity/client';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MAP_PATH = resolve(__dirname, 'groupon-campaign-map.json');
+const MAP_PATH = resolve(__dirname, '..', 'src', 'data', 'groupon-campaigns.json');
 
 const argv = process.argv.slice(2);
 const command = argv[0];
@@ -157,7 +157,7 @@ function resolveEntitlement(row, map) {
     }
     if (!option && optionLabel) {
       const hay = optionLabel.toLowerCase();
-      option = campaign.options.find((o) => o.labelMatch && hay.includes(o.labelMatch.toLowerCase())) || null;
+      option = campaign.options.find((o) => o.match && hay.includes(o.match.toLowerCase())) || null;
     }
     if (!option && campaign.options.length === 1) option = campaign.options[0];
 
@@ -220,7 +220,10 @@ async function cmdImport() {
 
   const codes = rows.map((r) => normaliseCode(r.code));
   const existing = await sanity.fetch(
-    `*[_type == "grouponVoucher" && code in $codes]{ _id, code, status }`,
+    `*[_type == "grouponVoucher" && code in $codes]{
+      _id, code, status, serviceSlug, valuePence, verificationStatus, notes, orderRef,
+      "commissionId": commission->_id
+    }`,
     { codes }
   );
   const existingByCode = Object.fromEntries(existing.map((v) => [v.code, v]));
@@ -228,12 +231,36 @@ async function cmdImport() {
   const created = [];
   const skipped = [];
   const errors = [];
+  const autoVerified = [];
+  const autoMismatched = [];
 
   for (const row of rows) {
     const code = normaliseCode(row.code);
     if (!code) { errors.push({ row: row.code, reason: 'blank code' }); continue; }
-    if (existingByCode[code]) {
-      skipped.push({ code, reason: `already imported (${existingByCode[code].status})` });
+
+    const already = existingByCode[code];
+    if (already) {
+      // The code is already here — but if it arrived via a customer redeeming
+      // before we had imported it, this row is Groupon confirming it is real.
+      // Verifying here means most held orders clear on the next import with no
+      // separate step, and only genuinely unexplained codes need a lookup.
+      if (already.verificationStatus === 'unchecked' || already.verificationStatus === 'mismatch') {
+        const ent = resolveEntitlement(row, map);
+        const serviceOk = !ent.serviceSlug || ent.serviceSlug === already.serviceSlug;
+        const valueOk = !ent.valuePence || ent.valuePence === already.valuePence;
+        if (serviceOk && valueOk) {
+          if (!DRY) await markVerified(already, 'import');
+          autoVerified.push({ code, orderRef: already.orderRef });
+        } else {
+          const detail =
+            `customer claimed ${already.serviceSlug} ${GBP(already.valuePence)}; ` +
+            `Groupon says ${ent.serviceSlug || '?'} ${ent.valuePence ? GBP(ent.valuePence) : '?'}`;
+          if (!DRY) await markProblem(already, 'mismatch', `Mismatch found during import: ${detail}`);
+          autoMismatched.push({ code, detail });
+        }
+        continue;
+      }
+      skipped.push({ code, reason: `already imported (${already.status})` });
       continue;
     }
 
@@ -266,6 +293,7 @@ async function cmdImport() {
       purchasedAt: toIso(row.purchasedat) || undefined,
       expiresAt: toIso(row.expiresat) || undefined,
       verified: true,
+      verificationStatus: 'verified',
       claimCount: 0,
       importBatch: batch,
     };
@@ -283,20 +311,32 @@ async function cmdImport() {
   }
 
   if (AS_JSON) {
-    console.log(JSON.stringify({ batch, created, skipped, errors, dryRun: DRY }, null, 2));
+    console.log(JSON.stringify({ batch, created, skipped, errors, autoVerified, autoMismatched, dryRun: DRY }, null, 2));
     return;
   }
 
   log(`\n  Groupon import ${DRY ? '(dry run) ' : ''}— batch ${batch}`);
   log(`  ${'─'.repeat(60)}`);
-  log(`  Imported : ${created.length}`);
-  log(`  Skipped  : ${skipped.length}  (already present)`);
-  log(`  Errors   : ${errors.length}`);
+  log(`  Imported        : ${created.length}`);
+  log(`  Orders released : ${autoVerified.length}${autoVerified.length ? '  ← were on hold' : ''}`);
+  log(`  Mismatches      : ${autoMismatched.length}`);
+  log(`  Skipped         : ${skipped.length}  (already present)`);
+  log(`  Errors          : ${errors.length}`);
   if (created.length) {
     const byService = {};
     for (const c of created) byService[c.serviceSlug] = (byService[c.serviceSlug] || 0) + 1;
     log('');
     for (const [slug, n] of Object.entries(byService).sort()) log(`    ${slug.padEnd(24)} ${n}`);
+  }
+  if (autoVerified.length) {
+    log('\n  Released for work — Groupon confirmed these codes:');
+    for (const a of autoVerified) log(`    ✓ ${a.code.padEnd(18)} ${a.orderRef || ''}`);
+  }
+  if (autoMismatched.length) {
+    log('\n  ⚠ Ordered something other than what Groupon sold them — contact before working:');
+    for (const a of autoMismatched) {
+      log(`    ${a.code.padEnd(18)} ${a.detail}`);
+    }
   }
   if (errors.length) {
     log('\n  Errors:');
@@ -581,6 +621,207 @@ async function cmdSetStatus() {
   log('  Done.\n');
 }
 
+
+// ── verification ────────────────────────────────────────────────────────────
+
+/**
+ * Release an order for work: the voucher is real and matches what was ordered.
+ * Clearing the commission's hold is the whole point — the voucher record alone
+ * changes nothing about whether the work can be made.
+ */
+async function markVerified(voucher, source) {
+  await sanity
+    .patch(voucher._id)
+    .set({
+      verificationStatus: 'verified',
+      verified: true,
+      reconciledAt: new Date().toISOString(),
+    })
+    .unset(['flags[@ == "unverified"]'])
+    .commit();
+
+  if (voucher.commissionId) {
+    await sanity.patch(voucher.commissionId).set({ awaitingVoucherCheck: false }).commit();
+  }
+  return `${voucher.code} verified (${source})`;
+}
+
+async function markProblem(voucher, status, note) {
+  const stamp = `[${new Date().toISOString()}] ${note}`;
+  await sanity
+    .patch(voucher._id)
+    .set({
+      verificationStatus: status,
+      verified: false,
+      reconciledAt: new Date().toISOString(),
+      notes: voucher.notes ? `${voucher.notes}\n${stamp}` : stamp,
+    })
+    .commit();
+}
+
+const PENDING_PROJECTION = `{
+  _id, code, status, serviceSlug, valuePence, optionLabel, campaignName,
+  declaredDealKey, verificationStatus, orderRef, customerEmail, notes,
+  claimIp, _createdAt,
+  "commissionId": commission->_id,
+  "commissionStatus": commission->status,
+  "commissionPaidAt": commission->paidAt,
+  "customerName": commission->customerName
+}`;
+
+async function cmdPending() {
+  const rows = await sanity.fetch(
+    `*[_type == "grouponVoucher" && verificationStatus in ["unchecked","mismatch"]
+        && defined(commission->paidAt)] | order(_createdAt asc) ${PENDING_PROJECTION}`
+  );
+
+  if (AS_JSON) { console.log(JSON.stringify(rows, null, 2)); return; }
+
+  if (rows.length === 0) {
+    log('\n  ✓ Nothing waiting. Every paid Groupon order has a confirmed voucher.\n');
+    return;
+  }
+
+  log(`\n  ${rows.length} order(s) held pending a voucher check`);
+  log(`  ${'─'.repeat(74)}`);
+  log(`  Look each code up in Merchant Center → Redeem. Confirm the deal matches,`);
+  log(`  mark it redeemed there, then release it here.\n`);
+
+  for (const v of rows) {
+    const flag = v.verificationStatus === 'mismatch' ? '  ⚠ MISMATCH' : '';
+    log(`  ${v.code.padEnd(18)} ${GBP(v.valuePence).padStart(8)}  ${(v.campaignName || v.serviceSlug || '').slice(0, 24).padEnd(24)}${flag}`);
+    log(`  ${''.padEnd(18)} ${(v.optionLabel || '').slice(0, 46)}`);
+    log(`  ${''.padEnd(18)} order ${v.orderRef || '—'} · ${v.customerName || ''} <${v.customerEmail || ''}>`);
+    log('');
+  }
+
+  log(`  Release them all at once from a Groupon export:`);
+  log(`    node --env-file=.env scripts/groupon-vouchers.mjs verify export.csv\n`);
+  log(`  Or one at a time after looking it up:`);
+  log(`    node --env-file=.env scripts/groupon-vouchers.mjs confirm ${rows[0].code}`);
+  log(`    node --env-file=.env scripts/groupon-vouchers.mjs confirm ${rows[0].code} --reject\n`);
+}
+
+/**
+ * Bulk verification. This is what stops the manual check scaling with volume:
+ * one export from Merchant Center clears every order it covers, and only the
+ * codes the export does NOT explain are left for a human.
+ */
+async function cmdVerify() {
+  const file = positionals[0];
+  if (!file) die('Usage: verify <groupon-export.csv>   (any export containing a code column)');
+  if (!existsSync(file)) die(`File not found: ${file}`);
+
+  const map = loadMap();
+  const rows = parseCsv(readFileSync(file, 'utf8')).filter((r) => r.code && !r.code.startsWith('#'));
+  if (rows.length === 0) die('No rows with a "code" column found in that file.');
+
+  // What the export says each code actually is.
+  const fromExport = new Map();
+  for (const row of rows) {
+    const code = normaliseCode(row.code);
+    if (code) fromExport.set(code, resolveEntitlement(row, map));
+  }
+
+  const pending = await sanity.fetch(
+    `*[_type == "grouponVoucher" && verificationStatus in ["unchecked","mismatch"]] ${PENDING_PROJECTION}`
+  );
+
+  const verified = [];
+  const mismatched = [];
+  const missing = [];
+
+  for (const v of pending) {
+    const truth = fromExport.get(v.code);
+    if (!truth) { missing.push(v); continue; }
+
+    // The export knows the real deal. If the customer declared something else,
+    // the credit already applied was wrong — that needs a human, not a flag.
+    const serviceOk = !truth.serviceSlug || truth.serviceSlug === v.serviceSlug;
+    const valueOk = !truth.valuePence || truth.valuePence === v.valuePence;
+
+    if (serviceOk && valueOk) {
+      if (!DRY) await markVerified(v, 'export');
+      verified.push(v);
+    } else {
+      const detail =
+        `customer claimed ${v.serviceSlug} ${GBP(v.valuePence)}; ` +
+        `Groupon says ${truth.serviceSlug || '?'} ${truth.valuePence ? GBP(truth.valuePence) : '?'}`;
+      if (!DRY) await markProblem(v, 'mismatch', `Mismatch against export: ${detail}`);
+      mismatched.push({ v, detail });
+    }
+  }
+
+  if (AS_JSON) {
+    console.log(JSON.stringify({
+      exportRows: rows.length,
+      verified: verified.map((v) => v.code),
+      mismatched: mismatched.map((m) => ({ code: m.v.code, detail: m.detail })),
+      stillUnchecked: missing.map((v) => v.code),
+      dryRun: DRY,
+    }, null, 2));
+    return;
+  }
+
+  log(`\n  Verification against ${file}${DRY ? ' (dry run)' : ''}`);
+  log(`  ${'─'.repeat(74)}`);
+  log(`  Codes in export        : ${fromExport.size}`);
+  log(`  Orders released        : ${verified.length}`);
+  log(`  Mismatches             : ${mismatched.length}`);
+  log(`  Still unexplained      : ${missing.length}`);
+
+  if (verified.length) {
+    log('');
+    for (const v of verified) log(`    ✓ ${v.code.padEnd(18)} ${v.orderRef || ''}`);
+  }
+  if (mismatched.length) {
+    log(`\n  ⚠ These ordered something other than what Groupon sold them.`);
+    log(`    The credit already applied was wrong — contact the customer before working:`);
+    for (const m of mismatched) {
+      log(`    ${m.v.code.padEnd(18)} ${m.v.orderRef || ''}`);
+      log(`    ${''.padEnd(18)} ${m.detail}`);
+    }
+  }
+  if (missing.length) {
+    log(`\n  ${missing.length} code(s) this export does not cover. Either the export predates`);
+    log(`  them, or the codes are not real. Re-export with a wider date range, then`);
+    log(`  look up whatever still will not match:`);
+    for (const v of missing.slice(0, 15)) log(`    ${v.code.padEnd(18)} ${v.orderRef || ''}`);
+    if (missing.length > 15) log(`    … and ${missing.length - 15} more`);
+  }
+  log('');
+}
+
+/** Single code, after you have looked it up in Merchant Center by hand. */
+async function cmdConfirm() {
+  const code = normaliseCode(positionals[0]);
+  if (!code) die('Usage: confirm <code> [--reject]');
+
+  const v = await sanity.fetch(
+    `*[_type == "grouponVoucher" && code == $code][0] ${PENDING_PROJECTION}`,
+    { code }
+  );
+  if (!v) die(`No voucher found with code ${code}`);
+
+  const reject = flags.has('--reject');
+
+  if (DRY) {
+    log(`\n  ${code}: would be marked ${reject ? 'REJECTED' : 'VERIFIED'} (dry run)\n`);
+    return;
+  }
+
+  if (reject) {
+    await markProblem(v, 'rejected', 'Rejected after a Merchant Center lookup — Groupon has no such voucher.');
+    log(`\n  ${code} marked rejected. Order ${v.orderRef || ''} stays on hold.`);
+    log(`  Refund or cancel it, then void the voucher:`);
+    log(`    node --env-file=.env scripts/groupon-vouchers.mjs set-status ${code} void\n`);
+    return;
+  }
+
+  log(`\n  ${await markVerified(v, 'manual')}`);
+  log(`  Order ${v.orderRef || ''} released for work.\n`);
+}
+
 // ── dispatch ────────────────────────────────────────────────────────────────
 
 const commands = {
@@ -589,6 +830,9 @@ const commands = {
   status: cmdStatus,
   lookup: cmdLookup,
   reconcile: cmdReconcile,
+  pending: cmdPending,
+  verify: cmdVerify,
+  confirm: cmdConfirm,
   sweep: cmdSweep,
   'set-status': cmdSetStatus,
 };
@@ -598,6 +842,10 @@ if (!command || command === '--help' || command === '-h' || !commands[command]) 
   Groupon voucher ops
 
     node --env-file=.env scripts/groupon-vouchers.mjs <command>
+
+    pending                     Orders held waiting on a voucher check
+    verify <export.csv>         Release every order a Groupon export confirms
+    confirm <code> [--reject]   Release (or reject) one code after a lookup
 
     template [file]             Blank import CSV with the right headers
     import <file.csv>           Import vouchers sold on Groupon (idempotent)

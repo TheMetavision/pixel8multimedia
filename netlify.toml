@@ -11,3 +11,25 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Groupon voucher redemption — customers guess at this, so catch the obvious
+# variants rather than serving a 404 to someone holding a paid voucher.
+[[redirects]]
+  from = "/redeem"
+  to = "/groupon"
+  status = 301
+
+[[redirects]]
+  from = "/voucher"
+  to = "/groupon"
+  status = 301
+
+[[redirects]]
+  from = "/vouchers"
+  to = "/groupon"
+  status = 301
+
+[[redirects]]
+  from = "/groupon-voucher"
+  to = "/groupon"
+  status = 301

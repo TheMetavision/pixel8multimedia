@@ -51,6 +51,16 @@ export default defineType({
       validation: (Rule) =>
         Rule.custom((status, context) => {
           const doc = context.document as any;
+          // A Groupon code we haven't confirmed is not yet money. Groupon gives
+          // us no way to check it automatically, so the order waits here until
+          // it has been matched against an export or looked up in Merchant
+          // Center. Blocking at the status field is deliberate: a flag alone
+          // gets scrolled past on a busy day, and the work is the thing we
+          // cannot take back.
+          const WORKABLE = ['in-progress', 'review', 'complete', 'shipped', 'delivered'];
+          if (doc?.awaitingVoucherCheck === true && WORKABLE.includes(status as string)) {
+            return 'This order used a Groupon code that has not been confirmed yet. Look the code up in Merchant Center (or run the verify command), then set it back to this status.';
+          }
           // H2: completing a digital/both order emails the customer their
           // download link, which needs the file. Block Complete until it's
           // uploaded. Print-only orders have no download, so they're exempt.
@@ -335,6 +345,17 @@ export default defineType({
       hidden: ({ document }) => document?.source !== 'groupon',
     }),
     defineField({
+      name: 'awaitingVoucherCheck',
+      title: 'Awaiting Groupon Voucher Check',
+      type: 'boolean',
+      group: 'source',
+      readOnly: true,
+      initialValue: false,
+      description:
+        'Set when the order was placed with a Groupon code we had not yet confirmed. Clears automatically when the voucher is confirmed — by a Groupon export match, or by you confirming it after a Merchant Center lookup. While it is set, this order must not be worked.',
+      hidden: ({ document }) => document?.source !== 'groupon',
+    }),
+    defineField({
       name: 'discountPence',
       title: 'Voucher Discount Applied (pence)',
       type: 'number',
@@ -412,8 +433,9 @@ export default defineType({
       service: 'service.title',
       notifyError: 'notifyError',
       source: 'source',
+      awaitingVoucherCheck: 'awaitingVoucherCheck',
     },
-    prepare({ title, customerName, status, service, notifyError, source }) {
+    prepare({ title, customerName, status, service, notifyError, source, awaitingVoucherCheck }) {
       const emoji: Record<string, string> = {
         pending: '⏳',
         paid: '💷',
@@ -427,7 +449,8 @@ export default defineType({
         refunded: '↩️',
       };
       const sourceTag = source === 'groupon' ? '[GRPN] ' : '';
-      const displayTitle = (notifyError ? '[!] ' : '') + sourceTag + (title || customerName || 'Untitled');
+      const hold = awaitingVoucherCheck ? '[ON HOLD] ' : '';
+      const displayTitle = (notifyError ? '[!] ' : '') + hold + sourceTag + (title || customerName || 'Untitled');
       return {
         title: `${emoji[status || ''] || '❓'} ${displayTitle}`,
         subtitle: `${service || 'Manual commission'} — ${customerName || ''}`,

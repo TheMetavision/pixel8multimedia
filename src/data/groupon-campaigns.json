@@ -1,0 +1,277 @@
+{
+  "_readme": [
+    "Single source of truth for Groupon campaigns, shared by the /groupon page,",
+    "the redemption function and scripts/groupon-vouchers.mjs.",
+    "",
+    "Each option's `key` is stable and appears in that campaign's redemption link",
+    "(/groupon?deal=<key>), so a customer following their own voucher arrives with",
+    "the right deal already selected. Never change or reuse a key once a campaign",
+    "is live — vouchers in the wild carry it.",
+    "",
+    "valuePence is the Groupon ORIGINAL VALUE: what the voucher is worth as credit",
+    "here, matching the site price by design. dealPence is what the customer paid",
+    "Groupon, recorded for reporting only.",
+    "",
+    "`match` identifies the option within a Groupon CSV export, case-insensitively."
+  ],
+  "campaigns": {
+    "22e54a75-b7ff-4ae8-92e3-87727a33ad69": {
+      "campaignName": "Past Perfect",
+      "serviceSlug": "past-perfect",
+      "options": [
+        {
+          "key": "past-perfect-999",
+          "label": "Digital photo restoration and colourisation of one photo",
+          "valuePence": 999,
+          "dealPence": 699,
+          "orderType": "digital",
+          "match": "restoration"
+        }
+      ]
+    },
+    "db3e255f-955c-41b1-afea-750f2425baaf": {
+      "campaignName": "Cartoonify Me!",
+      "serviceSlug": "cartoonify-me",
+      "options": [
+        {
+          "key": "cartoonify-me-1499",
+          "label": "Digital cartoon portrait",
+          "valuePence": 1499,
+          "dealPence": 1099,
+          "orderType": "digital",
+          "match": "cartoon"
+        }
+      ]
+    },
+    "8f7bff9a-07a2-4687-b2ba-610b6b5d61bc": {
+      "campaignName": "Story Of Your Life",
+      "serviceSlug": "story-of-your-life",
+      "options": [
+        {
+          "key": "story-of-your-life-1499",
+          "label": "Digital collage",
+          "valuePence": 1499,
+          "dealPence": 1099,
+          "orderType": "digital",
+          "match": "collage"
+        },
+        {
+          "key": "story-of-your-life-10999",
+          "label": "30-second animation with music",
+          "valuePence": 10999,
+          "dealPence": 7999,
+          "orderType": "animation-music",
+          "match": "music"
+        },
+        {
+          "key": "story-of-your-life-13999",
+          "label": "30-second animation with music and voiceover",
+          "valuePence": 13999,
+          "dealPence": 9999,
+          "orderType": "animation-vo",
+          "match": "voiceover"
+        }
+      ]
+    },
+    "1f7a5e36-6e99-4493-bde8-e844d3881957": {
+      "campaignName": "The Missing Moment",
+      "serviceSlug": "the-missing-moment",
+      "options": [
+        {
+          "key": "the-missing-moment-1999",
+          "label": "Digital composite",
+          "valuePence": 1999,
+          "dealPence": 1499,
+          "orderType": "digital",
+          "match": "digital"
+        },
+        {
+          "key": "the-missing-moment-7999",
+          "label": "30-second animation with music",
+          "valuePence": 7999,
+          "dealPence": 5999,
+          "orderType": "animation-music",
+          "match": "music"
+        },
+        {
+          "key": "the-missing-moment-9999",
+          "label": "30-second animation with music and voiceover",
+          "valuePence": 9999,
+          "dealPence": 7499,
+          "orderType": "animation-vo",
+          "match": "voiceover"
+        }
+      ]
+    },
+    "bc882e62-6222-4d32-b3a4-f40e558bdabe": {
+      "campaignName": "Back in Time",
+      "serviceSlug": "back-in-time",
+      "options": [
+        {
+          "key": "back-in-time-1499",
+          "label": "One era",
+          "valuePence": 1499,
+          "dealPence": 1099,
+          "orderType": "digital",
+          "match": "one era"
+        },
+        {
+          "key": "back-in-time-2499",
+          "label": "Both collections",
+          "valuePence": 2499,
+          "dealPence": 1799,
+          "orderType": "digital-both",
+          "match": "both"
+        }
+      ]
+    },
+    "c6cf878a-314a-4bb3-9255-1a0457395586": {
+      "campaignName": "Star Power",
+      "serviceSlug": "star-power",
+      "options": [
+        {
+          "key": "star-power-1499",
+          "label": "Digital star portrait",
+          "valuePence": 1499,
+          "dealPence": 1099,
+          "orderType": "digital",
+          "match": "star"
+        }
+      ]
+    },
+    "a06619a2-fe1e-4c75-9042-455897900780": {
+      "campaignName": "Your Song Your Story",
+      "serviceSlug": "your-song-your-story",
+      "options": [
+        {
+          "key": "your-song-your-story-1999",
+          "label": "Your song, digital",
+          "valuePence": 1999,
+          "dealPence": 1499,
+          "orderType": "digital",
+          "match": "song"
+        }
+      ]
+    },
+    "7d27f6a5-b2d3-4428-8988-862231f126cf": {
+      "campaignName": "Crayon To Creation",
+      "serviceSlug": "crayon-to-creation",
+      "options": [
+        {
+          "key": "crayon-to-creation-1999",
+          "label": "Digital artwork",
+          "valuePence": 1999,
+          "dealPence": 1499,
+          "orderType": "digital",
+          "match": "digital"
+        },
+        {
+          "key": "crayon-to-creation-7999",
+          "label": "30-second animation with music",
+          "valuePence": 7999,
+          "dealPence": 5999,
+          "orderType": "animation-music",
+          "match": "music"
+        },
+        {
+          "key": "crayon-to-creation-9999",
+          "label": "30-second animation with music and voiceover",
+          "valuePence": 9999,
+          "dealPence": 7499,
+          "orderType": "animation-vo",
+          "match": "voiceover"
+        }
+      ]
+    },
+    "53acd907-d3a2-49fb-a352-e3bf392d6134": {
+      "campaignName": "The Day I Met...",
+      "serviceSlug": "the-day-i-met",
+      "options": [
+        {
+          "key": "the-day-i-met-1999",
+          "label": "Digital composite",
+          "valuePence": 1999,
+          "dealPence": 1499,
+          "orderType": "digital",
+          "match": "digital"
+        },
+        {
+          "key": "the-day-i-met-7999",
+          "label": "30-second animation with music",
+          "valuePence": 7999,
+          "dealPence": 5999,
+          "orderType": "animation-music",
+          "match": "music"
+        },
+        {
+          "key": "the-day-i-met-9999",
+          "label": "30-second animation with music and voiceover",
+          "valuePence": 9999,
+          "dealPence": 7499,
+          "orderType": "animation-vo",
+          "match": "voiceover"
+        }
+      ]
+    },
+    "318c67ff-c57f-4a95-96e5-65af468ba0d8": {
+      "campaignName": "Scene Stealer",
+      "serviceSlug": "scene-stealer",
+      "options": [
+        {
+          "key": "scene-stealer-1999",
+          "label": "Digital scene",
+          "valuePence": 1999,
+          "dealPence": 1499,
+          "orderType": "digital",
+          "match": "digital"
+        },
+        {
+          "key": "scene-stealer-7999",
+          "label": "30-second animation with music",
+          "valuePence": 7999,
+          "dealPence": 5999,
+          "orderType": "animation-music",
+          "match": "music"
+        },
+        {
+          "key": "scene-stealer-9999",
+          "label": "30-second animation with music and voiceover",
+          "valuePence": 9999,
+          "dealPence": 7499,
+          "orderType": "animation-vo",
+          "match": "voiceover"
+        }
+      ]
+    },
+    "1151cfb3-f192-46ad-b691-aab921efc989": {
+      "campaignName": "Prankz!",
+      "serviceSlug": "prankz",
+      "options": [
+        {
+          "key": "prankz-1999",
+          "label": "Digital prank image",
+          "valuePence": 1999,
+          "dealPence": 1499,
+          "orderType": "digital",
+          "match": "digital"
+        },
+        {
+          "key": "prankz-7999",
+          "label": "30-second animation with music",
+          "valuePence": 7999,
+          "dealPence": 5999,
+          "orderType": "animation-music",
+          "match": "music"
+        },
+        {
+          "key": "prankz-9999",
+          "label": "30-second animation with music and voiceover",
+          "valuePence": 9999,
+          "dealPence": 7499,
+          "orderType": "animation-vo",
+          "match": "voiceover"
+        }
+      ]
+    }
+  }
+}

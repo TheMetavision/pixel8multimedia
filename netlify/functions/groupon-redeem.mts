@@ -1,16 +1,21 @@
 // netlify/functions/groupon-redeem.mts
 //
-// Step 1 of the Groupon fulfilment flow.
+// Step 1 of the Groupon fulfilment flow: accept-then-verify.
 //
-// The customer bought a voucher on Groupon and lands on /groupon. They type the
-// code. This endpoint decides whether that code is good, and if it is, hands
-// back a short-lived claim token plus the service they are entitled to. The
-// browser then sends them into the normal commission wizard carrying that
-// token; commission-checkout turns it into a Stripe discount.
+// Groupon publishes no API for checking whether a voucher code is real, so this
+// endpoint CANNOT know. Gating redemption on our imported list would have meant
+// turning away anyone who bought a voucher since the last import — which is
+// most people, on the evening they buy. So the code is accepted here, the order
+// is taken, and the order is held until the code has been confirmed against
+// Merchant Center. A bad code costs a minute of checking; it never costs work.
 //
-// What this endpoint deliberately does NOT do: hand the customer anything they
-// could reuse or share. The claim token is single-use, expires in two hours,
-// and is stored only as a hash.
+// Two grades of claim come out of this:
+//
+//   verified   — the code is in our imported list, so the service, option and
+//                value are authoritative and the customer's own selection is
+//                overridden. Nothing to check later.
+//   unchecked  — the code is newer than our last import. We record the deal the
+//                customer says they bought and flag the order for confirmation.
 
 import type { Context } from '@netlify/functions';
 import { createClient } from '@sanity/client';
@@ -25,6 +30,7 @@ import {
   rateLimit,
   recordFailure,
   claimCookie,
+  dealOptionByKey,
   CLAIM_TTL_MINUTES,
   type VoucherDoc,
 } from './_shared/groupon.mts';
@@ -37,19 +43,21 @@ const sanity = createClient({
   useCdn: false,
 });
 
-// When true, a well-formed code that isn't in our imported list is accepted and
-// recorded as unverified, to be reconciled against a Groupon report later.
-// Default OFF — leaving it on means anyone who guesses the code format gets
-// free work. Only turn it on if Groupon volume outruns the import cadence, and
-// watch the unverified queue daily if you do.
-const ALLOW_UNVERIFIED = process.env.GROUPON_ALLOW_UNVERIFIED === 'true';
-const UNVERIFIED_SERVICE_SLUG = process.env.GROUPON_UNVERIFIED_SERVICE_SLUG || '';
-const UNVERIFIED_VALUE_PENCE = Number(process.env.GROUPON_UNVERIFIED_VALUE_PENCE || 0);
+// How many unconfirmed vouchers one address may have in flight at once. Someone
+// inventing codes hits this quickly; a real customer never sees it.
+const MAX_UNCHECKED_PER_IP = Number(process.env.GROUPON_MAX_UNCHECKED_PER_IP || 3);
 
 const NOT_ORDERABLE =
-  'Your voucher is valid, but that service is not taking orders online at the moment. ' +
+  'Your voucher is fine, but that service is not taking orders online at the moment. ' +
   'Email hello@pixel8multimedia.co.uk with your Groupon order number and we will set it up by hand — ' +
   'your voucher has not been used.';
+
+const NEEDS_DEAL =
+  'Please tell us which deal you bought so we apply the right credit.';
+
+const TOO_MANY =
+  'We have a few unconfirmed vouchers from you already. Email hello@pixel8multimedia.co.uk ' +
+  'with your Groupon order numbers and we will sort them out by hand.';
 
 function json(body: unknown, status = 200, setCookie?: string) {
   const headers: Record<string, string> = {
@@ -60,11 +68,7 @@ function json(body: unknown, status = 200, setCookie?: string) {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
-/**
- * Can a customer actually place this order on the site right now? A voucher for
- * a service whose wizard won't render would be claimed and then stranded for
- * two hours, so we check before touching the voucher at all.
- */
+/** Can a customer actually place this order right now? */
 async function serviceIsOrderable(slug: string): Promise<boolean> {
   const svc = await sanity.fetch(
     `*[_type == "service" && slug.current == $slug][0]{
@@ -76,16 +80,11 @@ async function serviceIsOrderable(slug: string): Promise<boolean> {
 }
 
 export default async function handler(req: Request, _context: Context) {
-  if (req.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405);
-  }
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   const ip = clientIp(req);
   if (!rateLimit(`redeem:${ip}`, 10, 10 * 60_000)) {
-    return json(
-      { error: 'Too many attempts. Please wait a few minutes and try again.' },
-      429
-    );
+    return json({ error: 'Too many attempts. Please wait a few minutes and try again.' }, 429);
   }
 
   let body: any;
@@ -96,127 +95,132 @@ export default async function handler(req: Request, _context: Context) {
   }
 
   const code = normaliseCode(body.code);
-  if (!code) {
-    return json({ error: 'Please enter your Groupon code.' }, 400);
-  }
+  const dealKey = String(body.dealKey || '').trim();
+
+  if (!code) return json({ error: 'Please enter your Groupon code.' }, 400);
   if (!looksLikeGrouponCode(code)) {
-    // Same message as a genuine miss — a malformed code shouldn't teach an
-    // attacker what the format is.
     recordFailure(`redeem:${ip}`);
-    return json({ error: REJECTION_MESSAGE['not-found'] }, 404);
+    return json({ error: REJECTION_MESSAGE['not-found'] }, 400);
   }
 
   try {
     const voucher: VoucherDoc | null = await sanity.fetch(
       `*[_type == "grouponVoucher" && code == $code][0]{
         _id, code, status, serviceSlug, entitlementOrderType, valuePence,
-        expiresAt, claimTokenHash, claimExpiresAt, claimCount,
-        campaignName, optionLabel, stripeCouponId, stripePromotionCodeId,
-        stripeSessionId, verified,
+        expiresAt, claimTokenHash, claimExpiresAt, claimCount, campaignName,
+        optionLabel, stripeCouponId, stripePromotionCodeId, stripeSessionId,
+        verified, verificationStatus, declaredDealKey,
         "commissionPaidAt": commission->paidAt
       }`,
       { code }
     );
 
-    if (!voucher) {
-      if (!ALLOW_UNVERIFIED || !UNVERIFIED_SERVICE_SLUG || !UNVERIFIED_VALUE_PENCE) {
-        console.log(`groupon-redeem: unknown code from ${ip}`);
-        recordFailure(`redeem:${ip}`);
-        return json({ error: REJECTION_MESSAGE['not-found'] }, 404);
+    // ── Known code: our record wins over anything the customer selected ──
+    if (voucher) {
+      const rejection = rejectionFor(voucher);
+      if (rejection) {
+        console.log(`groupon-redeem: ${code} refused (${rejection})`);
+        return json({ error: REJECTION_MESSAGE[rejection], reason: rejection }, 409);
       }
-      if (!(await serviceIsOrderable(UNVERIFIED_SERVICE_SLUG))) {
+      if (!(await serviceIsOrderable(voucher.serviceSlug))) {
         return json({ error: NOT_ORDERABLE }, 503);
       }
-      // Unverified path — create the record, flag it, and let it through.
+
       const { token, hash } = newClaimToken();
-      const created = await sanity.create({
-        _type: 'grouponVoucher',
-        code,
+      const claimExpiresAt = minutesFromNow(CLAIM_TTL_MINUTES);
+      const claimCount = (voucher.claimCount || 0) + 1;
+
+      await sanity.patch(voucher._id).set({
         status: 'claimed',
-        serviceSlug: UNVERIFIED_SERVICE_SLUG,
-        valuePence: UNVERIFIED_VALUE_PENCE,
-        verified: false,
-        flags: ['unverified'],
         claimTokenHash: hash,
         claimedAt: new Date().toISOString(),
-        claimExpiresAt: minutesFromNow(CLAIM_TTL_MINUTES),
-        claimCount: 1,
-        notes: `Accepted unverified from ${ip}. Reconcile against a Groupon redemption report before delivering.`,
-      });
-      console.warn(`groupon-redeem: UNVERIFIED code ${code} accepted (${created._id})`);
+        claimExpiresAt,
+        claimCount,
+      }).commit();
+
+      console.log(`groupon-redeem: ${code} claimed (${voucher.serviceSlug}, claim #${claimCount})`);
+
       return json({
         ok: true,
-        verified: false,
+        verified: voucher.verificationStatus === 'verified' || voucher.verified === true,
         claimToken: token,
-        serviceSlug: UNVERIFIED_SERVICE_SLUG,
-        valuePence: UNVERIFIED_VALUE_PENCE,
-        claimExpiresAt: minutesFromNow(CLAIM_TTL_MINUTES),
+        serviceSlug: voucher.serviceSlug,
+        entitlementOrderType: voucher.entitlementOrderType || null,
+        valuePence: voucher.valuePence,
+        campaignName: voucher.campaignName || null,
+        optionLabel: voucher.optionLabel || null,
+        // A known code overrides the customer's pick, so tell the page when the
+        // two disagreed — it needs to explain the change rather than silently
+        // send them somewhere they didn't choose.
+        correctedFromDeal: dealKey && dealOptionByKey(dealKey)?.serviceSlug !== voucher.serviceSlug
+          ? dealKey
+          : null,
+        claimExpiresAt,
       }, 200, claimCookie(token));
     }
 
-    const rejection = rejectionFor(voucher);
-    if (rejection) {
-      console.log(`groupon-redeem: ${code} refused (${rejection})`);
-      return json({ error: REJECTION_MESSAGE[rejection], reason: rejection }, 409);
-    }
+    // ── Unknown code: take the customer's word, and flag it for checking ──
+    const option = dealOptionByKey(dealKey);
+    if (!option) return json({ error: NEEDS_DEAL, needsDeal: true }, 400);
 
-    // Check the service BEFORE mutating the voucher — a claim we can't honour
-    // locks the customer out for the whole claim window for no reason.
-    if (!(await serviceIsOrderable(voucher.serviceSlug))) {
-      console.warn(`groupon-redeem: ${code} valid but ${voucher.serviceSlug} is not orderable`);
+    if (!(await serviceIsOrderable(option.serviceSlug))) {
       return json({ error: NOT_ORDERABLE }, 503);
     }
 
-    // Claimable. Mint a fresh token — this invalidates any previous claim on
-    // the same code, which is what we want when a customer restarts.
+    const uncheckedFromIp = await sanity.fetch(
+      `count(*[_type == "grouponVoucher" && verificationStatus == "unchecked" && claimIp == $ip])`,
+      { ip }
+    );
+    if (uncheckedFromIp >= MAX_UNCHECKED_PER_IP) {
+      console.warn(`groupon-redeem: ${ip} has ${uncheckedFromIp} unchecked vouchers — refusing`);
+      return json({ error: TOO_MANY }, 429);
+    }
+
     const { token, hash } = newClaimToken();
     const claimExpiresAt = minutesFromNow(CLAIM_TTL_MINUTES);
-    const claimCount = (voucher.claimCount || 0) + 1;
 
-    const patch: Record<string, unknown> = {
+    const created = await sanity.create({
+      _type: 'grouponVoucher',
+      code,
       status: 'claimed',
+      dealId: option.dealId,
+      campaignName: option.campaignName,
+      optionLabel: option.label,
+      serviceSlug: option.serviceSlug,
+      entitlementOrderType: option.orderType,
+      valuePence: option.valuePence,
+      paidPence: option.dealPence ?? undefined,
+      declaredDealKey: option.key,
+      verified: false,
+      verificationStatus: 'unchecked',
+      claimIp: ip,
       claimTokenHash: hash,
       claimedAt: new Date().toISOString(),
       claimExpiresAt,
-      claimCount,
-    };
+      claimCount: 1,
+      notes:
+        'Code accepted before confirmation — it was not in the imported list. ' +
+        'The deal above is what the CUSTOMER says they bought. Confirm in Merchant Center ' +
+        'before this order is worked.',
+    });
 
-    await sanity
-      .patch(voucher._id)
-      .set(patch)
-      .commit();
-
-    // Repeated claims aren't proof of anything, but they're the shape of a
-    // shared code doing the rounds. Flag rather than block.
-    if (claimCount >= 4) {
-      try {
-        await sanity
-          .patch(voucher._id)
-          .setIfMissing({ flags: [] })
-          .append('flags', ['repeat-claims'])
-          .commit();
-      } catch { /* advisory only */ }
-    }
-
-    console.log(`groupon-redeem: ${code} claimed (${voucher.serviceSlug}, claim #${claimCount})`);
+    console.log(`groupon-redeem: ${code} accepted UNCHECKED as ${option.key} (${created._id})`);
 
     return json({
       ok: true,
-      verified: voucher.verified !== false,
+      verified: false,
       claimToken: token,
-      serviceSlug: voucher.serviceSlug,
-      entitlementOrderType: voucher.entitlementOrderType || null,
-      valuePence: voucher.valuePence,
-      campaignName: voucher.campaignName || null,
-      optionLabel: voucher.optionLabel || null,
+      serviceSlug: option.serviceSlug,
+      entitlementOrderType: option.orderType,
+      valuePence: option.valuePence,
+      campaignName: option.campaignName,
+      optionLabel: option.label,
+      correctedFromDeal: null,
       claimExpiresAt,
     }, 200, claimCookie(token));
   } catch (err: any) {
     console.error('groupon-redeem error:', err);
-    return json(
-      { error: 'Something went wrong checking that code. Please try again in a moment.' },
-      500
-    );
+    return json({ error: 'Something went wrong checking that code. Please try again in a moment.' }, 500);
   }
 }
 
