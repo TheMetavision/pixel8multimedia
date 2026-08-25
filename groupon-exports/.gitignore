@@ -1,0 +1,4 @@
+# Customer voucher codes must not end up in the repo.
+*.csv
+*.xlsx
+processed/

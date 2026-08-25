@@ -17,6 +17,11 @@ import campaignData from '../data/groupon-campaigns.json';
 
 const prefillCode = (Astro.url.searchParams.get('code') || '').toUpperCase().slice(0, 24);
 const prefillDeal = (Astro.url.searchParams.get('deal') || '').trim();
+// Voucher instructions are set per CAMPAIGN on Groupon, not per option, so a
+// multi-option campaign can only ever link to itself. ?campaign= narrows the
+// picker to that campaign's own options — the customer picks between two or
+// three things they recognise instead of hunting through all twenty-four.
+const prefillCampaign = (Astro.url.searchParams.get('campaign') || '').trim();
 
 const services = await sanityClient.fetch(
   `*[_type == "service" && commissionEnabled != false && count(briefingFields) > 0]{
@@ -27,7 +32,11 @@ const orderable = new Set(services.map((s: any) => s.slug));
 
 // Flatten the campaign map into pickable deals, dropping any whose service
 // can't currently take an order.
-const deals = Object.entries(campaignData.campaigns as Record<string, any>)
+const allCampaigns = campaignData.campaigns as Record<string, any>;
+const scopedCampaign = prefillCampaign && allCampaigns[prefillCampaign] ? prefillCampaign : null;
+
+const deals = Object.entries(allCampaigns)
+  .filter(([id]) => !scopedCampaign || id === scopedCampaign)
   .flatMap(([, c]) =>
     (c.options || []).map((o: any) => ({
       key: o.key,
@@ -45,7 +54,12 @@ const grouped = deals.reduce((acc: Record<string, any[]>, d) => {
   return acc;
 }, {});
 
-const knownDeal = deals.find((d) => d.key === prefillDeal) || null;
+// A campaign with one option needs no choice at all — treat the campaign link
+// as if it named the deal.
+const soleDeal = scopedCampaign && deals.length === 1 ? deals[0] : null;
+const selectedKey = prefillDeal || soleDeal?.key || '';
+const knownDeal = deals.find((d) => d.key === selectedKey) || null;
+const scopedName = scopedCampaign ? allCampaigns[scopedCampaign].campaignName : null;
 const money = (p: number) => `£${(p / 100).toFixed(2)}`;
 ---
 
@@ -105,12 +119,14 @@ const money = (p: number) => `£${(p / 100).toFixed(2)}`;
       <!-- ── Step 2: which deal ───────────────────────────────────────── -->
       <div class="mt-8">
         <label for="groupon-deal" class="block font-montserrat font-bold text-off-white text-lg mb-2">
-          2. Which deal did you buy?
+          2. {knownDeal ? 'Confirm your deal' : 'Which deal did you buy?'}
         </label>
         <p class="font-dm text-sm text-gray-400 mb-4">
           {knownDeal
-            ? "We've picked this from your voucher link — change it if it's not right."
-            : 'Pick the deal exactly as it appeared on Groupon, so we apply the right credit.'}
+            ? "Taken from your voucher link — change it if it's not right."
+            : scopedName
+              ? `Which ${scopedName} option did you buy? Pick it exactly as it appeared on Groupon.`
+              : 'Pick the deal exactly as it appeared on Groupon, so we apply the right credit.'}
         </p>
         <select
           id="groupon-deal"
@@ -121,13 +137,20 @@ const money = (p: number) => `£${(p / 100).toFixed(2)}`;
           {Object.entries(grouped).map(([campaign, opts]) => (
             <optgroup label={campaign}>
               {opts.map((d) => (
-                <option value={d.key} selected={d.key === prefillDeal}>
+                <option value={d.key} selected={d.key === selectedKey}>
                   {d.label} — {money(d.valuePence)}
                 </option>
               ))}
             </optgroup>
           ))}
         </select>
+
+        {scopedCampaign && (
+          <p class="font-dm text-xs text-gray-500 mt-3">
+            Bought a different Pixel8 deal?
+            <a href="/groupon" class="text-pop-orange hover:underline">Show all deals</a>.
+          </p>
+        )}
       </div>
 
       <button

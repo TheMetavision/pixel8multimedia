@@ -822,9 +822,66 @@ async function cmdConfirm() {
   log(`  Order ${v.orderRef || ''} released for work.\n`);
 }
 
+
+/**
+ * The copy-and-paste sheet for the manual Groupon work. Voucher instructions
+ * are set per campaign, not per option, so a multi-option campaign links to
+ * itself and the customer picks their option on arrival; a single-option
+ * campaign links straight at the deal and they only confirm.
+ */
+async function cmdLinks() {
+  const map = loadMap();
+  const site = process.env.URL || 'https://pixel8multimedia.co.uk';
+  const rows = [];
+
+  for (const [dealId, c] of Object.entries(map.campaigns)) {
+    const opts = c.options || [];
+    if (opts.length === 0) continue;
+    const url = opts.length === 1
+      ? `${site}/groupon?deal=${opts[0].key}`
+      : `${site}/groupon?campaign=${dealId}`;
+    rows.push({
+      campaign: c.campaignName,
+      serviceSlug: c.serviceSlug,
+      dealId,
+      optionCount: opts.length,
+      url,
+      options: opts.map((o) => ({ key: o.key, label: o.label, valuePence: o.valuePence })),
+    });
+  }
+
+  rows.sort((a, b) => a.campaign.localeCompare(b.campaign));
+
+  if (AS_JSON) { console.log(JSON.stringify(rows, null, 2)); return; }
+
+  log(`\n  Voucher instructions — one per campaign`);
+  log(`  ${'─'.repeat(74)}`);
+  log(`  Paste the URL into each campaign's voucher instructions on Groupon.`);
+  log(`  Single-option campaigns land the customer on a confirmed deal; multi-option`);
+  log(`  ones show just that campaign's options.\n`);
+
+  for (const r of rows) {
+    log(`  ${r.campaign}${r.optionCount > 1 ? `  (${r.optionCount} options)` : ''}`);
+    log(`    ${r.url}`);
+    log('');
+  }
+
+  log(`  Suggested wording, same for every campaign:\n`);
+  log(`    To redeem, go to ${site}/groupon and enter your Groupon`);
+  log(`    voucher code. You'll be asked for a photo and a few details about what`);
+  log(`    you'd like. Your voucher covers the deal you bought — you only pay if you`);
+  log(`    choose to add a poster or canvas print at checkout.\n`);
+  log(`  Also update the fine print on each campaign to point at /groupon rather than`);
+  log(`  the service page. Check it reads:\n`);
+  log(`    Redemption required online at ${site}/groupon, provide Groupon code`);
+  log(`    Must be 18 or older`);
+  log(`    Valid only for option purchased\n`);
+}
+
 // ── dispatch ────────────────────────────────────────────────────────────────
 
 const commands = {
+  links: cmdLinks,
   template: cmdTemplate,
   import: cmdImport,
   status: cmdStatus,
@@ -846,6 +903,8 @@ if (!command || command === '--help' || command === '-h' || !commands[command]) 
     pending                     Orders held waiting on a voucher check
     verify <export.csv>         Release every order a Groupon export confirms
     confirm <code> [--reject]   Release (or reject) one code after a lookup
+
+    links                       Voucher-instruction URLs for every campaign
 
     template [file]             Blank import CSV with the right headers
     import <file.csv>           Import vouchers sold on Groupon (idempotent)
