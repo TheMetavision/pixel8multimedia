@@ -47,6 +47,18 @@ export default async (req, context) => {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
+    // Both webhooks are subscribed to checkout.session.completed, so every
+    // commission checkout arrives here too. A commission session carries no
+    // cartItems and no shipping name, so this handler used to build an empty
+    // order addressed to "Customer" and email it to the buyer — a second,
+    // contentless confirmation alongside the real one.
+    // commission-checkout always sets commissionId; stripe-webhook-commission
+    // owns those sessions entirely.
+    if (session.metadata?.commissionId) {
+      console.log(`webhook: ignoring commission session ${session.id} — handled by stripe-webhook-commission`);
+      return new Response('OK \u2014 commission session, not a shop order', { status: 200 });
+    }
+
     try {
       const shipping = session.shipping_details?.address || {};
       const customerName = session.shipping_details?.name || session.customer_details?.name || 'Customer';
