@@ -34,6 +34,38 @@ export default defineConfig({
             S.documentTypeListItem('commission').title('Commissions'),
             S.documentTypeListItem('order').title('Orders'),
             S.divider(),
+            // Groupon vouchers are worked as a queue, not browsed as a list:
+            // the only question most days is "is anything waiting on me?", so
+            // that view comes first and the full list sits behind it.
+            S.listItem()
+              .title('Groupon')
+              .child(
+                S.list()
+                  .title('Groupon')
+                  .items([
+                    S.listItem()
+                      .title('Vouchers needing a check')
+                      .child(
+                        S.documentList()
+                          .title('Vouchers needing a check')
+                          .filter(
+                            '_type == "grouponVoucher" && verificationStatus in ["unchecked", "mismatch"]'
+                          )
+                          .defaultOrdering([{ field: '_createdAt', direction: 'asc' }])
+                      ),
+                    S.listItem()
+                      .title('Orders on hold')
+                      .child(
+                        S.documentList()
+                          .title('Orders awaiting a voucher check')
+                          .filter('_type == "commission" && awaitingVoucherCheck == true')
+                          .defaultOrdering([{ field: '_createdAt', direction: 'asc' }])
+                      ),
+                    S.divider(),
+                    S.documentTypeListItem('grouponVoucher').title('All vouchers'),
+                  ])
+              ),
+            S.divider(),
             S.documentTypeListItem('contactSubmission').title('Contact Submissions'),
             S.documentTypeListItem('newsletterSubscriber').title('Newsletter Subscribers'),
           ]),
