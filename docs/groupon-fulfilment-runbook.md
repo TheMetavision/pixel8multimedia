@@ -30,10 +30,21 @@ Groupon sells a voucher
 ```
 
 **Groupon publishes no API for validating a voucher code.** That single fact
-shapes everything here. We cannot check a code at the moment a customer types
-it, so we accept it, take the order, and hold the work until the code has been
-confirmed. A bad code costs a minute of checking. It never costs a delivered
-commission.
+shapes everything here.
+
+**The site runs in STRICT MODE (Alan's call, 25 Aug):** a code that is not in
+the imported list is refused at input with a "your voucher may be too new —
+try again tomorrow" message. No record is created, so no order can ever exist
+against an unverified code and the Studio never shows junk. The cost is that a
+customer who bought after the last import is turned away until the next one —
+**which makes the daily import the single habit that matters.** Import every
+day while campaigns are live.
+
+The accept-then-verify machinery (unknown codes taken on the customer's word,
+order held until confirmed) is still fully built and switches on with
+`GROUPON_ACCEPT_UNKNOWN=true` in Netlify env — worth revisiting if same-day
+redemptions turn out to generate real support mail, or if Groupon ever offers
+an automated voucher feed.
 
 The real validation lives in Merchant Center: paste the code into its Redeem
 function and it shows the voucher's validity *and* which deal and option was

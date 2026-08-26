@@ -43,6 +43,15 @@ const sanity = createClient({
   useCdn: false,
 });
 
+// STRICT MODE (default): a code that is not in our imported list is refused at
+// input. Nothing gets created, no order can exist against an unverified code.
+// The price is that a customer who bought their voucher AFTER the last import
+// is turned away until the next one — the rejection message tells them so.
+// Set GROUPON_ACCEPT_UNKNOWN=true to switch to accept-then-verify instead,
+// where unknown codes are taken on the customer's word and the order is held
+// until the code is confirmed. All of that machinery remains in place.
+const ACCEPT_UNKNOWN = process.env.GROUPON_ACCEPT_UNKNOWN === 'true';
+
 // How many unconfirmed vouchers one address may have in flight at once. Someone
 // inventing codes hits this quickly; a real customer never sees it.
 const MAX_UNCHECKED_PER_IP = Number(process.env.GROUPON_MAX_UNCHECKED_PER_IP || 3);
@@ -54,6 +63,12 @@ const NOT_ORDERABLE =
 
 const NEEDS_DEAL =
   'Please tell us which deal you bought so we apply the right credit.';
+
+const CODE_NOT_ON_FILE =
+  "We couldn't match that code to a voucher. If you bought your deal in the last day or two, " +
+  'it may not have reached our system yet — codes arrive from Groupon on a daily update, so ' +
+  'please try again tomorrow. If it still fails, email hello@pixel8multimedia.co.uk with your ' +
+  "Groupon order number and we'll set your order up by hand the same day.";
 
 const TOO_MANY =
   'We have a few unconfirmed vouchers from you already. Email hello@pixel8multimedia.co.uk ' +
@@ -159,7 +174,16 @@ export default async function handler(req: Request, _context: Context) {
       }, 200, claimCookie(token));
     }
 
-    // ── Unknown code: take the customer's word, and flag it for checking ──
+    // ── Unknown code ─────────────────────────────────────────────────────
+    if (!ACCEPT_UNKNOWN) {
+      // Strict mode: refuse at input. No record is created, so no order can
+      // ever exist against a code Groupon hasn't told us about.
+      recordFailure(`redeem:${ip}`);
+      console.log(`groupon-redeem: unknown code refused (strict mode) from ${ip}`);
+      return json({ error: CODE_NOT_ON_FILE, reason: 'not-on-file' }, 404);
+    }
+
+    // Accept-then-verify mode: take the customer's word, flag it for checking.
     const option = dealOptionByKey(dealKey);
     if (!option) return json({ error: NEEDS_DEAL, needsDeal: true }, 400);
 
