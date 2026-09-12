@@ -44,45 +44,45 @@ Match the technique of the reference images as closely as possible while taking 
 
 export const STYLES = [
   {
-    id: "stencil",
+    id: "banksy",
     letter: null, // catalogue Option letter — fill in
     label: "Stencil street art",
-    refsDir: "refs/stencil",
+    refsDir: "refs/banksy",
     prompt: `Style: hand-cut spray-paint stencil street art. Flat, high-contrast black and white built from hard-edged stencil shapes, with slightly rough sprayed edges and faint overspray. Render the subject in two or three tonal layers so the facial features read clearly through the shadow shapes. Exactly one spot-colour accent (a single item of clothing or one object). Background: pale distressed concrete or painted brick, kept minimal. Gritty, urban, deadpan.`,
   },
   {
-    id: "seuss",
+    id: "dr-seuss",
     letter: null,
     label: "Whimsical picture-book",
-    refsDir: "refs/seuss",
+    refsDir: "refs/dr-seuss",
     prompt: `Style: whimsical children's picture-book illustration. Loose, wobbly ink outlines; exaggerated, elongated and curly shapes; tufted hair, droopy or wavy forms, bendy limbs and bendy furniture. Flat limited palette of a few bold colours (mustard, tomato red, teal, sky blue) on a cream ground with visible pen texture. Playful and slightly absurd — but the faces stay clearly the same people, with only gentle exaggeration.`,
   },
   {
-    id: "lounge",
+    id: "josh-agle",
     letter: null,
     label: "Mid-century lounge",
-    refsDir: "refs/lounge",
+    refsDir: "refs/josh-agle",
     prompt: `Style: mid-century modern retro illustration. Crisp flat vector-like shapes, no gradients, no visible brushwork. Stylised angular figures with tapered limbs, long necks and slightly small heads; cocktail-lounge or tiki-bar atmosphere. Limited palette of muted orange, olive, turquoise, mustard and charcoal on a warm flat background with geometric 1960s décor elements. Cool, sophisticated, tongue-in-cheek. Keep the faces readable despite the stylised proportions.`,
   },
   {
-    id: "popdots",
+    id: "roy-lichtenstein",
     letter: null,
     label: "Comic-book pop art",
-    refsDir: "refs/popdots",
+    refsDir: "refs/roy-lichtenstein",
     prompt: `Style: 1960s comic-book pop art. Heavy uniform black outlines, flat primary colours (red, yellow, blue) plus white and black, and large, clearly visible Ben-Day dot screens for skin tones and shading. Bold, graphic, one dramatic frozen moment; features simplified but faithful. Flat background — a solid block or a dot field. No speech balloons, captions or lettering.`,
   },
   {
-    id: "noir",
+    id: "frank-miller",
     letter: null,
     label: "Noir graphic novel",
-    refsDir: "refs/noir",
+    refsDir: "refs/frank-miller",
     prompt: `Style: high-contrast noir graphic-novel ink art. Stark black ink shapes against white with hard-edged shadows, almost no mid-tones, dramatic under- or side-lighting, rain-streak and splattered-ink texture. Optional single red or yellow accent. Gritty, cinematic chiaroscuro. The faces are carved out of the shadow shapes — make sure enough of each face is lit that it stays recognisable.`,
   },
   {
-    id: "surreal",
+    id: "jeff-soto",
     letter: null,
     label: "Surreal graffiti-pop",
-    refsDir: "refs/surreal",
+    refsDir: "refs/jeff-soto",
     prompt: `Style: surreal contemporary street-art painting. Rich saturated colours with smooth airbrushed gradients, glossy stylised forms and thick dark outlines. Swirling organic motifs — flowers, leaves, smoke, geometric fragments, small robots or creatures — woven around and behind the subject without covering the faces. Dreamlike, painted acrylic finish with a slight gloss.`,
   },
   {
@@ -93,10 +93,10 @@ export const STYLES = [
     prompt: `Style: late-1960s psychedelic poster cartoon. Flowing, melting, swirling line-work; kaleidoscopic rainbow colour bands, flowers and paisley motifs; wavy optical distortion in the background and clothing only — faces rendered clearly and undistorted. Bold outlines, flat vivid colours, groovy energy.`,
   },
   {
-    id: "gothic",
+    id: "tim-burton",
     letter: null,
     label: "Gothic stop-motion",
-    refsDir: "refs/gothic",
+    refsDir: "refs/tim-burton",
     prompt: `Style: gothic stop-motion animation character design. Pale skin, large expressive eyes with dark shadowed rings, slender elongated proportions, wild spiky or wispy hair, stripes and stitched or tattered details on clothing. Muted palette of greys, deep blues and purples with a hint of moonlight; a twisted tree or crooked skyline behind. Whimsically macabre — but unmistakably the same person, same hairstyle, same expression.`,
   },
 ];
