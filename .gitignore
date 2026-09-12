@@ -13,3 +13,8 @@ studio/dist/
 
 # Editor backups
 *.bak
+
+tools/builder/test-photos/
+tools/builder/style-tests/
+tools/builder/refs/**/*.png
+tools/builder/refs/**/*.jpg
