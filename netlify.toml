@@ -33,3 +33,6 @@
   from = "/groupon-voucher"
   to = "/groupon"
   status = 301
+
+[functions]
+  included_files = ["netlify/functions/_shared/refs/**"]

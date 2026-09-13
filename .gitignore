@@ -18,3 +18,9 @@ tools/builder/test-photos/
 tools/builder/style-tests/
 tools/builder/refs/**/*.png
 tools/builder/refs/**/*.jpg
+
+phase1-context*.zip
+
+_to_delete/
+studio/.sanity/
+*.csv

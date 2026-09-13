@@ -1,4 +1,4 @@
-import { defineConfig } from 'sanity'
+﻿import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { schemaTypes } from './schemas'
 
@@ -33,6 +33,44 @@ export default defineConfig({
             S.divider(),
             S.documentTypeListItem('commission').title('Commissions'),
             S.documentTypeListItem('order').title('Orders'),
+            S.divider(),
+            // "Your Photo" personalisations, worked as a queue: what needs
+            // printing today comes first, then what's waiting on a customer.
+            S.listItem()
+              .title('Personalisation')
+              .child(
+                S.list()
+                  .title('Personalisation')
+                  .items([
+                    S.listItem()
+                      .title('Ready to print')
+                      .child(
+                        S.documentList()
+                          .title('Approved — ready to print')
+                          .filter('_type == "pendingPersonalisation" && status == "approved"')
+                          .defaultOrdering([{ field: 'approvedAt', direction: 'asc' }])
+                      ),
+                    S.listItem()
+                      .title('Awaiting customer approval')
+                      .child(
+                        S.documentList()
+                          .title('Proof sent — awaiting approval')
+                          .filter('_type == "pendingPersonalisation" && status in ["paid", "proof-sent"]')
+                          .defaultOrdering([{ field: 'proofSentAt', direction: 'asc' }])
+                      ),
+                    S.listItem()
+                      .title('Failed')
+                      .child(
+                        S.documentList()
+                          .title('Failed generations')
+                          .filter('_type == "pendingPersonalisation" && status == "failed"')
+                          .defaultOrdering([{ field: 'createdAt', direction: 'desc' }])
+                      ),
+                    S.divider(),
+                    S.documentTypeListItem('pendingPersonalisation').title('All sessions'),
+                    S.documentTypeListItem('personalisationStyle').title('Styles'),
+                  ])
+              ),
             S.divider(),
             // Groupon vouchers are worked as a queue, not browsed as a list:
             // the only question most days is "is anything waiting on me?", so

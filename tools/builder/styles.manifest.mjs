@@ -1,38 +1,25 @@
-// Pixel8 personalisation — style manifest for the style-test harness.
+﻿// Pixel8 personalisation — style manifest for the style-test harness.
 //
-// Usage (port of CSC scripts/style-test.mjs, looping over styles):
-//   node scripts/style-test.mjs --manifest styles.manifest.mjs \
-//     --photos test-photos/ --out style-tests/ --size 2K
+// Usage:
+//   node tools/builder/style-test.mjs            # all styles, all photos
+//   node tools/builder/style-test.mjs --style tim-burton
+//   node tools/builder/style-test.mjs --dry-run
 //
-// Expected harness changes vs CSC:
-//   - loop STYLES x photos, output style-tests/<style.id>/<photo>.png
-//   - prompt = PREAMBLE + "\n\n" + style.prompt
-//   - refs resolved from style.refsDir (3 images, 4096px catalogue masters)
-//   - write style-tests/contact-sheet.html: one row per style, one column per
-//     photo, original photo in column 0, so likeness can be judged side by side
+// The harness sends every image in refsDir (4096px catalogue masters — never
+// lifestyle mockups) + the photo + PREAMBLE + style.prompt, and writes
+// style-tests/<style.id>/<photo>.png plus contact-sheet.html.
 //
-// Budget: 8 styles x 5 photos = 40 calls at 2K ≈ £4.
-//
-// Test photos (same five as CSC): solo portrait, couple, family of four,
-// group of six, action/full-body. Front-facing, decent light.
-//
-// Ref selection rules (three per style, pulled from pixel8-upscaled/<letter>/):
-//   1. Human subjects only (music / sport categories). No cartoon characters —
-//      character refs pull the model toward drawing the character, not the customer.
-//   2. Three DIFFERENT faces, mixed gender, at least one non-front-facing pose,
-//      so no single face dominates the style signal.
-//   3. Avoid subjects with a signature prop or costume that could leak in
-//      (guitars, kits, capes). Head-and-shoulders or clean full-body preferred.
-//   4. Avoid any ref with lettering baked into the artwork.
+// Ref selection rules (pulled from the catalogue masters):
+//   1. Human subjects only. No cartoon characters — character refs pull the
+//      model toward drawing the character, not the customer.
+//   2. Different faces, mixed gender, at least one non-front-facing pose.
+//   3. Avoid subjects with a signature prop or costume that could leak in.
+//   4. Avoid any ref with lettering baked in, and never a lifestyle mockup.
 //
 // Pass gate per style: >= 4 of 5 photos where a friend would recognise every
-// person unprompted. Below that, the style is out of v1 — same rule that
-// retired the LoRA route on CSC.
-//
-// Highest likeness risk (proportions change most): seuss, lounge, gothic.
-// Watch those first.
+// person unprompted. Below that, the style is out of v1.
 
-export const PREAMBLE = `Transform the uploaded photograph into a finished square wall-art illustration in the style described below and shown in the three reference images.
+export const PREAMBLE = `Transform the uploaded photograph into a finished square wall-art illustration in the style described below and shown in the reference images.
 
 Identity is non-negotiable: keep every person's facial identity, features, expression, hairstyle, skin tone, body shape, pose and clothing recognisable — a friend must instantly recognise them. Change only the rendering technique, palette, line quality and finish. Do not add, remove, age, slim or idealise anyone.
 
@@ -40,12 +27,14 @@ Composition: fill the full square frame with the subject(s) as the focal point. 
 
 No text, lettering, logos, signatures, watermarks, borders or frames.
 
+Output the artwork itself, filling the frame edge to edge — never a photograph of a print, canvas, frame, wall or room containing it, and never a mockup.
+
 Match the technique of the reference images as closely as possible while taking the people, pose and clothing only from the photograph.`;
 
 export const STYLES = [
   {
     id: "banksy",
-    letter: null, // catalogue Option letter — fill in
+    letter: null,
     label: "Stencil street art",
     refsDir: "refs/banksy",
     prompt: `Style: hand-cut spray-paint stencil street art. Flat, high-contrast black and white built from hard-edged stencil shapes, with slightly rough sprayed edges and faint overspray. Render the subject in two or three tonal layers so the facial features read clearly through the shadow shapes. Exactly one spot-colour accent (a single item of clothing or one object). Background: pale distressed concrete or painted brick, kept minimal. Gritty, urban, deadpan.`,
@@ -55,7 +44,7 @@ export const STYLES = [
     letter: null,
     label: "Whimsical picture-book",
     refsDir: "refs/dr-seuss",
-    prompt: `Style: whimsical children's picture-book illustration. Loose, wobbly ink outlines; exaggerated, elongated and curly shapes; tufted hair, droopy or wavy forms, bendy limbs and bendy furniture. Flat limited palette of a few bold colours (mustard, tomato red, teal, sky blue) on a cream ground with visible pen texture. Playful and slightly absurd — but the faces stay clearly the same people, with only gentle exaggeration.`,
+    prompt: `Style: whimsical rhyming-picture-book cartoon. Every surface filled with flat, saturated colour — no bare paper, no pencil-sketch look, and a fully coloured background rather than cream: bold tomato red, sunflower yellow, turquoise, sky blue, pink and grass green. Loose, confident, slightly wobbly ink outlines. Exaggerated curvy shapes everywhere — tall wavy trees with tufted pom-pom tops, swooping tilted buildings and furniture, curly striped patterns, bendy limbs, tufted or swirled hair. Round cheerful eyes. Playful and absurd in the surroundings, while the faces stay clearly the same people with only gentle cartoon exaggeration.`,
   },
   {
     id: "josh-agle",
@@ -97,6 +86,6 @@ export const STYLES = [
     letter: null,
     label: "Gothic stop-motion",
     refsDir: "refs/tim-burton",
-    prompt: `Style: gothic stop-motion animation character design. Pale skin, large expressive eyes with dark shadowed rings, slender elongated proportions, wild spiky or wispy hair, stripes and stitched or tattered details on clothing. Muted palette of greys, deep blues and purples with a hint of moonlight; a twisted tree or crooked skyline behind. Whimsically macabre — but unmistakably the same person, same hairstyle, same expression.`,
+    prompt: `Style: gothic stop-motion animation character design. Pale skin, large expressive eyes with dark shadowed rings, slender elongated proportions, wild spiky or wispy hair. Keep each person's actual outfit from the photograph, restyled with stripes and quirky patched details — do not swap clothing for costumes. Muted palette of greys, deep blues and purples with a hint of moonlight; a twisted tree or crooked skyline behind. Spooky-cute and Halloween-friendly, never gory or frightening — and unmistakably the same person, same hairstyle, same expression.`,
   },
 ];

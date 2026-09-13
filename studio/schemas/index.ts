@@ -1,4 +1,4 @@
-import product from './product'
+﻿import product from './product'
 import category from './category'
 import blogPost from './blogPost'
 import faq from './faq'
@@ -10,6 +10,8 @@ import siteSettings from './siteSettings'
 import contactSubmission from './contactSubmission'
 import newsletterSubscriber from './newsletterSubscriber'
 import grouponVoucher from './grouponVoucher'
+import personalisationStyle from './personalisationStyle'
+import pendingPersonalisation from './pendingPersonalisation'
 
 export const schemaTypes = [
   product,
@@ -24,4 +26,6 @@ export const schemaTypes = [
   contactSubmission,
   newsletterSubscriber,
   grouponVoucher,
+  personalisationStyle,
+  pendingPersonalisation,
 ]
