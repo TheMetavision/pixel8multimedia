@@ -34,6 +34,8 @@ export default defineType({
           { name: 'size', title: 'Size', type: 'string' },
           { name: 'quantity', title: 'Qty', type: 'number' },
           { name: 'unitPrice', title: 'Unit Price (£)', type: 'number' },
+          { name: 'personalisationId', title: 'Personalisation ID', type: 'string', readOnly: true },
+          { name: 'styleKey', title: 'Style', type: 'string', readOnly: true },
         ],
         preview: {
           select: { title: 'productTitle', quantity: 'quantity', unitPrice: 'unitPrice' },

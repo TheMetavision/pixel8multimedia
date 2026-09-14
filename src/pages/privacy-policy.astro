@@ -15,7 +15,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <span class="text-off-white">Privacy Policy</span>
       </nav>
       <h1 class="font-montserrat font-bold text-5xl text-off-white tracking-wide mb-4" style="text-shadow: 3px 3px 0 rgba(0,0,0,0.4);">PRIVACY POLICY</h1>
-      <p class="font-dm text-gray-400 text-sm">Last updated: April 2026</p>
+      <p class="font-dm text-gray-400 text-sm">Last updated: September 2026</p>
     </div>
   </section>
 
@@ -42,9 +42,36 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <p>All payments are processed securely through Stripe. We do not store or have access to your full card details. Stripe's privacy policy can be found at stripe.com/privacy.</p>
       </div>
 
-      <div>
-        <h2 class="font-montserrat font-semibold text-off-white text-lg uppercase tracking-wide mb-3">Photos & Personalised Orders</h2>
-        <p>When you upload photos for personalised orders, these are stored securely and used solely for the purpose of creating your artwork. We may retain your photos for a reasonable period after order completion in case of reprints or quality issues. We will never use your photos for marketing without your explicit consent.</p>
+      <div id="your-photo" class="scroll-mt-24">
+        <h2 class="font-montserrat font-semibold text-off-white text-lg uppercase tracking-wide mb-3">Photos &amp; Personalised Orders</h2>
+        <p>When you upload a photo for a personalised order, it is stored securely and used solely to create your artwork. We will never use your photo or your design in our marketing without your explicit consent.</p>
+
+        <h3 class="font-montserrat font-semibold text-off-white text-base mt-6 mb-2">What happens to your photo</h3>
+        <p>When you use our <a href="/store/your-photo" class="text-pixel-cyan hover:text-pop-orange transition-colors">Your Photo, Your Style</a> tool, the photo you upload is sent to Google's Gemini image model, which redraws it in the style you choose. This happens only after you tick the consent box, and only for the design you asked for.</p>
+        <p class="mt-3">We do not use your photo to train any AI model. We do not use facial recognition or build a biometric profile of anyone in your photo. We do not sell your photo or share it with anyone beyond the providers listed below.</p>
+
+        <h3 class="font-montserrat font-semibold text-off-white text-base mt-6 mb-2">What we store, and for how long</h3>
+        <ul class="list-disc pl-5 space-y-2">
+          <li><strong class="text-off-white">Your cropped photo and the designs made from it</strong> — held in private storage provided by our hosting provider, never on the public website.</li>
+          <li><strong class="text-off-white">If you don't place an order:</strong> everything is deleted automatically after 48 hours.</li>
+          <li><strong class="text-off-white">If you do place an order:</strong> we keep your photo, your design and the print file while we make and send your order, and for 90 days after it is printed in case there is a problem with it. They are then deleted automatically.</li>
+          <li><strong class="text-off-white">A record that you gave consent</strong>, with the date and the wording you agreed to, as proof that we had permission to process your photo.</li>
+          <li><strong class="text-off-white">A scrambled version of your IP address.</strong> We never store the address itself. The scrambled version is used only to prevent one person generating thousands of designs and running up our costs.</li>
+        </ul>
+
+        <h3 class="font-montserrat font-semibold text-off-white text-base mt-6 mb-2">Who else is involved</h3>
+        <ul class="list-disc pl-5 space-y-2">
+          <li><strong class="text-off-white">Google</strong> (Gemini API) — creates the design from your photo. Google acts as our processor and, under the paid API terms we use, does not use your photo to train its models.</li>
+          <li><strong class="text-off-white">Netlify</strong> — hosts our website and stores your photo and design securely.</li>
+          <li><strong class="text-off-white">Stripe</strong> — processes your payment. Your photo is never sent to Stripe.</li>
+          <li><strong class="text-off-white">Resend</strong> — sends your proof email, which includes a copy of your design.</li>
+        </ul>
+
+        <h3 class="font-montserrat font-semibold text-off-white text-base mt-6 mb-2">Our lawful basis</h3>
+        <p>We rely on your <strong class="text-off-white">consent</strong> to send your photo to Google's image model — that is what the tick box is for. You can withdraw consent at any time by contacting us, and we will delete your photo and designs. Once you have placed an order we rely on <strong class="text-off-white">performance of a contract</strong> to keep what we need in order to make and send your print.</p>
+
+        <h3 class="font-montserrat font-semibold text-off-white text-base mt-6 mb-2">Using your own photos</h3>
+        <p>Please only upload photos you took or own, and only where everyone shown in them is happy to appear on a printed product. Please do not upload photos of other people's children. Our image provider automatically refuses photos of well-known people, film and television stills, and other copyrighted images.</p>
       </div>
 
       <div>

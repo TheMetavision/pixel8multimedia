@@ -1,14 +1,14 @@
-﻿import { defineType, defineField } from 'sanity';
+import { defineType, defineField } from 'sanity';
 
 // One customer session in the "Your Photo" builder, from first upload through
 // print. The images themselves live in Netlify Blobs under
-// personalisation/<id>/ â€” this document holds the keys, the state, and the
+// personalisation/<id>/ — this document holds the keys, the state, and the
 // audit trail. Created by the upload function; advanced by the styling,
 // checkout, proof and approval steps; swept by the retention job.
 //
 // Status flow:
-//   uploaded â†’ styling â†’ ready â†’ (paid) â†’ proof-sent â†’ approved â†’ printed
-//                    â†˜ failed                                  â†˜ expired
+//   uploaded → styling → ready → (paid) → proof-sent → approved → printed
+//                    ↘ failed                                  ↘ expired
 export default defineType({
   name: 'pendingPersonalisation',
   title: 'Personalisation',
@@ -25,9 +25,9 @@ export default defineType({
           { title: 'Styling', value: 'styling' },
           { title: 'Ready (preview)', value: 'ready' },
           { title: 'Failed', value: 'failed' },
-          { title: 'Paid â€” awaiting proof', value: 'paid' },
+          { title: 'Paid — awaiting proof', value: 'paid' },
           { title: 'Proof sent', value: 'proof-sent' },
-          { title: 'Approved â€” ready to print', value: 'approved' },
+          { title: 'Approved — ready to print', value: 'approved' },
           { title: 'Printed', value: 'printed' },
           { title: 'Expired', value: 'expired' },
         ],
@@ -36,7 +36,7 @@ export default defineType({
       initialValue: 'uploaded',
     }),
 
-    // â”€â”€ Source photo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Source photo ──────────────────────────────────────────────
     defineField({ name: 'photoKey', title: 'Original photo (blob key)', type: 'string', readOnly: true }),
     defineField({ name: 'photoSha256', title: 'Photo SHA-256', type: 'string', readOnly: true, description: 'Dedupe: same photo + same style is served from cache, not re-generated.' }),
     defineField({
@@ -51,7 +51,7 @@ export default defineType({
       ],
     }),
 
-    // â”€â”€ Styled previews (one entry per style the customer tried) â”€â”€
+    // ── Styled previews (one entry per style the customer tried) ──
     defineField({
       name: 'renders',
       title: 'Styled renders',
@@ -70,7 +70,7 @@ export default defineType({
         preview: {
           select: { styleKey: 'styleKey', ms: 'ms', error: 'error' },
           prepare({ styleKey, ms, error }) {
-            return { title: styleKey, subtitle: error ? `âœ— ${error}` : `${ms} ms` };
+            return { title: styleKey, subtitle: error ? `✗ ${error}` : `${ms} ms` };
           },
         },
       }],
@@ -81,23 +81,30 @@ export default defineType({
     defineField({ name: 'failCode', title: 'Failure code', type: 'string', readOnly: true }),
     defineField({ name: 'failMessage', title: 'Failure message (shown to customer)', type: 'string', readOnly: true }),
     defineField({ name: 'purgedAt', title: 'Images purged', type: 'datetime', readOnly: true }),
-    // â”€â”€ Consent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    // ── Consent ───────────────────────────────────────────────────
     defineField({ name: 'consentAt', title: 'Consent given at', type: 'datetime', readOnly: true }),
     defineField({ name: 'consentVersion', title: 'Consent text version', type: 'string', readOnly: true }),
     defineField({ name: 'ipHash', title: 'IP hash', type: 'string', readOnly: true, description: 'Salted hash, for abuse caps only.' }),
 
-    // â”€â”€ Order â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Order ─────────────────────────────────────────────────────
     defineField({ name: 'order', title: 'Order', type: 'reference', to: [{ type: 'order' }] }),
     defineField({ name: 'customerEmail', title: 'Customer email', type: 'string' }),
     defineField({ name: 'format', title: 'Format', type: 'string', readOnly: true }),
     defineField({ name: 'size', title: 'Size', type: 'string', readOnly: true }),
     defineField({ name: 'digitalBundle', title: 'Digital bundle purchased', type: 'boolean', initialValue: false }),
 
-    // â”€â”€ Proof / approval / print â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Proof / approval / print ──────────────────────────────────
     defineField({ name: 'proofToken', title: 'Proof approve token', type: 'string', readOnly: true, hidden: true }),
     defineField({ name: 'proofSentAt', title: 'Proof sent', type: 'datetime', readOnly: true }),
     defineField({ name: 'approvedAt', title: 'Approved', type: 'datetime', readOnly: true }),
     defineField({ name: 'printKey', title: 'Print file (blob key, 4K)', type: 'string', readOnly: true }),
+    defineField({ name: 'printPx', title: 'Print file size (px)', type: 'number', readOnly: true }),
+    defineField({ name: 'printWrapColour', title: 'Canvas wrap colour', type: 'string', readOnly: true }),
+    defineField({ name: 'printMethod', title: 'Upscale method', type: 'string', readOnly: true }),
+    defineField({ name: 'printBuiltAt', title: 'Print file built', type: 'datetime', readOnly: true }),
+    defineField({ name: 'printError', title: 'Print build error', type: 'string', readOnly: true }),
+    defineField({ name: 'proofKey', title: 'Proof image (blob key)', type: 'string', readOnly: true }),
     defineField({ name: 'printedAt', title: 'Printed', type: 'datetime' }),
 
     defineField({ name: 'expiresAt', title: 'Expires', type: 'datetime', readOnly: true, description: 'Unpaid sessions and their blobs are swept after this.' }),
@@ -108,12 +115,12 @@ export default defineType({
     select: { pid: 'pid', status: 'status', style: 'selectedStyleKey', email: 'customerEmail', createdAt: 'createdAt' },
     prepare({ pid, status, style, email, createdAt }) {
       const icon: Record<string, string> = {
-        uploaded: 'â¬†ï¸', styling: 'ðŸŽ¨', ready: 'ðŸ‘€', failed: 'âš ï¸', paid: 'ðŸ’³',
-        'proof-sent': 'âœ‰ï¸', approved: 'âœ…', printed: 'ðŸ–¨ï¸', expired: 'ðŸ—‘ï¸',
+        uploaded: '⬆️', styling: '🎨', ready: '👀', failed: '⚠️', paid: '💳',
+        'proof-sent': '✉️', approved: '✅', printed: '🖨️', expired: '🗑️',
       };
       return {
         title: `${icon[status] || ''} ${email || pid}`,
-        subtitle: `${status}${style ? ` Â· ${style}` : ''}${createdAt ? ` Â· ${new Date(createdAt).toLocaleDateString('en-GB')}` : ''}`,
+        subtitle: `${status}${style ? ` · ${style}` : ''}${createdAt ? ` · ${new Date(createdAt).toLocaleDateString('en-GB')}` : ''}`,
       };
     },
   },

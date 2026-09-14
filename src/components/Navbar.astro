@@ -30,7 +30,9 @@ const serviceChildren = sanityServices.length > 0
       { label: 'Prankz!', href: '/services/prankz' },
     ];
 
-const navLinks = [
+type NavLink = { label: string; href: string; highlight?: boolean; children?: { label: string; href: string }[] };
+
+const navLinks: NavLink[] = [
   { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
   {
@@ -43,14 +45,17 @@ const navLinks = [
     href: '/store',
     children: [
       { label: 'All Products', href: '/store' },
+      { label: '★ Your Photo, Your Style', href: '/store/your-photo' },
       { label: 'Animations', href: '/store?category=animations' },
       { label: 'Music', href: '/store?category=music' },
       { label: 'TV / Movies', href: '/store?category=tv-movies' },
       { label: 'Sport', href: '/store?category=sport' },
       { label: 'Miscellaneous', href: '/store?category=miscellaneous' },
-      // Personalised removed — those services live under /services
+      // Commission services live under /services; the self-serve photo builder
+      // is a shop product, so it sits at the top of this list.
     ],
   },
+  { label: 'Your Photo', href: '/store/your-photo', highlight: true },
   { label: 'Blog', href: '/blog' },
   { label: 'Contact', href: '/contact' },
 ];
@@ -85,7 +90,7 @@ const navLinks = [
               </div>
             </div>
           ) : (
-            <a href={link.href} class="nav-link px-3 py-2">{link.label}</a>
+            <a href={link.href} class={`nav-link px-3 py-2 ${link.highlight ? 'text-pixel-cyan hover:text-hot-magenta' : ''}`}>{link.label}</a>
           )
         ))}
       </div>
@@ -158,7 +163,7 @@ const navLinks = [
           </div>
         ) : (
           <a href={link.href}
-             class="block py-3 font-montserrat text-pop-orange uppercase tracking-wider text-sm hover:text-pixel-cyan transition-colors font-semibold">
+             class={`block py-3 font-montserrat uppercase tracking-wider text-sm hover:text-pixel-cyan transition-colors font-semibold ${link.highlight ? 'text-pixel-cyan' : 'text-pop-orange'}`}>
             {link.label}
           </a>
         )

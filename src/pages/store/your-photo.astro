@@ -1,0 +1,657 @@
+---
+// src/pages/store/your-photo.astro
+//
+// "Your Photo" — the personalisation builder. Same layout as the character
+// PDP, but the hero is the customer's own photo and the option pills drive an
+// AI style pass instead of swapping a stock image.
+//
+// Server side (build time): style list from Sanity personalisationStyle docs.
+// Client side: everything else, against the /api/personalisation/* functions.
+
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { sanityClient } from '../../lib/sanity';
+import {
+  PRICES, FORMAT_LABELS, SIZE_LABELS, SIZE_DIMENSIONS, FORMATS, SIZES,
+} from '../../data/products';
+
+const PERSONALISATION_FEE = 5;
+
+type StyleDoc = { key: string; letter: string; label: string; blurb?: string; exampleUrl?: string };
+
+let styles: StyleDoc[] = [];
+try {
+  styles = await sanityClient.fetch(`
+    *[_type == "personalisationStyle" && active == true] | order(sortOrder asc) {
+      key, letter, label, blurb,
+      "exampleUrl": exampleAfter.asset->url
+    }
+  `);
+} catch (e) {
+  console.warn('Sanity fetch failed for personalisationStyle', e);
+}
+if (!styles?.length) {
+  styles = [
+    { key: 'style-a', letter: 'A', label: 'Stencil' },
+    { key: 'style-b', letter: 'B', label: 'Picture Book' },
+    { key: 'style-c', letter: 'C', label: 'Gothic' },
+    { key: 'style-d', letter: 'D', label: 'Noir' },
+    { key: 'style-e', letter: 'E', label: 'Surreal' },
+    { key: 'style-f', letter: 'F', label: 'Lounge' },
+    { key: 'style-g', letter: 'G', label: 'Psychedelic' },
+    { key: 'style-h', letter: 'H', label: 'Pop Art' },
+  ];
+}
+
+const fromPrice = PRICES.poster.small + PERSONALISATION_FEE;
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '';
+
+const seoTitle = 'Your Photo, Your Style — Personalised Wall Art | Pixel8 Multimedia';
+const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pixel8 styles in under a minute. Poster and canvas prints made to order in the UK.`;
+---
+
+<BaseLayout title={seoTitle} description={seoDesc}>
+  <section class="bg-bg-primary py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav class="flex items-center gap-2 font-dm text-sm text-deep-grey mb-8">
+        <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
+        <span>/</span>
+        <a href="/store" class="hover:text-pop-orange transition-colors">Shop</a>
+        <span>/</span>
+        <span class="text-off-white">Your Photo</span>
+      </nav>
+
+      <div class="grid lg:grid-cols-2 gap-12">
+        <!-- ── Stage ─────────────────────────────────────────────────── -->
+        <div>
+          <div class="aspect-square bg-bg-secondary rounded-lg overflow-hidden border border-edge-line relative" id="stage">
+
+            <!-- 1. Empty: drop zone -->
+            <div id="stage-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-8 gap-4">
+              <svg class="w-12 h-12 text-deep-grey" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+              <p class="font-montserrat text-off-white font-semibold">Drop a photo here</p>
+              <p class="font-dm text-sm text-mid-grey max-w-xs">One or more people, clear faces, decent light. JPG, PNG or WebP.</p>
+              <button type="button" id="pick-photo" class="btn-primary text-sm px-6 py-3">Choose a photo</button>
+              <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" class="hidden" />
+            </div>
+
+            <!-- 2. Crop -->
+            <div id="stage-crop" class="absolute inset-0 hidden">
+              <canvas id="crop-canvas" class="w-full h-full touch-none cursor-grab active:cursor-grabbing"></canvas>
+              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 flex items-center gap-3">
+                <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1" class="flex-1 accent-pop-orange" aria-label="Zoom" />
+                <button type="button" id="crop-cancel" class="font-dm text-sm text-mid-grey hover:text-off-white px-3 py-2">Cancel</button>
+                <button type="button" id="crop-done" class="btn-primary text-sm px-5 py-2">Use this crop</button>
+              </div>
+              <p class="absolute top-3 inset-x-0 text-center font-dm text-xs text-off-white/80 pointer-events-none">Drag to position · slide to zoom</p>
+            </div>
+
+            <!-- 3. Result / working -->
+            <div id="stage-result" class="absolute inset-0 hidden">
+              <img id="result-img" alt="" class="w-full h-full object-cover" />
+              <div id="stage-busy" class="absolute inset-0 hidden bg-black/60 flex flex-col items-center justify-center gap-3">
+                <div class="w-10 h-10 border-2 border-pop-orange border-t-transparent rounded-full animate-spin"></div>
+                <p class="font-montserrat text-sm text-off-white" id="busy-text">Drawing your photo…</p>
+                <p class="font-dm text-xs text-mid-grey">Usually 30–45 seconds</p>
+              </div>
+              <button type="button" id="compare-btn" class="absolute bottom-3 left-3 hidden font-dm text-xs bg-black/70 text-off-white px-3 py-1.5 rounded hover:bg-black/90" aria-pressed="false">Show original</button>
+              <button type="button" id="change-photo" class="absolute top-3 right-3 font-dm text-xs bg-black/70 text-off-white px-3 py-1.5 rounded hover:bg-black/90">Change photo</button>
+            </div>
+
+            <!-- 4. Compare: every style tried, side by side -->
+            <div id="stage-compare" class="absolute inset-0 hidden bg-bg-secondary">
+              <div id="compare-grid" class="w-full h-full grid gap-px bg-edge-line"></div>
+              <button type="button" id="compare-close" class="absolute top-3 right-3 font-dm text-xs bg-black/70 text-off-white px-3 py-1.5 rounded hover:bg-black/90">Done comparing</button>
+            </div>
+          </div>
+
+          <!-- Message line (errors, caps, tips) -->
+          <p id="stage-msg" class="hidden mt-3 font-dm text-sm leading-relaxed px-3 py-2.5 rounded border"></p>
+
+          <button type="button" id="compare-all" class="hidden mt-3 w-full font-montserrat text-sm font-semibold py-3 rounded border border-edge-line text-mid-grey hover:border-pop-orange hover:text-pop-orange transition-colors">
+            Compare your designs side by side
+          </button>
+
+          <!-- Consent — must be ticked before anything is uploaded -->
+          <label class="mt-4 flex items-start gap-3 font-dm text-sm text-mid-grey cursor-pointer">
+            <input type="checkbox" id="consent" class="mt-1 accent-pop-orange" />
+            <span>
+              I own this photo and I'm happy for Pixel8 to send it to Google's image model to create my design.
+              Unpaid photos are deleted after 48 hours.
+              <a href="/privacy-policy#your-photo" class="text-pixel-cyan underline hover:no-underline">How this works</a>
+            </span>
+          </label>
+          {turnstileSiteKey && (
+            <div class="mt-3 cf-turnstile" data-sitekey={turnstileSiteKey} data-callback="onTurnstile" data-size="flexible"></div>
+          )}
+        </div>
+
+        <!-- ── Details ───────────────────────────────────────────────── -->
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="style-badge">Personalised</span>
+            <span id="option-badge" class="font-montserrat text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full border border-edge-line text-pop-orange">Option A</span>
+          </div>
+
+          <h1 class="font-montserrat text-3xl md:text-4xl font-bold text-off-white mt-2 mb-4">Your photo, your style</h1>
+
+          <div class="font-dm text-mid-grey leading-relaxed mb-6">
+            <p>Upload a photo and watch it redrawn in one of our house styles. Try up to four styles, pick the one you love, and we'll print it on poster or canvas — same sizes, same quality as everything else in the shop.</p>
+            <p class="mt-3 text-sm">You'll get a proof by email to approve before anything is printed.</p>
+          </div>
+
+          <div class="price-tag text-2xl mb-1" id="display-price">From £{fromPrice.toFixed(2)}</div>
+          <p class="font-dm text-xs text-deep-grey mb-8">Includes the £{PERSONALISATION_FEE} personalisation fee</p>
+
+          <!-- Style pills -->
+          <div class="mb-6">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">
+              Style <span class="text-deep-grey font-normal normal-case" id="switch-hint">— try up to 4</span>
+            </label>
+            <div class="grid grid-cols-4 gap-2" id="style-pills">
+              {styles.map((s, i) => (
+                <button
+                  type="button"
+                  class={`style-pill rounded border overflow-hidden text-left transition-all ${i === 0 ? 'border-pop-orange bg-pop-orange/10' : 'border-edge-line hover:border-pop-orange'}`}
+                  data-key={s.key}
+                  data-label={s.label}
+                  data-letter={s.letter}
+                  aria-pressed={i === 0 ? 'true' : 'false'}
+                  title={s.blurb || s.label}
+                >
+                  <span class="block aspect-square bg-bg-secondary relative">
+                    {s.exampleUrl ? (
+                      <img src={`${s.exampleUrl}?w=240&h=240&fit=crop&auto=format`} alt="" class="w-full h-full object-cover pill-thumb" loading="lazy" />
+                    ) : (
+                      <span class="w-full h-full flex items-center justify-center font-montserrat text-lg text-deep-grey pill-thumb">{s.letter}</span>
+                    )}
+                    <span class="pill-tick hidden absolute top-1 right-1 w-5 h-5 rounded-full bg-pop-orange text-black text-xs font-bold flex items-center justify-center">✓</span>
+                  </span>
+                  <span class="block px-2 py-1.5 font-montserrat text-xs font-semibold text-off-white truncate">
+                    <span class="text-deep-grey">{s.letter}</span> {s.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <!-- Format -->
+          <div class="mb-6">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Format</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="format-selector">
+              {FORMATS.map((format, i) => (
+                <button type="button" class={`format-btn font-dm text-sm py-3 px-4 rounded border transition-all text-center ${i === 0 ? 'border-pop-orange bg-pop-orange/10 text-pop-orange' : 'border-edge-line text-mid-grey hover:border-pop-orange hover:text-pop-orange'}`} data-format={format}>
+                  {FORMAT_LABELS[format]}
+                </button>
+              ))}
+            </div>
+            <div id="canvas-wrap-notice" class="hidden mt-3 px-3 py-2.5 bg-pixel-cyan/5 border border-pixel-cyan/20 rounded text-xs text-mid-grey font-dm leading-relaxed">
+              <strong class="text-off-white font-medium">Full design preserved.</strong>
+              Canvas edges use a block colour wrap sampled from your artwork — nothing is cropped or hidden.
+              <a href="/faqs#canvas-wrap" class="text-pixel-cyan underline hover:no-underline">Learn more</a>
+            </div>
+          </div>
+
+          <!-- Size -->
+          <div class="mb-6">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Size</label>
+            <div class="grid grid-cols-3 gap-2" id="size-selector">
+              {SIZES.map((size, i) => (
+                <button type="button" class={`size-btn font-dm text-sm py-3 px-4 rounded border transition-all text-center ${i === 0 ? 'border-pop-orange bg-pop-orange/10 text-pop-orange' : 'border-edge-line text-mid-grey hover:border-pop-orange hover:text-pop-orange'}`} data-size={size}>
+                  {SIZE_LABELS[size].split(' (')[0]}
+                  <span class="block text-xs text-deep-grey mt-0.5">{SIZE_DIMENSIONS[size]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <!-- Quantity -->
+          <div class="mb-8">
+            <label class="font-montserrat text-xs font-semibold text-mid-grey uppercase tracking-wider block mb-3">Quantity</label>
+            <div class="flex items-center gap-3">
+              <button type="button" id="qty-decrease" class="w-10 h-10 bg-bg-secondary border border-edge-line rounded flex items-center justify-center text-off-white hover:border-pop-orange transition-colors">−</button>
+              <span id="qty-display" class="font-mono text-lg text-off-white w-8 text-center">1</span>
+              <button type="button" id="qty-increase" class="w-10 h-10 bg-bg-secondary border border-edge-line rounded flex items-center justify-center text-off-white hover:border-pop-orange transition-colors">+</button>
+            </div>
+          </div>
+
+          <button type="button" id="add-to-cart" class="btn-primary w-full text-center text-base py-4 mb-2 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+            <span id="cart-label">Add a photo to continue</span>
+          </button>
+          <p class="font-dm text-xs text-deep-grey text-center mb-4" id="regen-line">
+            <button type="button" id="regen-btn" class="hidden underline hover:text-off-white">Not quite right? Redraw this style</button>
+          </p>
+
+          <div class="mt-8 border-t border-edge-line pt-6 space-y-3 font-dm text-sm text-mid-grey">
+            <p>Made to order — dispatched within 3–6 working days of your proof approval.</p>
+            <p>Free UK P&amp;P on orders over £50.</p>
+            <p>Personalised items can't be returned unless faulty — that's why we send a proof first.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script type="application/json" id="builder-data" set:html={JSON.stringify({
+  fee: PERSONALISATION_FEE,
+  prices: PRICES,
+  styles: styles.map((s) => ({ key: s.key, letter: s.letter, label: s.label })),
+})} />
+
+{turnstileSiteKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
+
+<script>
+  import { addToCart } from '../../stores/cart';
+
+  type StyleInfo = { key: string; letter: string; label: string };
+  type Format = 'poster' | 'canvasStandard' | 'canvasGallery';
+  type Size = 'small' | 'medium' | 'large';
+
+  const data = JSON.parse(document.getElementById('builder-data')?.textContent || '{}');
+  const FEE: number = data.fee ?? 5;
+  const PRICES = data.prices as Record<Format, Record<Size, number>>;
+  const STYLES: StyleInfo[] = data.styles || [];
+  const OUT_PX = 2048;
+  const POLL_MS = 3000;
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  // ── State ────────────────────────────────────────────────────────────────
+  let pid: string | null = null;
+  let phase: 'empty' | 'crop' | 'uploading' | 'styling' | 'ready' | 'failed' = 'empty';
+  let selectedStyle = STYLES[0]?.key || 'style-a';
+  const previews = new Map<string, string>();       // styleKey → preview URL (cache-busted)
+  let squareUrl: string | null = null;              // customer's cropped photo (for compare)
+  let showingOriginal = false;
+  let pollTimer: number | null = null;
+  let selectedFormat: Format = 'poster';
+  let selectedSize: Size = 'small';
+  let quantity = 1;
+  let turnstileToken = '';
+  (window as any).onTurnstile = (t: string) => { turnstileToken = t; };
+
+  // ── Crop ─────────────────────────────────────────────────────────────────
+  const canvas = $<HTMLCanvasElement>('crop-canvas');
+  const ctx = canvas.getContext('2d')!;
+  let img: HTMLImageElement | null = null;
+  let base = 1, zoom = 1, ox = 0, oy = 0, S = 0;
+  let dragging = false, lastX = 0, lastY = 0;
+
+  function fitCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    S = Math.round(Math.min(rect.width, rect.height) * (window.devicePixelRatio || 1));
+    canvas.width = S; canvas.height = S;
+  }
+  function clamp() {
+    if (!img) return;
+    const dw = img.naturalWidth * base * zoom, dh = img.naturalHeight * base * zoom;
+    ox = Math.min(0, Math.max(S - dw, ox));
+    oy = Math.min(0, Math.max(S - dh, oy));
+  }
+  function draw() {
+    if (!img) return;
+    clamp();
+    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, S, S);
+    ctx.drawImage(img, ox, oy, img.naturalWidth * base * zoom, img.naturalHeight * base * zoom);
+  }
+  function startCrop(file: File) {
+    const url = URL.createObjectURL(file);
+    const i = new Image();
+    i.onload = () => {
+      img = i;
+      show('crop');
+      fitCanvas();
+      base = Math.max(S / i.naturalWidth, S / i.naturalHeight);
+      zoom = 1;
+      ox = (S - i.naturalWidth * base) / 2;
+      oy = (S - i.naturalHeight * base) / 2;
+      $<HTMLInputElement>('crop-zoom').value = '1';
+      draw();
+    };
+    i.onerror = () => { message("We couldn't read that image. Please try a JPG, PNG or WebP.", 'error'); URL.revokeObjectURL(url); };
+    i.src = url;
+  }
+  function setZoom(z: number) {
+    if (!img) return;
+    // zoom about the centre of the square
+    const cx = S / 2, cy = S / 2;
+    const k = z / zoom;
+    ox = cx - (cx - ox) * k;
+    oy = cy - (cy - oy) * k;
+    zoom = z;
+    draw();
+  }
+  canvas.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dpr = window.devicePixelRatio || 1;
+    ox += (e.clientX - lastX) * dpr; oy += (e.clientY - lastY) * dpr;
+    lastX = e.clientX; lastY = e.clientY;
+    draw();
+  });
+  canvas.addEventListener('pointerup', () => { dragging = false; });
+  canvas.addEventListener('pointercancel', () => { dragging = false; });
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const z = Math.min(3, Math.max(1, zoom * (e.deltaY < 0 ? 1.08 : 0.92)));
+    $<HTMLInputElement>('crop-zoom').value = String(z);
+    setZoom(z);
+  }, { passive: false });
+  $<HTMLInputElement>('crop-zoom').addEventListener('input', (e) => setZoom(Number((e.target as HTMLInputElement).value)));
+  window.addEventListener('resize', () => { if (phase === 'crop') { fitCanvas(); base = img ? Math.max(S / img.naturalWidth, S / img.naturalHeight) : 1; draw(); } });
+
+  function exportSquare(): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      if (!img) return reject(new Error('no image'));
+      const k = base * zoom;
+      const sx = -ox / k, sy = -oy / k, sw = S / k;
+      const out = document.createElement('canvas');
+      out.width = OUT_PX; out.height = OUT_PX;
+      out.getContext('2d')!.drawImage(img, sx, sy, sw, sw, 0, 0, OUT_PX, OUT_PX);
+      out.toBlob((b) => (b ? resolve(b) : reject(new Error('encode failed'))), 'image/jpeg', 0.9);
+    });
+  }
+
+  // ── Stage / messages ─────────────────────────────────────────────────────
+  function show(which: 'empty' | 'crop' | 'result' | 'compare') {
+    $('stage-empty').classList.toggle('hidden', which !== 'empty');
+    $('stage-crop').classList.toggle('hidden', which !== 'crop');
+    $('stage-result').classList.toggle('hidden', which !== 'result');
+    $('stage-compare').classList.toggle('hidden', which !== 'compare');
+    if (which !== 'result') $('stage-busy').classList.add('hidden');
+  }
+
+  /**
+   * Build the compare grid: the original plus every style generated, each
+   * labelled and clickable. Laid out 2-up for 2-3 cells and 3-up beyond that,
+   * so nothing is ever smaller than about a third of the stage.
+   */
+  function openCompare() {
+    const keys = [...previews.keys()];
+    if (!keys.length || !pid) return;
+    const cells = [
+      ...(squareUrl ? [{ key: '', label: 'Your photo', url: squareUrl }] : []),
+      ...keys.map((k) => ({ key: k, label: styleInfo(k)?.label || k, url: `/api/personalisation/image?pid=${pid}&kind=${k}&w=700` })),
+    ];
+    const cols = cells.length <= 4 ? 2 : 3;
+    const grid = $('compare-grid');
+    grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+    grid.style.gridAutoRows = '1fr';
+    grid.innerHTML = cells.map((c) => `
+      <button type="button" class="compare-cell relative group bg-bg-primary overflow-hidden ${c.key ? 'cursor-pointer' : 'cursor-default'}" data-key="${c.key}">
+        <img src="${c.url}" alt="${c.label}" class="w-full h-full object-cover" />
+        <span class="absolute inset-x-0 bottom-0 bg-black/75 text-off-white font-montserrat text-[0.65rem] font-semibold px-2 py-1 truncate text-left">${c.label}</span>
+        ${c.key === selectedStyle ? '<span class="absolute inset-0 border-2 border-pop-orange pointer-events-none"></span>' : ''}
+        ${c.key ? '<span class="absolute inset-0 bg-pop-orange/0 group-hover:bg-pop-orange/15 transition-colors"></span>' : ''}
+      </button>`).join('');
+    grid.querySelectorAll<HTMLElement>('.compare-cell').forEach((cell) => {
+      cell.addEventListener('click', () => {
+        const key = cell.dataset.key;
+        if (!key) return;
+        selectedStyle = key;
+        showingOriginal = false;
+        $('compare-btn').textContent = 'Show original';
+        show('result');
+        paintPills();
+        paintPreview();
+        paintCart();
+      });
+    });
+    show('compare');
+  }
+
+  function paintCompareButton() {
+    $('compare-all').classList.toggle('hidden', previews.size < 2 || phase === 'styling' || phase === 'uploading');
+  }
+  function busy(on: boolean, text = 'Drawing your photo…') {
+    $('busy-text').textContent = text;
+    $('stage-busy').classList.toggle('hidden', !on);
+  }
+  function message(text: string, kind: 'error' | 'info' | 'ok' = 'info') {
+    const el = $('stage-msg');
+    el.textContent = text;
+    el.className = `mt-3 font-dm text-sm leading-relaxed px-3 py-2.5 rounded border ${
+      kind === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-300'
+      : kind === 'ok' ? 'bg-pop-orange/10 border-pop-orange/30 text-off-white'
+      : 'bg-pixel-cyan/5 border-pixel-cyan/20 text-mid-grey'}`;
+  }
+  function clearMessage() { $('stage-msg').classList.add('hidden'); }
+
+  // ── API ──────────────────────────────────────────────────────────────────
+  async function api<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`/api/personalisation/${path}`, init);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(body.error || 'Something went wrong.'), { status: res.status });
+    return body as T;
+  }
+  const imageUrl = (kind: string, w: number) => `/api/personalisation/image?pid=${pid}&kind=${kind}&w=${w}&t=${Date.now()}`;
+
+  async function upload(blob: Blob) {
+    phase = 'uploading';
+    show('result');
+    squareUrl = URL.createObjectURL(blob);
+    $<HTMLImageElement>('result-img').src = squareUrl;
+    busy(true, 'Uploading…');
+    clearMessage();
+    const fd = new FormData();
+    fd.append('file', blob, 'photo.jpg');
+    fd.append('consent', 'true');
+    if (turnstileToken) fd.append('turnstile', turnstileToken);
+    try {
+      const r = await api<{ pid: string }>('upload', { method: 'POST', body: fd });
+      pid = r.pid;
+      previews.clear();
+      paintPills();
+      await requestStyle(selectedStyle);
+    } catch (err: any) {
+      phase = 'empty';
+      show('empty');
+      message(err.message, 'error');
+    }
+  }
+
+  async function requestStyle(styleKey: string, regenerate = false) {
+    if (!pid) return;
+    selectedStyle = styleKey;
+    paintPills();
+    if (!regenerate && previews.has(styleKey)) { paintPreview(); return; }
+    try {
+      busy(true);
+      phase = 'styling';
+      paintCart();
+      paintCompareButton();
+      const r = await api<{ status: string; cached?: boolean; callsLeft?: number; switchesLeft?: number }>('style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pid, styleKey, regenerate }),
+      });
+      if (typeof r.switchesLeft === 'number') paintSwitchHint(r.switchesLeft);
+      if (r.status === 'ready') { onReady(styleKey); return; }
+      startPolling();
+    } catch (err: any) {
+      busy(false);
+      phase = previews.size ? 'ready' : 'failed';
+      // Caps come back as 429/503 — the styles already tried stay usable.
+      if (previews.has(selectedStyle)) paintPreview();
+      else if (previews.size) { selectedStyle = [...previews.keys()][0]; paintPills(); paintPreview(); }
+      message(err.message, 'error');
+      paintCart();
+      paintCompareButton();
+    }
+  }
+
+  function startPolling() {
+    stopPolling();
+    pollTimer = window.setInterval(async () => {
+      try {
+        const s = await api<{ status: string; selectedStyleKey: string | null; switchesLeft: number; failCode?: string; failMessage?: string }>(`status?pid=${pid}`);
+        paintSwitchHint(s.switchesLeft);
+        if (s.status === 'ready') { stopPolling(); onReady(s.selectedStyleKey || selectedStyle); }
+        else if (s.status === 'failed') {
+          stopPolling();
+          busy(false);
+          phase = previews.size ? 'ready' : 'failed';
+          message(s.failMessage || "Styling didn't work that time. Please try again.", 'error');
+          if (s.failCode === 'blocked') { pid = null; previews.clear(); show('empty'); phase = 'empty'; }
+          else if (previews.size) { selectedStyle = previews.has(selectedStyle) ? selectedStyle : [...previews.keys()][0]; paintPills(); paintPreview(); }
+          paintCart();
+          paintCompareButton();
+        }
+      } catch { /* transient — keep polling */ }
+    }, POLL_MS);
+  }
+  function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+  function onReady(styleKey: string) {
+    previews.set(styleKey, imageUrl(styleKey, 1024));
+    phase = 'ready';
+    selectedStyle = styleKey;
+    busy(false);
+    clearMessage();
+    paintPills();
+    paintPreview();
+    paintCart();
+    paintCompareButton();
+  }
+
+  // ── Paint ────────────────────────────────────────────────────────────────
+  function styleInfo(key: string) { return STYLES.find((s) => s.key === key); }
+
+  function paintPreview() {
+    const url = previews.get(selectedStyle);
+    const el = $<HTMLImageElement>('result-img');
+    if (!url) return;
+    el.src = showingOriginal && squareUrl ? squareUrl : url;
+    el.alt = `Your photo in the ${styleInfo(selectedStyle)?.label || ''} style`;
+    $('compare-btn').classList.remove('hidden');
+    $('regen-btn').classList.remove('hidden');
+    const badge = $('option-badge');
+    badge.textContent = `Option ${styleInfo(selectedStyle)?.letter || ''}`;
+  }
+  function paintPills() {
+    document.querySelectorAll<HTMLElement>('.style-pill').forEach((btn) => {
+      const key = btn.dataset.key!;
+      const active = key === selectedStyle;
+      btn.classList.toggle('border-pop-orange', active);
+      btn.classList.toggle('bg-pop-orange/10', active);
+      btn.classList.toggle('border-edge-line', !active);
+      btn.setAttribute('aria-pressed', String(active));
+      const tried = previews.has(key);
+      btn.querySelector('.pill-tick')?.classList.toggle('hidden', !tried);
+      const thumb = btn.querySelector<HTMLImageElement>('img.pill-thumb');
+      if (tried && thumb && pid) {
+        const want = `/api/personalisation/image?pid=${pid}&kind=${key}&w=240`;
+        if (!thumb.src.includes(`kind=${key}`) || !thumb.src.includes(pid)) thumb.src = want;
+      }
+    });
+  }
+  function paintSwitchHint(left: number) {
+    $('switch-hint').textContent = left > 0 ? `— ${left} more ${left === 1 ? 'style' : 'styles'} to try` : '— pick from the styles you\u2019ve tried';
+  }
+  function price() { return (PRICES[selectedFormat]?.[selectedSize] ?? 9.99) + FEE; }
+  function paintCart() {
+    const ready = phase === 'ready' && previews.has(selectedStyle);
+    const btn = $<HTMLButtonElement>('add-to-cart');
+    btn.disabled = !ready;
+    $('cart-label').textContent = ready
+      ? `Add to Cart — £${(price() * quantity).toFixed(2)}`
+      : phase === 'styling' || phase === 'uploading' ? 'Drawing your photo…' : 'Add a photo to continue';
+    $('display-price').textContent = ready ? `£${price().toFixed(2)}` : `From £${(PRICES.poster.small + FEE).toFixed(2)}`;
+    $('qty-display').textContent = String(quantity);
+    $('canvas-wrap-notice').classList.toggle('hidden', selectedFormat === 'poster');
+  }
+
+  // ── Wire up ──────────────────────────────────────────────────────────────
+  const consent = $<HTMLInputElement>('consent');
+  function needConsent(): boolean {
+    if (consent.checked) return true;
+    message('Tick the box below the photo first — we need your OK before uploading anything.', 'info');
+    consent.focus();
+    return false;
+  }
+  $('pick-photo').addEventListener('click', () => { if (needConsent()) $<HTMLInputElement>('file-input').click(); });
+  $<HTMLInputElement>('file-input').addEventListener('change', (e) => {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (f) startCrop(f);
+    (e.target as HTMLInputElement).value = '';
+  });
+  const stage = $('stage');
+  ['dragenter', 'dragover'].forEach((ev) => stage.addEventListener(ev, (e) => { e.preventDefault(); stage.classList.add('border-pop-orange'); }));
+  ['dragleave', 'drop'].forEach((ev) => stage.addEventListener(ev, (e) => { e.preventDefault(); stage.classList.remove('border-pop-orange'); }));
+  stage.addEventListener('drop', (e) => {
+    const f = (e as DragEvent).dataTransfer?.files?.[0];
+    if (f && phase === 'empty' && needConsent()) startCrop(f);
+  });
+  $('crop-cancel').addEventListener('click', () => { img = null; phase = 'empty'; show('empty'); });
+  $('crop-done').addEventListener('click', async () => {
+    try { const blob = await exportSquare(); await upload(blob); }
+    catch { message("Couldn't prepare that crop — please try again.", 'error'); }
+  });
+  $('change-photo').addEventListener('click', () => {
+    stopPolling(); pid = null; previews.clear(); showingOriginal = false;
+    phase = 'empty'; show('empty'); clearMessage(); paintPills(); paintCart(); paintCompareButton();
+    $('compare-btn').classList.add('hidden'); $('regen-btn').classList.add('hidden');
+  });
+  $('compare-btn').addEventListener('click', () => {
+    showingOriginal = !showingOriginal;
+    $('compare-btn').textContent = showingOriginal ? 'Show design' : 'Show original';
+    $('compare-btn').setAttribute('aria-pressed', String(showingOriginal));
+    paintPreview();
+  });
+  $('regen-btn').addEventListener('click', () => { if (phase === 'ready') requestStyle(selectedStyle, true); });
+  $('compare-all').addEventListener('click', openCompare);
+  $('compare-close').addEventListener('click', () => show('result'));
+
+  document.querySelectorAll<HTMLElement>('.style-pill').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key!;
+      if (!pid) { selectedStyle = key; paintPills(); $('option-badge').textContent = `Option ${btn.dataset.letter}`; return; }
+      if (phase === 'styling' || phase === 'uploading') return;
+      showingOriginal = false; $('compare-btn').textContent = 'Show original';
+      requestStyle(key);
+    });
+  });
+
+  const select = (sel: string, on: HTMLElement) => {
+    document.querySelectorAll(sel).forEach((b) => {
+      b.classList.remove('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+      b.classList.add('border-edge-line', 'text-mid-grey');
+    });
+    on.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
+    on.classList.remove('border-edge-line', 'text-mid-grey');
+  };
+  document.querySelectorAll<HTMLElement>('.format-btn').forEach((btn) => btn.addEventListener('click', () => {
+    select('.format-btn', btn); selectedFormat = (btn.dataset.format as Format) || 'poster'; paintCart();
+  }));
+  document.querySelectorAll<HTMLElement>('.size-btn').forEach((btn) => btn.addEventListener('click', () => {
+    select('.size-btn', btn); selectedSize = (btn.dataset.size as Size) || 'small'; paintCart();
+  }));
+  $('qty-decrease').addEventListener('click', () => { if (quantity > 1) { quantity--; paintCart(); } });
+  $('qty-increase').addEventListener('click', () => { if (quantity < 10) { quantity++; paintCart(); } });
+
+  $('add-to-cart').addEventListener('click', () => {
+    if (!pid || phase !== 'ready' || !previews.has(selectedStyle)) return;
+    const s = styleInfo(selectedStyle);
+    addToCart({
+      productId: 'your-photo',
+      slug: 'your-photo',
+      title: `Your Photo — ${s?.label || 'Personalised'}`,
+      collection: 'personalised',
+      format: selectedFormat,
+      size: selectedSize,
+      quantity,
+      unitPrice: price(),
+      accentColor: '#76FF03',
+      imageUrl: `/api/personalisation/image?pid=${pid}&kind=${selectedStyle}&w=400`,
+      personalisationId: pid,
+      styleKey: selectedStyle,
+      personalisationFee: FEE,
+    });
+  });
+
+  // Initial paint
+  paintPills();
+  paintCart();
+  paintCompareButton();
+  message('Choose a photo to get started — one or more people with clear faces works best.', 'info');
+</script>

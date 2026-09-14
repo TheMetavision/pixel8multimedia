@@ -49,6 +49,19 @@ try {
 // in src/lib/queries.ts.
 const listingRows = [...characters].filter((c: any) => c.category !== 'personalised');
 
+// Sample artwork for the "Your Photo" banner — the same example images the
+// builder shows on its style pills, so the two never drift apart.
+let personalisationSamples: { label: string; url: string }[] = [];
+try {
+  personalisationSamples = await sanityClient.fetch(`
+    *[_type == "personalisationStyle" && active == true && defined(exampleAfter)] | order(sortOrder asc)[0...4] {
+      label, "url": exampleAfter.asset->url
+    }
+  `) || [];
+} catch (e) {
+  // Banner still renders, just without thumbnails.
+}
+
 // Map STYLES[] to short "Option A".."Option J" labels with colour dots.
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
 const optionPills = STYLES.map((s: any, i: number) => ({
@@ -143,6 +156,42 @@ const optionPills = STYLES.map((s: any, i: number) => ({
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Your Photo — self-serve personalisation -->
+  <section class="pt-10 sm:pt-12 bg-bg-primary">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <a href="/store/your-photo"
+         class="group block rounded-lg border border-edge-line hover:border-pop-orange bg-bg-secondary overflow-hidden transition-colors">
+        <div class="grid md:grid-cols-[auto_1fr] items-center gap-6 p-5 sm:p-6">
+          {personalisationSamples.length > 0 && (
+            <div class="flex gap-2">
+              {personalisationSamples.map((s, i) => (
+                <img
+                  src={`${s.url}?w=220&h=220&fit=crop&auto=format`}
+                  alt={`Example of the ${s.label} style`}
+                  class={`w-20 h-20 sm:w-24 sm:h-24 object-cover rounded border border-edge-line ${i > 1 ? 'hidden sm:block' : ''}`}
+                  loading="lazy"
+                />
+              ))}
+            </div>
+          )}
+          <div>
+            <span class="font-montserrat text-xs font-semibold uppercase tracking-wider text-pixel-cyan">New &middot; self-serve</span>
+            <h2 class="font-montserrat text-xl sm:text-2xl font-bold text-off-white mt-1 mb-2 group-hover:text-pop-orange transition-colors">
+              Your photo, your style
+            </h2>
+            <p class="font-dm text-sm text-mid-grey leading-relaxed max-w-2xl">
+              Upload your own photo and see it redrawn in our house styles in under a minute. Try up to four,
+              pick your favourite, and we'll print it on the same posters and canvases as everything else.
+            </p>
+            <span class="inline-block mt-3 font-montserrat text-sm font-semibold text-pop-orange group-hover:underline">
+              Try it now &rarr;
+            </span>
+          </div>
+        </div>
+      </a>
     </div>
   </section>
 

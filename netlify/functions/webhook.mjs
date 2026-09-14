@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
+import { createHash } from 'node:crypto';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -16,17 +17,51 @@ const sanity = createClient({
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Keys match src/data/products.ts — see the note in checkout.mjs.
 const FORMAT_LABELS = {
   poster: 'Poster Print',
-  'canvas-standard': 'Canvas (Standard Frame)',
-  'canvas-gallery': 'Canvas (Gallery Frame)',
+  canvasStandard: 'Canvas (Standard Frame)',
+  canvasGallery: 'Canvas (Gallery Frame)',
 };
 
 const SIZE_LABELS = {
-  small: 'Small (12×8")',
-  medium: 'Medium (16×12")',
-  large: 'Large (24×16")',
+  small: 'Small (12×12")',
+  medium: 'Medium (16×16")',
+  large: 'Large (20×20")',
 };
+
+/**
+ * Rebuild the cart from Stripe's own line items. checkout.mjs puts every
+ * field on each line's product metadata, so this works for any number of
+ * lines. Sessions created before that change carry a `cartItems` JSON blob
+ * in session metadata — fall back to it so in-flight orders still complete.
+ */
+async function cartFromSession(session) {
+  try {
+    const { data } = await stripe.checkout.sessions.listLineItems(session.id, {
+      limit: 100,
+      expand: ['data.price.product'],
+    });
+    const items = data.map((li) => {
+      const m = li.price?.product?.metadata || {};
+      return {
+        productId: m.productId || '',
+        slug: m.slug || '',
+        title: m.title || li.description || 'Item',
+        collection: m.collection || '',
+        format: m.format || '',
+        size: m.size || '',
+        quantity: li.quantity || 1,
+        unitPrice: (li.price?.unit_amount || 0) / 100,
+        ...(m.personalisationId ? { personalisationId: m.personalisationId, styleKey: m.styleKey || '' } : {}),
+      };
+    });
+    if (items.length) return items;
+  } catch (err) {
+    console.warn('webhook: listLineItems failed, falling back to metadata.cartItems', err?.message);
+  }
+  return JSON.parse(session.metadata?.cartItems || '[]');
+}
 
 export default async (req, context) => {
   if (req.method !== 'POST') {
@@ -64,20 +99,21 @@ export default async (req, context) => {
       const customerName = session.shipping_details?.name || session.customer_details?.name || 'Customer';
       const customerEmail = session.customer_details?.email || '';
       const totalAmount = (session.amount_total || 0) / 100;
-      const cartItems = JSON.parse(session.metadata?.cartItems || '[]');
+      const cartItems = await cartFromSession(session);
 
-      const lineItems = cartItems.map((item) => ({
+      const lineItems = cartItems.map((item, n) => ({
         _type: 'object',
-        _key: `${item.slug}-${item.format}-${item.size}-${Date.now()}`,
+        _key: `${item.personalisationId || item.slug || 'line'}-${item.format}-${item.size}-${n}-${Date.now()}`,
         productTitle: item.title,
         format: FORMAT_LABELS[item.format] || item.format,
         size: SIZE_LABELS[item.size] || item.size,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        ...(item.personalisationId ? { personalisationId: item.personalisationId, styleKey: item.styleKey } : {}),
       }));
 
       // Create order in Sanity
-      await sanity.create({
+      const order = await sanity.create({
         _type: 'order',
         stripeSessionId: session.id,
         stripePaymentId: session.payment_intent,
@@ -98,6 +134,48 @@ export default async (req, context) => {
       });
 
       console.log(`Order created in Sanity for session ${session.id}`);
+
+      // Personalised lines: mark the session paid, link it to the order, and
+      // clear expiresAt so the retention sweep leaves its images alone. The
+      // proof email is sent by the proof step (phase 4), which watches for
+      // status == 'paid'.
+      const personalised = cartItems.filter((i) => i.personalisationId);
+      for (const item of personalised) {
+        try {
+          await sanity
+            .patch(`pendingPersonalisation.${item.personalisationId}`)
+            .set({
+              status: 'paid',
+              order: { _type: 'reference', _ref: order._id },
+              customerEmail,
+              format: item.format,
+              size: item.size,
+              selectedStyleKey: item.styleKey,
+            })
+            .unset(['expiresAt'])
+            .commit();
+          console.log(`Personalisation ${item.personalisationId} marked paid`);
+          // Send the proof. Fire and forget — a failed email must never fail
+          // the webhook, or Stripe retries and duplicates the order.
+          fetch(`${process.env.URL || 'https://pixel8multimedia.co.uk'}/api/personalisation/proof`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-personalisation-key': createHash('sha256')
+                .update(`internal:${process.env.PERSONALISATION_SALT || 'dev-salt'}`)
+                .digest('hex').slice(0, 40),
+            },
+            body: JSON.stringify({ pid: item.personalisationId }),
+          }).catch((err) => console.error('proof send failed:', err?.message));
+        } catch (err) {
+          console.error(`Failed to mark personalisation ${item.personalisationId} paid:`, err);
+        }
+      }
+      const proofNote = personalised.length
+        ? `<p style="color: #F5F5F0; line-height: 1.6; margin: 0 0 24px; padding: 12px 16px; background: #1A1A1E; border-left: 3px solid #76FF03; border-radius: 4px;">
+             Your order includes a personalised design. We'll email you a proof to approve before it goes to print — nothing is printed until you've said yes.
+           </p>`
+        : '';
 
       // Build email content
       const itemRows = cartItems
@@ -158,6 +236,7 @@ export default async (req, context) => {
                 <p style="color: #999; line-height: 1.6; margin: 0 0 24px;">
                   Your order has been received and is being prepared. All our products are made to order in our UK studio — please allow 3-6 working days for dispatch.
                 </p>
+                ${proofNote}
                 ${orderTable}
                 ${shippingBlock}
                 <p style="color: #999; line-height: 1.6; margin: 24px 0 0;">
@@ -200,7 +279,7 @@ export default async (req, context) => {
                 <div style="margin-top: 20px; padding: 16px; background: #FFF9E6; border-left: 4px solid #F07828; border-radius: 4px;">
                   <strong>Next steps:</strong><br/>
                   1. Open <a href="https://pixel8multimedia.sanity.studio" style="color: #E91E7B;">Sanity Studio</a> to view/manage this order<br/>
-                  2. Prepare artwork for printing<br/>
+                  2. Prepare artwork for printing${personalised.length ? ' — <strong>personalised item: wait for proof approval (Personalisation → Ready to print)</strong>' : ''}<br/>
                   3. Update order status to "In Production" when started<br/>
                   4. Add tracking number and update to "Dispatched" when shipped
                 </div>

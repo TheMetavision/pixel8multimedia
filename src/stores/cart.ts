@@ -15,6 +15,10 @@ export interface CartItem {
   unitPrice: number;
   accentColor: string;
   imageUrl?: string;
+  // "Your Photo" lines only — see src/pages/store/your-photo.astro
+  personalisationId?: string;  // pendingPersonalisation.pid
+  styleKey?: string;           // style-a … style-h
+  personalisationFee?: number; // already folded into unitPrice; kept for display
 }
 
 // Persistent cart — survives page navigation via localStorage.
@@ -38,8 +42,15 @@ export const cartTotal = computed(cartItems, (items) =>
 
 export function addToCart(item: Omit<CartItem, 'id'>) {
   const current = cartItems.get();
+  // Personalised lines match on the personalisation id as well as format and
+  // size: two different photos share a productId but are different products,
+  // while the same design ordered twice in the same size is quantity 2.
   const existing = current.find(
-    (i) => i.productId === item.productId && i.format === item.format && i.size === item.size
+    (i) =>
+      i.personalisationId === item.personalisationId &&
+      i.productId === item.productId &&
+      i.format === item.format &&
+      i.size === item.size
   );
   if (existing) {
     cartItems.set(
@@ -48,7 +59,8 @@ export function addToCart(item: Omit<CartItem, 'id'>) {
       )
     );
   } else {
-    cartItems.set([...current, { ...item, id: `${item.productId}-${item.format}-${item.size}-${Date.now()}` }]);
+    const stem = item.personalisationId ?? item.productId;
+    cartItems.set([...current, { ...item, id: `${stem}-${item.format}-${item.size}-${Date.now()}` }]);
   }
   cartOpen.set(true);
 }

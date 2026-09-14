@@ -13,6 +13,11 @@ let categories: any[] = [];
 let testimonials: any[] = [];
 let faqs: any[] = [];
 
+// Before/after examples for the "Your Photo" band — the same images the
+// builder shows on its style pills, so the homepage can never advertise a
+// style that has been turned off.
+let photoStyles: { label: string; blurb?: string; before?: string; after?: string }[] = [];
+
 try {
   [featuredProducts, categories, testimonials, faqs] = await Promise.all([
     sanityClient.fetch(featuredProductsQuery),
@@ -20,6 +25,13 @@ try {
     sanityClient.fetch(testimonialsQuery),
     sanityClient.fetch(homepageFaqsQuery),
   ]);
+  photoStyles = await sanityClient.fetch(`
+    *[_type == "personalisationStyle" && active == true && defined(exampleAfter)] | order(sortOrder asc)[0...4] {
+      label, blurb,
+      "before": exampleBefore.asset->url,
+      "after": exampleAfter.asset->url
+    }
+  `) || [];
 } catch (e) {
   console.warn('Sanity fetch failed, using fallback data');
   categories = CATEGORIES.map((c) => ({ ...c, productCount: 0 }));
@@ -62,11 +74,11 @@ const jsonLd = [
           <span class="logo-gradient block">Pixel-Perfect Art</span>
         </h1>
         <p class="font-dm text-lg text-mid-grey leading-relaxed mb-8 max-w-xl">
-          Bold pop culture wall art and bespoke AI photo transformation. Shop canvas prints or commission personalised artwork. UK & worldwide delivery.
+          Bold pop culture wall art — or upload your own photo and watch it redrawn in our house styles in under a minute. Printed to order in the UK.
         </p>
         <div class="flex flex-wrap gap-4">
           <a href="/store" class="btn-primary">Shop Wall Art</a>
-          <a href="/services" class="btn-secondary">Commission Yours</a>
+          <a href="/store/your-photo" class="btn-secondary">Use Your Own Photo</a>
         </div>
         <div class="flex items-center gap-6 mt-8 text-sm text-mid-grey font-dm">
           <span class="flex items-center gap-1.5">
@@ -117,6 +129,66 @@ const jsonLd = [
     </div>
   </section>
 
+
+  <!-- ===== YOUR PHOTO ===== -->
+  <section class="py-20 bg-bg-primary border-y border-edge-line">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-10 reveal">
+        <span class="font-mono text-xs text-pixel-cyan uppercase tracking-widest">New &middot; no waiting, no brief</span>
+        <h2 class="section-heading mt-2">One photo. Eight styles.</h2>
+        <p class="font-dm text-mid-grey max-w-2xl mx-auto mt-4 leading-relaxed">
+          Upload a photo, pick a style, and see your design in about a minute — then choose a poster or canvas.
+          No commission form, no back and forth.
+        </p>
+      </div>
+
+      {photoStyles.length > 0 && (
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-10 reveal stagger-1">
+          {photoStyles[0].before && (
+            <figure class="relative">
+              <img src={`${photoStyles[0].before}?w=400&h=400&fit=crop&auto=format`}
+                   alt="An ordinary photo before styling"
+                   class="w-full aspect-square object-cover rounded-lg border border-edge-line" loading="lazy" />
+              <figcaption class="absolute top-2 left-2 font-mono text-[0.6rem] uppercase tracking-wider bg-black/75 text-off-white px-2 py-1 rounded">
+                Your photo
+              </figcaption>
+            </figure>
+          )}
+          {photoStyles.map((s) => (
+            <figure class="relative">
+              <img src={`${s.after}?w=400&h=400&fit=crop&auto=format`}
+                   alt={`The same photo in the ${s.label} style`}
+                   class="w-full aspect-square object-cover rounded-lg border border-edge-line" loading="lazy" />
+              <figcaption class="absolute bottom-2 left-2 font-montserrat text-[0.65rem] font-semibold bg-black/75 text-off-white px-2 py-1 rounded">
+                {s.label}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+
+      <div class="grid sm:grid-cols-3 gap-6 mb-10 max-w-4xl mx-auto reveal stagger-2">
+        <div class="text-center">
+          <div class="font-mono text-pop-orange text-sm mb-1">01</div>
+          <p class="font-dm text-sm text-mid-grey">Upload a photo and crop it square.</p>
+        </div>
+        <div class="text-center">
+          <div class="font-mono text-pixel-cyan text-sm mb-1">02</div>
+          <p class="font-dm text-sm text-mid-grey">Try up to four styles and compare them side by side.</p>
+        </div>
+        <div class="text-center">
+          <div class="font-mono text-hot-magenta text-sm mb-1">03</div>
+          <p class="font-dm text-sm text-mid-grey">Approve your proof — then we print and post it.</p>
+        </div>
+      </div>
+
+      <div class="text-center reveal stagger-3">
+        <a href="/store/your-photo" class="btn-primary">Try It With Your Photo</a>
+        <p class="font-dm text-xs text-deep-grey mt-3">From £14.99 including the personalisation fee</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== CATEGORIES ===== -->
   <section class="py-20 bg-bg-secondary">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -129,7 +201,7 @@ const jsonLd = [
       </div>
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {(categories.length > 0 ? categories : CATEGORIES).map((cat: any, i: number) => (
-          <a href={cat.slug === 'personalised' ? '/services' : `/store?category=${cat.slug}`}
+          <a href={cat.slug === 'personalised' ? '/store/your-photo' : `/store?category=${cat.slug}`}
              class={`bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange transition-all duration-300 reveal stagger-${Math.min(i + 1, 4)}`}>
             <div class="aspect-[4/3] bg-bg-tertiary flex items-center justify-center">
               {cat.coverImage?.asset ? (
