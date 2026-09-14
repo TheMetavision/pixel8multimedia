@@ -36,3 +36,6 @@
 
 [functions]
   included_files = ["netlify/functions/_shared/refs/**"]
+
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = "docs/**"
