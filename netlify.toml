@@ -1,9 +1,10 @@
-[build]
+﻿[build]
   command = "npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "22"
+  SECRETS_SCAN_OMIT_PATHS = "docs/**"
 
 [[headers]]
   for = "/*"
@@ -12,7 +13,7 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-# Groupon voucher redemption — customers guess at this, so catch the obvious
+# Groupon voucher redemption â€” customers guess at this, so catch the obvious
 # variants rather than serving a 404 to someone holding a paid voucher.
 [[redirects]]
   from = "/redeem"
@@ -37,5 +38,3 @@
 [functions]
   included_files = ["netlify/functions/_shared/refs/**"]
 
-[build.environment]
-  SECRETS_SCAN_OMIT_PATHS = "docs/**"
