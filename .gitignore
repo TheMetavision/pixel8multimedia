@@ -24,3 +24,6 @@ phase1-context*.zip
 _to_delete/
 studio/.sanity/
 *.csv
+
+# Claude Code local permissions
+.claude/settings.local.json
