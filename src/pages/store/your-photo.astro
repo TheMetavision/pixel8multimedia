@@ -121,7 +121,7 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
             </span>
           </label>
           {turnstileSiteKey && (
-            <div class="mt-3 cf-turnstile" data-sitekey={turnstileSiteKey} data-callback="onTurnstile" data-size="flexible"></div>
+            <div id="turnstile-box" class="mt-3" data-sitekey={turnstileSiteKey}></div>
           )}
         </div>
 
@@ -238,8 +238,6 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
   styles: styles.map((s) => ({ key: s.key, letter: s.letter, label: s.label })),
 })} />
 
-{turnstileSiteKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
-
 <script>
   import { addToCart } from '../../stores/cart';
 
@@ -267,8 +265,49 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
   let selectedFormat: Format = 'poster';
   let selectedSize: Size = 'small';
   let quantity = 1;
+
+  // ── Turnstile ────────────────────────────────────────────────────────────
+  // Explicit render from this module. The old implicit widget + async api.js
+  // tag raced this (deferred) module: the widget solved before
+  // window.onTurnstile existed, so the token was never captured and every
+  // upload went out without one. Loading api.js from here, after the onload
+  // hook is defined, removes the race. Tokens are single-use and expire after
+  // ~5 minutes, so the widget is reset after every upload attempt.
+  const turnstileBox = document.getElementById('turnstile-box');
+  const turnstileSiteKey = turnstileBox?.dataset.sitekey || '';
   let turnstileToken = '';
-  (window as any).onTurnstile = (t: string) => { turnstileToken = t; };
+  let turnstileWidget: string | null = null;
+  const ts = () => (window as any).turnstile;
+  function mountTurnstile() {
+    if (!turnstileBox || turnstileWidget !== null || !ts()) return;
+    turnstileWidget = ts().render(turnstileBox, {
+      sitekey: turnstileSiteKey,
+      size: 'flexible',
+      callback: (t: string) => { turnstileToken = t; },
+      'expired-callback': () => { turnstileToken = ''; },
+      'timeout-callback': () => { turnstileToken = ''; },
+      'error-callback': () => { turnstileToken = ''; },
+    });
+  }
+  function currentTurnstileToken(): string {
+    if (turnstileToken) return turnstileToken;
+    if (turnstileWidget !== null) return ts()?.getResponse(turnstileWidget) || '';
+    return '';
+  }
+  function resetTurnstile() {
+    turnstileToken = '';
+    if (turnstileWidget !== null) ts()?.reset(turnstileWidget);
+  }
+  if (turnstileSiteKey) {
+    if (ts()) mountTurnstile();
+    else {
+      (window as any).onTurnstileLoad = mountTurnstile;
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad';
+      s.async = true;
+      document.head.appendChild(s);
+    }
+  }
 
   // ── Crop ─────────────────────────────────────────────────────────────────
   const canvas = $<HTMLCanvasElement>('crop-canvas');
@@ -436,7 +475,10 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
     const fd = new FormData();
     fd.append('file', blob, 'photo.jpg');
     fd.append('consent', 'true');
-    if (turnstileToken) fd.append('turnstile', turnstileToken);
+    const token = currentTurnstileToken();
+    if (token) fd.append('turnstile', token);
+    // The token is spent the moment it is sent — get a fresh one for next time.
+    resetTurnstile();
     try {
       const r = await api<{ pid: string }>('upload', { method: 'POST', body: fd });
       pid = r.pid;
@@ -584,6 +626,10 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
   });
   $('crop-cancel').addEventListener('click', () => { img = null; phase = 'empty'; show('empty'); });
   $('crop-done').addEventListener('click', async () => {
+    if (turnstileSiteKey && !currentTurnstileToken()) {
+      message("We're still running a quick security check below the photo. Give it a moment, then press this again. If it doesn't finish, try turning off any ad or script blocker for this page.", 'info');
+      return;
+    }
     try { const blob = await exportSquare(); await upload(blob); }
     catch { message("Couldn't prepare that crop — please try again.", 'error'); }
   });

@@ -20,17 +20,34 @@ import {
 
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
-async function verifyTurnstile(token: string | null, ip: string): Promise<boolean> {
+// Logs why verification failed (Cloudflare error-codes and hostname only —
+// never the secret or the token) so the reason shows in the function log.
+// remoteip is not sent: siteverify wants the raw client IP, and the old code
+// passed our salted hash instead.
+async function verifyTurnstile(token: string | null): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (!secret) return true; // not configured → skip (dev / pre-launch)
-  if (!token) return false;
-  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret, response: token, remoteip: ip }),
-  });
-  const data = (await res.json()) as { success?: boolean };
-  return data.success === true;
+  if (!token) {
+    console.warn('personalisation-upload: turnstile failed codes=[missing-input-response] hostname=- (no token in form)');
+    return false;
+  }
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret, response: token }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = (await res.json()) as { success?: boolean; 'error-codes'?: string[]; hostname?: string };
+    if (data.success === true) return true;
+    console.warn(
+      `personalisation-upload: turnstile failed codes=[${(data['error-codes'] || []).join(',')}] hostname=${data.hostname || '-'} http=${res.status}`,
+    );
+    return false;
+  } catch (err: any) {
+    console.error('personalisation-upload: turnstile siteverify unreachable', err?.name || '', err?.message || '');
+    return false;
+  }
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -48,7 +65,7 @@ export default async function handler(req: Request): Promise<Response> {
     return bad('Please confirm you own the photo and agree to how it will be processed.');
   }
   const ip = ipHash(req);
-  if (!(await verifyTurnstile(form.get('turnstile') as string | null, ip))) {
+  if (!(await verifyTurnstile(form.get('turnstile') as string | null))) {
     return bad('Verification failed — please try again.', 403);
   }
 
