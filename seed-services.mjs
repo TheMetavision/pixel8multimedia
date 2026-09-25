@@ -5,19 +5,20 @@
  * 
  * Creates all 12 service documents in Sanity.
  * 
- * Usage:
- *   $env:SANITY_PROJECT_ID = "bqb4w421"
- *   $env:SANITY_DATASET = "production"
- *   $env:SANITY_API_TOKEN = "skYG2ilqNFvHNLqPFyPxoLoIl38gJFyL7nJDrnozDAxOWZwHbW8IN1lcvEVymV4FJID2PBYEpkdqFYZ6TWWF2yfYtNbCGMOA43RGNXVfkjIHlt5Z2aFszA3YA6dirYmYwTevSakxNhRhnaJbSttyiH9Johfuo31CaCGNLTizx9YRNG0Fc4jj"
+ * Usage (needs SANITY_TOKEN in .env):
+ *   node seed-services.mjs --dry-run   # list what would be created
  *   node seed-services.mjs
  */
 
+import 'dotenv/config';
 import { createClient } from '@sanity/client';
 
+const dryRun = process.argv.includes('--dry-run');
+
 const client = createClient({
-  projectId: process.env.SANITY_PROJECT_ID,
+  projectId: 'bqb4w421',
   dataset: process.env.SANITY_DATASET || 'production',
-  token: process.env.SANITY_API_TOKEN,
+  token: process.env.SANITY_TOKEN,
   apiVersion: '2024-01-01',
   useCdn: false,
 });
@@ -216,8 +217,13 @@ const services = [
 ];
 
 async function seed() {
-  console.log('🛠️  Pixel8 Multimedia — Service Seed Script');
+  console.log(`🛠️  Pixel8 Multimedia — Service Seed Script${dryRun ? ' (dry run)' : ''}`);
   console.log('==========================================\n');
+
+  if (!dryRun && !process.env.SANITY_TOKEN) {
+    console.error('  SANITY_TOKEN is not set.\n');
+    process.exit(1);
+  }
 
   for (const svc of services) {
     const doc = {
@@ -238,10 +244,12 @@ async function seed() {
       sortOrder: svc.sortOrder,
     };
 
+    if (dryRun) { console.log(`   · ${svc.title}`); continue; }
     await client.create(doc);
     console.log(`   ✅ ${svc.title}`);
   }
 
+  if (dryRun) { console.log('\n  Nothing written.\n'); return; }
   console.log(`\n🎉 Done! ${services.length} services created.`);
   console.log('   Now add gallery images and YouTube IDs in Sanity Studio.');
 }
