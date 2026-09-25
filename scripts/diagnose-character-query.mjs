@@ -1,13 +1,22 @@
 // scripts/diagnose-character-query.mjs
 // Tests several GROQ variants to find one Sanity accepts.
 
+import 'dotenv/config';
 import { createClient } from '@sanity/client';
+
+// The dataset is private: reads need SANITY_TOKEN from .env.
+if (!process.env.SANITY_TOKEN) {
+  console.error('SANITY_TOKEN is not set.');
+  process.exit(1);
+}
 
 const client = createClient({
   projectId: 'bqb4w421',
   dataset: 'production',
   apiVersion: '2024-12-01',
   useCdn: false,
+  token: process.env.SANITY_TOKEN,
+  perspective: 'published', // a token would otherwise include drafts
 });
 
 const queries = [
