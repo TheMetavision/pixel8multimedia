@@ -90,8 +90,30 @@ export default defineType({
     // ── Order ─────────────────────────────────────────────────────
     defineField({ name: 'order', title: 'Order', type: 'reference', to: [{ type: 'order' }] }),
     defineField({ name: 'customerEmail', title: 'Customer email', type: 'string' }),
-    defineField({ name: 'format', title: 'Format', type: 'string', readOnly: true }),
-    defineField({ name: 'size', title: 'Size', type: 'string', readOnly: true }),
+    defineField({ name: 'format', title: 'Format (first line ordered)', type: 'string', readOnly: true }),
+    defineField({ name: 'size', title: 'Size (first line ordered)', type: 'string', readOnly: true }),
+    // Every order line for this design — the same design can be ordered in
+    // several formats/sizes, or again later. Appended by the Stripe webhook.
+    defineField({
+      name: 'orderedLines',
+      title: 'Ordered lines',
+      type: 'array',
+      readOnly: true,
+      of: [{
+        type: 'object',
+        fields: [
+          { name: 'orderId', title: 'Order _id', type: 'string' },
+          { name: 'styleKey', title: 'Style', type: 'string' },
+          { name: 'formatKey', title: 'Format', type: 'string' },
+          { name: 'sizeKey', title: 'Size', type: 'string' },
+          { name: 'quantity', title: 'Qty', type: 'number' },
+        ],
+        preview: {
+          select: { f: 'formatKey', s: 'sizeKey', q: 'quantity', o: 'orderId' },
+          prepare: ({ f, s, q, o }) => ({ title: `${f} · ${s} × ${q}`, subtitle: o }),
+        },
+      }],
+    }),
     defineField({ name: 'digitalBundle', title: 'Digital bundle purchased', type: 'boolean', initialValue: false }),
 
     // ── Proof / approval / print ──────────────────────────────────
@@ -104,6 +126,10 @@ export default defineType({
     defineField({ name: 'printMethod', title: 'Upscale method', type: 'string', readOnly: true }),
     defineField({ name: 'printBuiltAt', title: 'Print file built', type: 'datetime', readOnly: true }),
     defineField({ name: 'printError', title: 'Print build error', type: 'string', readOnly: true }),
+    // Set when a trigger could not start its function after retries; cleared
+    // when that step later succeeds. Listed under Personalisation → Needs attention.
+    defineField({ name: 'printTriggerError', title: 'Print build did not start', type: 'string', readOnly: true }),
+    defineField({ name: 'proofTriggerError', title: 'Proof email did not send', type: 'string', readOnly: true }),
     defineField({ name: 'proofKey', title: 'Proof image (blob key)', type: 'string', readOnly: true }),
     defineField({ name: 'printedAt', title: 'Printed', type: 'datetime' }),
 

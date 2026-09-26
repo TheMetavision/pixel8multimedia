@@ -13,6 +13,7 @@
 import {
   sanity, docId, getSession, isPid, nowIso, siteUrl, INTERNAL_HEADER, internalKey,
 } from './_shared/personalisation.mts';
+import { triggerInternal } from './_shared/origin.mjs';
 
 function page(title: string, body: string, tone: 'ok' | 'info' | 'error' = 'ok'): Response {
   const accent = tone === 'error' ? '#E5484D' : tone === 'info' ? '#22D3EE' : '#76FF03';
@@ -66,12 +67,25 @@ export default async function handler(req: Request): Promise<Response> {
     .unset(['proofToken'])   // single use
     .commit();
 
-  // Build the print file in the background; the customer doesn't wait on it.
-  fetch(`${siteUrl()}/api/personalisation/print-background`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', [INTERNAL_HEADER]: internalKey() },
-    body: JSON.stringify({ pid }),
-  }).catch((err) => console.error(`approve: print enqueue failed for ${pid}`, err?.message));
+  // Build the print file in the background. AWAITED: the old fire-and-forget
+  // fetch could be frozen with this function once it returned, so the build
+  // silently never started in production. A background function answers 202
+  // as soon as it's queued, so the customer waits well under a second. If it
+  // can't be started after retries, flag the session for the Studio "Needs
+  // attention" list; the customer still sees their approval confirmed.
+  const trigger = await triggerInternal('/api/personalisation/print-background', {
+    req,
+    body: { pid },
+    headers: { [INTERNAL_HEADER]: internalKey() },
+  });
+  if (!trigger.ok) {
+    console.error(`approve: print trigger FAILED for ${pid}: ${trigger.error}`);
+    await sanity
+      .patch(docId(pid))
+      .set({ printTriggerError: `${nowIso()} — ${String(trigger.error).slice(0, 200)}` })
+      .commit()
+      .catch((e: any) => console.error(`approve: could not flag ${pid}:`, e?.message));
+  }
 
   console.log(`personalisation-approve: ${pid} approved`);
   return page(

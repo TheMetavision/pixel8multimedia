@@ -42,6 +42,16 @@ export default defineConfig({
                 S.list()
                   .title('Personalisation')
                   .items([
+                    // A trigger that couldn't start its function (print build
+                    // or proof email) after retries. Fix, then resend by hand.
+                    S.listItem()
+                      .title('Needs attention')
+                      .child(
+                        S.documentList()
+                          .title('Print build or proof email did not start')
+                          .filter('_type == "pendingPersonalisation" && (defined(printTriggerError) || defined(proofTriggerError))')
+                          .defaultOrdering([{ field: '_updatedAt', direction: 'desc' }])
+                      ),
                     S.listItem()
                       .title('Ready to print')
                       .child(

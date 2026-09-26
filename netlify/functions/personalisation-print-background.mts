@@ -147,6 +147,7 @@ export default async function handler(req: Request): Promise<Response> {
         printMethod: method,
         printBuiltAt: nowIso(),
       })
+      .unset(['printTriggerError', 'printError']) // it ran after all, and succeeded
       .commit();
 
     console.log(`print: ${pid} ${format} ${finalPx}px via ${method} in ${Date.now() - t0}ms (${(out.length / 1048576).toFixed(1)}MB)`);

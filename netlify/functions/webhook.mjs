@@ -2,13 +2,18 @@ import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
 import { createHash } from 'node:crypto';
+import { FORMAT_LABELS, SIZE_LABELS } from './_shared/pricing.mjs';
+import {
+  itemsFromLineItems, itemsFromCartItemsBlob, orderLineFromItem, personalisedLinesByPid,
+} from './_shared/order-lines.mjs';
+import { triggerInternal } from './_shared/origin.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
 });
 
 const sanity = createClient({
-  projectId: process.env.SANITY_PROJECT_ID,
+  projectId: process.env.SANITY_PROJECT_ID || 'bqb4w421',
   dataset: process.env.SANITY_DATASET || 'production',
   apiVersion: '2026-04-14',
   token: process.env.SANITY_WRITE_TOKEN,
@@ -16,19 +21,6 @@ const sanity = createClient({
 });
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Keys match src/data/products.ts — see the note in checkout.mjs.
-const FORMAT_LABELS = {
-  poster: 'Poster Print',
-  canvasStandard: 'Canvas (Standard Frame)',
-  canvasGallery: 'Canvas (Gallery Frame)',
-};
-
-const SIZE_LABELS = {
-  small: 'Small (12×12")',
-  medium: 'Medium (16×16")',
-  large: 'Large (20×20")',
-};
 
 /**
  * Rebuild the cart from Stripe's own line items. checkout.mjs puts every
@@ -42,26 +34,17 @@ async function cartFromSession(session) {
       limit: 100,
       expand: ['data.price.product'],
     });
-    const items = data.map((li) => {
-      const m = li.price?.product?.metadata || {};
-      return {
-        productId: m.productId || '',
-        slug: m.slug || '',
-        title: m.title || li.description || 'Item',
-        collection: m.collection || '',
-        format: m.format || '',
-        size: m.size || '',
-        quantity: li.quantity || 1,
-        unitPrice: (li.price?.unit_amount || 0) / 100,
-        ...(m.personalisationId ? { personalisationId: m.personalisationId, styleKey: m.styleKey || '' } : {}),
-      };
-    });
+    const items = itemsFromLineItems(data);
     if (items.length) return items;
   } catch (err) {
     console.warn('webhook: listLineItems failed, falling back to metadata.cartItems', err?.message);
   }
-  return JSON.parse(session.metadata?.cartItems || '[]');
+  return itemsFromCartItemsBlob(session.metadata?.cartItems);
 }
+
+/** Header the internal personalisation endpoints check (see _shared/personalisation.mts). */
+const internalKey = () =>
+  createHash('sha256').update(`internal:${process.env.PERSONALISATION_SALT || 'dev-salt'}`).digest('hex').slice(0, 40);
 
 export default async (req, context) => {
   if (req.method !== 'POST') {
@@ -118,16 +101,10 @@ export default async (req, context) => {
         return new Response('OK — duplicate, already processed', { status: 200 });
       }
 
-      const lineItems = cartItems.map((item, n) => ({
-        _type: 'object',
-        _key: `${item.personalisationId || item.slug || 'line'}-${item.format}-${item.size}-${n}-${Date.now()}`,
-        productTitle: item.title,
-        format: FORMAT_LABELS[item.format] || item.format,
-        size: SIZE_LABELS[item.size] || item.size,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        ...(item.personalisationId ? { personalisationId: item.personalisationId, styleKey: item.styleKey } : {}),
-      }));
+      // Labels as before, plus keys (productRef, formatKey, sizeKey, …) on
+      // lines from the server-priced checkout. See _shared/order-lines.mjs.
+      const stamp = Date.now();
+      const lineItems = cartItems.map((item, n) => orderLineFromItem(item, n, stamp));
 
       // Create order in Sanity. `create` with a fixed _id rather than
       // createIfNotExists: both refuse to overwrite, but createIfNotExists
@@ -166,39 +143,45 @@ export default async (req, context) => {
       console.log(`Order ${order._id} created in Sanity for session ${session.id}`);
 
       // Personalised lines: mark the session paid, link it to the order, and
-      // clear expiresAt so the retention sweep leaves its images alone. The
-      // proof email is sent by the proof step (phase 4), which watches for
-      // status == 'paid'.
+      // clear expiresAt so the retention sweep leaves its images alone.
+      //
+      // One pid can be ordered on several lines (sizes/formats), or again in a
+      // later order. Every ordered line is APPENDED to orderedLines, and the
+      // single-value fields (order, format, size) are only set if missing, so
+      // a later line never overwrites an earlier one. The print build still
+      // reads format/size, i.e. the first line ordered — see orderedLines for
+      // the rest. Status only moves ready → paid; a session already further
+      // along (proof sent) stays where it is.
       const personalised = cartItems.filter((i) => i.personalisationId);
-      for (const item of personalised) {
+      const byPid = personalisedLinesByPid(cartItems, lineItems, order._id);
+      const paidPids = [];
+      for (const [pid, { styleKey, lines }] of byPid) {
         try {
-          await sanity
-            .patch(`pendingPersonalisation.${item.personalisationId}`)
-            .set({
-              status: 'paid',
+          const docId = `pendingPersonalisation.${pid}`;
+          const current = await sanity.fetch(`*[_id == $id][0]{ status, selectedStyleKey }`, { id: docId });
+          const first = lines[0];
+          let patch = sanity
+            .patch(docId)
+            .setIfMissing({
               order: { _type: 'reference', _ref: order._id },
-              customerEmail,
-              format: item.format,
-              size: item.size,
-              selectedStyleKey: item.styleKey,
+              format: first.formatKey,
+              size: first.sizeKey,
+              orderedLines: [],
             })
-            .unset(['expiresAt'])
-            .commit();
-          console.log(`Personalisation ${item.personalisationId} marked paid`);
-          // Send the proof. Fire and forget — a failed email must never fail
-          // the webhook, or Stripe retries and duplicates the order.
-          fetch(`${process.env.URL || 'https://pixel8multimedia.co.uk'}/api/personalisation/proof`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-personalisation-key': createHash('sha256')
-                .update(`internal:${process.env.PERSONALISATION_SALT || 'dev-salt'}`)
-                .digest('hex').slice(0, 40),
-            },
-            body: JSON.stringify({ pid: item.personalisationId }),
-          }).catch((err) => console.error('proof send failed:', err?.message));
+            .append('orderedLines', lines)
+            .unset(['expiresAt']);
+          // First payment only: the style and email the proof is made from.
+          // A later order must not change them under a proof already sent.
+          if (!current?.status || current.status === 'ready') {
+            patch = patch.set({ status: 'paid', customerEmail, selectedStyleKey: styleKey });
+          } else if (current.selectedStyleKey && current.selectedStyleKey !== styleKey) {
+            console.warn(`webhook: ${pid} re-ordered in ${styleKey} but its proof is ${current.selectedStyleKey} — see orderedLines on order ${order._id}`);
+          }
+          await patch.commit();
+          paidPids.push(pid);
+          console.log(`Personalisation ${pid} marked paid (${lines.length} line(s)) on order ${order._id}`);
         } catch (err) {
-          console.error(`Failed to mark personalisation ${item.personalisationId} paid:`, err);
+          console.error(`Failed to mark personalisation ${pid} paid on order ${order._id}:`, err?.message);
         }
       }
       const proofNote = personalised.length
@@ -284,7 +267,7 @@ export default async (req, context) => {
             </div>
           `,
         });
-        console.log(`Customer confirmation email sent to ${customerEmail}`);
+        console.log(`Customer confirmation email sent for order ${order._id}`);
       } catch (emailErr) {
         console.error('Failed to send customer email:', emailErr);
       }
@@ -321,9 +304,35 @@ export default async (req, context) => {
             </div>
           `,
         });
-        console.log(`Team notification sent to ${teamEmail}`);
+        console.log(`Team notification sent for order ${order._id}`);
       } catch (emailErr) {
         console.error('Failed to send team notification:', emailErr);
+      }
+
+      // Proofs last, after the order and both emails are safe. AWAITED: the
+      // old fire-and-forget fetch could be frozen with the function once it
+      // returned and never leave. The proof endpoint is synchronous and
+      // idempotent (it skips a session whose proof is already sent). If it
+      // still fails after retries, the session is flagged for the Studio
+      // "Needs attention" list — the webhook itself still returns 200, so
+      // Stripe doesn't retry and nothing is duplicated.
+      for (const pid of paidPids) {
+        const r = await triggerInternal('/api/personalisation/proof', {
+          req,
+          body: { pid },
+          headers: { 'x-personalisation-key': internalKey() },
+          timeoutMs: 8000,
+        });
+        if (r.ok) {
+          console.log(`webhook: proof sent for ${pid} (order ${order._id})`);
+          continue;
+        }
+        console.error(`webhook: proof trigger FAILED for ${pid} (order ${order._id}): ${r.error}`);
+        await sanity
+          .patch(`pendingPersonalisation.${pid}`)
+          .set({ proofTriggerError: `${new Date().toISOString()} — ${String(r.error).slice(0, 200)}` })
+          .commit()
+          .catch((e) => console.error(`webhook: could not flag ${pid}:`, e?.message));
       }
     } catch (err) {
       console.error('Error processing checkout.session.completed:', err);

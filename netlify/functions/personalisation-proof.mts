@@ -125,9 +125,10 @@ export default async function handler(req: Request): Promise<Response> {
   await sanity
     .patch(docId(pid))
     .set({ status: 'proof-sent', proofToken: token, proofSentAt: nowIso(), proofKey })
+    .unset(['proofTriggerError']) // e.g. resent by hand after a failed trigger
     .commit();
 
-  console.log(`personalisation-proof: sent for ${pid} (${styleKey}) to ${s.customerEmail}`);
+  console.log(`personalisation-proof: sent for ${pid} (${styleKey})`);
   return json(200, { ok: true });
 }
 

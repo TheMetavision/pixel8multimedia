@@ -36,6 +36,14 @@ export default defineType({
           { name: 'unitPrice', title: 'Unit Price (£)', type: 'number' },
           { name: 'personalisationId', title: 'Personalisation ID', type: 'string', readOnly: true },
           { name: 'styleKey', title: 'Style', type: 'string', readOnly: true },
+          // Keys, stamped by the webhook on lines from the server-priced
+          // checkout. Older lines don't have them — that's expected.
+          { name: 'productRef', title: 'Product', type: 'reference', to: [{ type: 'product' }], weak: true, readOnly: true },
+          { name: 'productSlug', title: 'Product slug', type: 'string', readOnly: true },
+          { name: 'formatKey', title: 'Format key', type: 'string', readOnly: true },
+          { name: 'sizeKey', title: 'Size key', type: 'string', readOnly: true },
+          { name: 'styleLetter', title: 'Style letter', type: 'string', readOnly: true },
+          { name: 'listingImageRef', title: 'Listing image (at time of order)', type: 'reference', to: [{ type: 'sanity.imageAsset' }], weak: true, readOnly: true },
         ],
         preview: {
           select: { title: 'productTitle', quantity: 'quantity', unitPrice: 'unitPrice' },
