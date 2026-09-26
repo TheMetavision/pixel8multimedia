@@ -181,6 +181,11 @@ export default async (req, context) => {
           },
         },
       ],
+      // A personalised design is deleted by the hourly sweep 60 minutes after
+      // it expires. Stripe's default 24 h checkout window would let someone
+      // pay for a design that's already gone, so carts with one get 35
+      // minutes (Stripe's minimum is 30).
+      ...(hasPersonalised ? { expires_at: Math.floor(Date.now() / 1000) + 35 * 60 } : {}),
       metadata: {
         source: 'shop',
         lines: String(priced.lines.length),

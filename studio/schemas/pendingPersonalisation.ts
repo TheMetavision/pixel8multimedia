@@ -130,6 +130,7 @@ export default defineType({
     // when that step later succeeds. Listed under Personalisation → Needs attention.
     defineField({ name: 'printTriggerError', title: 'Print build did not start', type: 'string', readOnly: true }),
     defineField({ name: 'proofTriggerError', title: 'Proof email did not send', type: 'string', readOnly: true }),
+    defineField({ name: 'triggerRetries', title: 'Automatic retries so far', type: 'number', readOnly: true, description: 'The hourly sweep retries a failed trigger up to 3 times, then leaves it here for you.' }),
     defineField({ name: 'proofKey', title: 'Proof image (blob key)', type: 'string', readOnly: true }),
     defineField({ name: 'printedAt', title: 'Printed', type: 'datetime' }),
 
@@ -138,15 +139,21 @@ export default defineType({
     defineField({ name: 'createdAt', title: 'Created', type: 'datetime', readOnly: true }),
   ],
   preview: {
-    select: { pid: 'pid', status: 'status', style: 'selectedStyleKey', email: 'customerEmail', createdAt: 'createdAt' },
-    prepare({ pid, status, style, email, createdAt }) {
+    select: {
+      pid: 'pid', status: 'status', style: 'selectedStyleKey', email: 'customerEmail', createdAt: 'createdAt',
+      proofErr: 'proofTriggerError', printErr: 'printTriggerError', retries: 'triggerRetries',
+    },
+    prepare({ pid, status, style, email, createdAt, proofErr, printErr, retries }) {
+      const stuck = proofErr || printErr
+        ? ` · ⚠ ${[proofErr && 'proof', printErr && 'print'].filter(Boolean).join('+')} not started, ${retries || 0}/3 retries`
+        : '';
       const icon: Record<string, string> = {
         uploaded: '⬆️', styling: '🎨', ready: '👀', failed: '⚠️', paid: '💳',
         'proof-sent': '✉️', approved: '✅', printed: '🖨️', expired: '🗑️',
       };
       return {
         title: `${icon[status] || ''} ${email || pid}`,
-        subtitle: `${status}${style ? ` · ${style}` : ''}${createdAt ? ` · ${new Date(createdAt).toLocaleDateString('en-GB')}` : ''}`,
+        subtitle: `${status}${style ? ` · ${style}` : ''}${createdAt ? ` · ${new Date(createdAt).toLocaleDateString('en-GB')}` : ''}${stuck}`,
       };
     },
   },

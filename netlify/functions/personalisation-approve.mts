@@ -13,7 +13,7 @@
 import {
   sanity, docId, getSession, isPid, nowIso, siteUrl, INTERNAL_HEADER, internalKey,
 } from './_shared/personalisation.mts';
-import { triggerInternal } from './_shared/origin.mjs';
+import { triggerInternal, TRIGGER_BUDGETS } from './_shared/origin.mjs';
 
 function page(title: string, body: string, tone: 'ok' | 'info' | 'error' = 'ok'): Response {
   const accent = tone === 'error' ? '#E5484D' : tone === 'info' ? '#22D3EE' : '#76FF03';
@@ -70,13 +70,16 @@ export default async function handler(req: Request): Promise<Response> {
   // Build the print file in the background. AWAITED: the old fire-and-forget
   // fetch could be frozen with this function once it returned, so the build
   // silently never started in production. A background function answers 202
-  // as soon as it's queued, so the customer waits well under a second. If it
-  // can't be started after retries, flag the session for the Studio "Needs
-  // attention" list; the customer still sees their approval confirmed.
+  // as soon as it's queued, so the customer waits well under a second; the
+  // ≤ 10 s budget (TRIGGER_BUDGETS.approvePrint) is only a ceiling. If it
+  // can't be started, flag the session: the hourly sweep retries it and
+  // Studio lists it under "Needs attention". The customer still sees their
+  // approval confirmed.
   const trigger = await triggerInternal('/api/personalisation/print-background', {
     req,
     body: { pid },
     headers: { [INTERNAL_HEADER]: internalKey() },
+    ...TRIGGER_BUDGETS.approvePrint,
   });
   if (!trigger.ok) {
     console.error(`approve: print trigger FAILED for ${pid}: ${trigger.error}`);

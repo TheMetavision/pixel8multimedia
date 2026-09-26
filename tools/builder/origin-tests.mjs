@@ -9,7 +9,7 @@
  * to https://<SITE_NAME>.netlify.app with a short retry.
  */
 import {
-  internalOrigin, publicOrigin, fetchWithRetry, triggerInternal,
+  internalOrigin, publicOrigin, fetchWithRetry, triggerInternal, TRIGGER_BUDGETS,
 } from '../../netlify/functions/_shared/origin.mjs';
 
 let pass = 0, fail = 0;
@@ -95,6 +95,49 @@ say('\n3. triggerInternal\n');
     }),
   });
   ok(!slow.ok && slow.error === 'timed out', 'a hung request times out instead of hanging the webhook', slow.error);
+}
+
+say('\n4. THE BUDGET — real timers, real numbers\n');
+{
+  /** A fake endpoint that answers after `ms` (or never), and honours abort like a real socket. */
+  const endpoint = (ms, res) => (url, init) => new Promise((resolve, reject) => {
+    const t = ms === Infinity ? setTimeout(() => {}, 60_000) : setTimeout(() => resolve(res), ms);
+    init?.signal?.addEventListener('abort', () => { clearTimeout(t); reject(init.signal.reason); });
+  });
+  const timed = async (fn) => { const t0 = Date.now(); const r = await fn(); return { r, ms: Date.now() - t0 }; };
+
+  const W = TRIGGER_BUDGETS.webhookProof;
+  ok(W.budgetMs <= 6000 && W.retryOnTimeout === false && W.attempts === 2, 'webhook → proof: ≤ 6 s, 2 attempts, a timeout is not retried', JSON.stringify(W));
+  ok(TRIGGER_BUDGETS.sweepRetry.budgetMs <= 6000, 'sweep retry: ≤ 6 s per trigger');
+  ok(TRIGGER_BUDGETS.approvePrint.budgetMs <= 10000, 'approve → print: ≤ 10 s');
+
+  let calls = 0;
+  const hung = (url, init) => { calls++; return endpoint(Infinity)(url, init); };
+  const a = await timed(() => triggerInternal('/api/personalisation/proof', { env: PROD, fetchImpl: hung, ...W }));
+  ok(!a.r.ok && a.r.error === 'timed out' && calls === 1 && a.ms <= W.budgetMs + 250,
+    'proof endpoint hangs: gives up after ONE attempt, within the cap', `${a.ms} ms, ${calls} call`);
+
+  let slowCalls = 0;
+  const slow503 = (url, init) => { slowCalls++; return endpoint(4000, { ok: false, status: 503 })(url, init); };
+  const b = await timed(() => triggerInternal('/api/personalisation/proof', { env: PROD, fetchImpl: slow503, ...W }));
+  ok(!b.r.ok && slowCalls === 2 && b.ms <= W.budgetMs + 250,
+    'a 503 after 4 s: the retry gets only what is left of the 6 s, and it still gives up in time', `${b.ms} ms, ${slowCalls} calls, ${b.r.error}`);
+
+  let refusals = 0;
+  const refused = async () => { refusals++; throw new Error('ECONNREFUSED'); };
+  const c = await timed(() => triggerInternal('/api/x', { env: PROD, fetchImpl: refused, ...W }));
+  ok(!c.r.ok && refusals === 2 && c.ms < 1000, 'refused twice: 2 quick attempts, gives up in well under a second', `${c.ms} ms`);
+
+  const fast = await timed(() => triggerInternal('/api/x', { env: PROD, fetchImpl: endpoint(50, { ok: true, status: 202 }), ...TRIGGER_BUDGETS.approvePrint }));
+  ok(fast.r.ok && fast.ms < 500, 'a healthy 202 is not slowed down by any of this', `${fast.ms} ms`);
+
+  // The same mechanism, fast: budget smaller than attempts × timeout.
+  let n = 0;
+  const d = await timed(() => fetchWithRetry('https://x/y', {
+    attempts: 5, timeoutMs: 200, budgetMs: 450, minAttemptMs: 100, baseDelayMs: 10,
+    fetchImpl: (u, i) => { n++; return endpoint(Infinity)(u, i); },
+  }).catch((e) => e));
+  ok(d.ms <= 450 + 100 && n === 2, 'budget wins over attempts × timeout: 5 allowed, 2 fit in 450 ms', `${d.ms} ms, ${n} attempts`);
 }
 
 say(`\n${pass} passed, ${fail} failed.`);

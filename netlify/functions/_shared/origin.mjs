@@ -66,27 +66,47 @@ export const publicOrigin = (req, env = process.env) =>
  * won't change it. The LAST 5xx response is returned rather than thrown so the
  * caller can report its status.
  *
- * Differs from CSC's version only in taking `init` (method, headers, body) so
- * it can POST, and an optional per-attempt timeout.
+ * Differs from CSC's version in taking `init` (method, headers, body) so it
+ * can POST, and three optional bounds:
+ *   timeoutMs       per-attempt timeout
+ *   budgetMs        total time for all attempts AND backoff; each attempt's
+ *                   timeout is cut to what remains, and no attempt starts with
+ *                   less than minAttemptMs left
+ *   retryOnTimeout  false: a timed-out attempt is not retried. For endpoints
+ *                   that do real work (the proof email): a timeout means "may
+ *                   still be running", and a second call could run it twice.
  */
 export async function fetchWithRetry(url, {
-  init, attempts = 3, baseDelayMs = 300, timeoutMs, fetchImpl = fetch, sleep,
+  init, attempts = 3, baseDelayMs = 300, timeoutMs, budgetMs, minAttemptMs = 500,
+  retryOnTimeout = true, fetchImpl = fetch, sleep, now = Date.now,
 } = {}) {
   const wait = sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const deadline = budgetMs ? now() + budgetMs : Infinity;
   let last = null;
+  let lastRes = null;
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    const remaining = deadline - now();
+    if (attempt > 1 && remaining < minAttemptMs) break;
+    const limit = Math.min(timeoutMs ?? Infinity, remaining);
     try {
-      const opts = timeoutMs ? { ...init, signal: AbortSignal.timeout(timeoutMs) } : init;
+      const opts = Number.isFinite(limit) ? { ...init, signal: AbortSignal.timeout(Math.max(1, limit)) } : init;
       const res = await fetchImpl(url, opts);
       if (res.ok || res.status < 500) return res;
       last = new Error(`HTTP ${res.status}`);
+      lastRes = res;
       if (attempt === attempts) return res;
     } catch (err) {
       last = err;
+      lastRes = null;
       if (attempt === attempts) throw err;
+      if (!retryOnTimeout && err?.name === 'TimeoutError') throw err;
     }
-    await wait(baseDelayMs * Math.pow(3, attempt - 1));
+    const delay = baseDelayMs * Math.pow(3, attempt - 1);
+    if (now() + delay + minAttemptMs > deadline) break;
+    await wait(delay);
   }
+  // Out of budget: hand back the last 5xx, or throw the last error.
+  if (lastRes) return lastRes;
   throw last || new Error(`Could not fetch ${url}`);
 }
 
@@ -99,7 +119,8 @@ export async function fetchWithRetry(url, {
  * failure means (typically: record it where staff will see it, and carry on).
  */
 export async function triggerInternal(path, {
-  body, headers = {}, req, env, attempts = 3, baseDelayMs = 300, timeoutMs = 8000, fetchImpl, sleep,
+  body, headers = {}, req, env, attempts = 3, baseDelayMs = 300, timeoutMs = 8000,
+  budgetMs, minAttemptMs, retryOnTimeout, fetchImpl, sleep, now,
 } = {}) {
   const url = `${internalOrigin(req, env)}${path}`;
   try {
@@ -109,7 +130,7 @@ export async function triggerInternal(path, {
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify(body ?? {}),
       },
-      attempts, baseDelayMs, timeoutMs, fetchImpl, sleep,
+      attempts, baseDelayMs, timeoutMs, budgetMs, minAttemptMs, retryOnTimeout, fetchImpl, sleep, now,
     });
     if (res.ok) return { ok: true, status: res.status, url };
     return { ok: false, status: res.status, error: `HTTP ${res.status}`, url };
@@ -117,3 +138,22 @@ export async function triggerInternal(path, {
     return { ok: false, error: err?.name === 'TimeoutError' ? 'timed out' : (err?.message || String(err)), url };
   }
 }
+
+/**
+ * Trigger budgets, in one place so the tests check the real numbers.
+ * Netlify limits (not configurable): synchronous 60 s, scheduled 30 s,
+ * background 15 min — https://docs.netlify.com/build/functions/configuration/
+ */
+export const TRIGGER_BUDGETS = {
+  // Stripe webhook → proof email. Stripe wants a prompt 2xx (it documents no
+  // number), so ≤ 6 s total. The proof endpoint does real work (sends an
+  // email, mints the approve token): a timeout isn't retried, or a slow first
+  // call and a retry could both send, the second token voiding the first link.
+  webhookProof: { attempts: 2, baseDelayMs: 200, timeoutMs: 5000, budgetMs: 6000, retryOnTimeout: false },
+  // Proof approval page → print build. A background function answers 202 in
+  // well under a second and a rebuild is harmless, so timeouts may be
+  // retried; 10 s total only so the customer's page never hangs.
+  approvePrint: { attempts: 3, baseDelayMs: 300, timeoutMs: 5000, budgetMs: 10000, retryOnTimeout: true },
+  // Hourly sweep re-trying a flagged trigger. Same shape as the webhook's.
+  sweepRetry: { attempts: 2, baseDelayMs: 200, timeoutMs: 5000, budgetMs: 6000, retryOnTimeout: false },
+};

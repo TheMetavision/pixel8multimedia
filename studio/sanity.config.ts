@@ -43,12 +43,14 @@ export default defineConfig({
                   .title('Personalisation')
                   .items([
                     // A trigger that couldn't start its function (print build
-                    // or proof email) after retries. Fix, then resend by hand.
+                    // or proof email). The hourly sweep retries each up to 3
+                    // times; the list subtitle shows the count. Anything
+                    // still here after 3 needs a person.
                     S.listItem()
                       .title('Needs attention')
                       .child(
                         S.documentList()
-                          .title('Print build or proof email did not start')
+                          .title('Print build or proof email did not start (auto-retried hourly, 3×)')
                           .filter('_type == "pendingPersonalisation" && (defined(printTriggerError) || defined(proofTriggerError))')
                           .defaultOrdering([{ field: '_updatedAt', direction: 'desc' }])
                       ),

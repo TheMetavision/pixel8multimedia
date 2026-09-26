@@ -6,7 +6,7 @@ import { FORMAT_LABELS, SIZE_LABELS } from './_shared/pricing.mjs';
 import {
   itemsFromLineItems, itemsFromCartItemsBlob, orderLineFromItem, personalisedLinesByPid,
 } from './_shared/order-lines.mjs';
-import { triggerInternal } from './_shared/origin.mjs';
+import { triggerInternal, TRIGGER_BUDGETS } from './_shared/origin.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -311,17 +311,17 @@ export default async (req, context) => {
 
       // Proofs last, after the order and both emails are safe. AWAITED: the
       // old fire-and-forget fetch could be frozen with the function once it
-      // returned and never leave. The proof endpoint is synchronous and
-      // idempotent (it skips a session whose proof is already sent). If it
-      // still fails after retries, the session is flagged for the Studio
-      // "Needs attention" list — the webhook itself still returns 200, so
-      // Stripe doesn't retry and nothing is duplicated.
+      // returned and never leave. Bounded to ~6 s per design
+      // (TRIGGER_BUDGETS.webhookProof) because Stripe wants a prompt answer.
+      // If it fails, the session is flagged; the hourly sweep retries it (up
+      // to 3 times) and Studio lists it under "Needs attention". The webhook
+      // still returns 200, so Stripe doesn't retry and nothing is duplicated.
       for (const pid of paidPids) {
         const r = await triggerInternal('/api/personalisation/proof', {
           req,
           body: { pid },
           headers: { 'x-personalisation-key': internalKey() },
-          timeoutMs: 8000,
+          ...TRIGGER_BUDGETS.webhookProof,
         });
         if (r.ok) {
           console.log(`webhook: proof sent for ${pid} (order ${order._id})`);
