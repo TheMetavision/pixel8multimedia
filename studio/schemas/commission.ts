@@ -423,6 +423,9 @@ export default defineType({
       group: 'legacy',
       rows: 4,
     }),
+    // Pre-migration _id, set by tools/migrate-private-ids.mjs. Download links
+    // emailed before the migration are signed over it (commission-download).
+    defineField({ name: 'legacyId', title: 'Legacy ID', type: 'string', readOnly: true, hidden: true }),
   ],
 
   preview: {

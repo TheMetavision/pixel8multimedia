@@ -63,8 +63,11 @@ export default async function handler(req: Request, _context: Context) {
 
   try {
     // ── Fetch commission to verify status ──
+    // Links already emailed are signed over the commission's _id at the time.
+    // After the private-id migration that old id lives on as legacyId, so the
+    // signature above still verifies and this lookup still finds the doc.
     const commission = await sanity.fetch(
-      `*[_type == "commission" && _id == $id][0]{
+      `*[_type == "commission" && (_id == $id || legacyId == $id)][0]{
         status, orderRef, customerName,
         "fileUrl": finishedFile.asset->url,
         "fileName": finishedFile.asset->originalFilename,

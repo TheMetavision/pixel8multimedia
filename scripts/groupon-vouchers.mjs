@@ -26,6 +26,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { createClient } from '@sanity/client';
+import { randomUUID } from 'node:crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MAP_PATH = resolve(__dirname, '..', 'src', 'data', 'groupon-campaigns.json');
@@ -279,6 +280,8 @@ async function cmdImport() {
     }
 
     const doc = {
+      // Dotted _id: hidden from anonymous API reads (codes are redeemable).
+      _id: `grouponVoucher.${randomUUID()}`,
       _type: 'grouponVoucher',
       code,
       status: 'imported',

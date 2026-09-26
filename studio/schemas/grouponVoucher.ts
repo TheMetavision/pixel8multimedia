@@ -337,6 +337,8 @@ export default defineType({
       group: 'admin',
       rows: 3,
     }),
+    // Pre-migration _id, set by tools/migrate-private-ids.mjs.
+    defineField({ name: 'legacyId', title: 'Legacy ID', type: 'string', readOnly: true, hidden: true }),
   ],
 
   preview: {

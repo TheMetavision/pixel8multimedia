@@ -19,6 +19,7 @@
 
 import type { Context } from '@netlify/functions';
 import { createClient } from '@sanity/client';
+import { randomUUID } from 'node:crypto';
 import {
   normaliseCode,
   looksLikeGrouponCode,
@@ -204,6 +205,8 @@ export default async function handler(req: Request, _context: Context) {
     const claimExpiresAt = minutesFromNow(CLAIM_TTL_MINUTES);
 
     const created = await sanity.create({
+      // Dotted _id: hidden from anonymous API reads (code, email, claim IP).
+      _id: `grouponVoucher.${randomUUID()}`,
       _type: 'grouponVoucher',
       code,
       status: 'claimed',

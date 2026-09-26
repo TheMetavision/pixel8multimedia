@@ -76,6 +76,8 @@ export default defineType({
       rows: 4,
       description: 'For your own reference — what you replied with, follow-ups needed, etc. Not shown to customer.',
     }),
+    // Pre-migration _id, set by tools/migrate-private-ids.mjs.
+    defineField({ name: 'legacyId', title: 'Legacy ID', type: 'string', readOnly: true, hidden: true }),
   ],
   preview: {
     select: {

@@ -65,6 +65,8 @@ export default defineType({
     defineField({ name: 'trackingNumber', title: 'Tracking Number', type: 'string' }),
     defineField({ name: 'notes', title: 'Internal Notes', type: 'text', rows: 3 }),
     defineField({ name: 'createdAt', title: 'Created At', type: 'datetime', readOnly: true }),
+    // Pre-migration _id, set by tools/migrate-private-ids.mjs.
+    defineField({ name: 'legacyId', title: 'Legacy ID', type: 'string', readOnly: true, hidden: true }),
   ],
   preview: {
     select: { title: 'customerName', status: 'status', total: 'totalAmount', createdAt: 'createdAt' },

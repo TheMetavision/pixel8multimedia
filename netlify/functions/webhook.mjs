@@ -101,6 +101,23 @@ export default async (req, context) => {
       const totalAmount = (session.amount_total || 0) / 100;
       const cartItems = await cartFromSession(session);
 
+      // The order _id is derived from the Stripe session. The dot keeps the
+      // doc out of anonymous API reads (customer name, email, address), and a
+      // fixed id makes the webhook idempotent: Stripe retries a delivery that
+      // times out or errors, and a retry must not create a second order or
+      // resend the emails.
+      const orderId = `order.${session.id}`;
+      // Orders created before this change have random ids; match those by
+      // stripeSessionId so a late retry of one is still recognised.
+      const existingOrderId = await sanity.fetch(
+        `*[_type == "order" && (_id == $orderId || stripeSessionId == $sessionId)][0]._id`,
+        { orderId, sessionId: session.id }
+      );
+      if (existingOrderId) {
+        console.log(`webhook: duplicate webhook, skipping — order ${existingOrderId} already exists for session ${session.id}`);
+        return new Response('OK — duplicate, already processed', { status: 200 });
+      }
+
       const lineItems = cartItems.map((item, n) => ({
         _type: 'object',
         _key: `${item.personalisationId || item.slug || 'line'}-${item.format}-${item.size}-${n}-${Date.now()}`,
@@ -112,28 +129,41 @@ export default async (req, context) => {
         ...(item.personalisationId ? { personalisationId: item.personalisationId, styleKey: item.styleKey } : {}),
       }));
 
-      // Create order in Sanity
-      const order = await sanity.create({
-        _type: 'order',
-        stripeSessionId: session.id,
-        stripePaymentId: session.payment_intent,
-        customerName,
-        customerEmail,
-        shippingAddress: {
-          line1: shipping.line1 || '',
-          line2: shipping.line2 || '',
-          city: shipping.city || '',
-          county: shipping.state || '',
-          postcode: shipping.postal_code || '',
-          country: shipping.country || '',
-        },
-        lineItems,
-        totalAmount,
-        status: 'received',
-        createdAt: new Date().toISOString(),
-      });
+      // Create order in Sanity. `create` with a fixed _id rather than
+      // createIfNotExists: both refuse to overwrite, but createIfNotExists
+      // fails silently, whereas `create` returns 409 if a concurrent retry
+      // got here first. That is how we know not to send the emails twice.
+      let order;
+      try {
+        order = await sanity.create({
+          _id: orderId,
+          _type: 'order',
+          stripeSessionId: session.id,
+          stripePaymentId: session.payment_intent,
+          customerName,
+          customerEmail,
+          shippingAddress: {
+            line1: shipping.line1 || '',
+            line2: shipping.line2 || '',
+            city: shipping.city || '',
+            county: shipping.state || '',
+            postcode: shipping.postal_code || '',
+            country: shipping.country || '',
+          },
+          lineItems,
+          totalAmount,
+          status: 'received',
+          createdAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        if (err?.statusCode === 409) {
+          console.log(`webhook: duplicate webhook, skipping — order ${orderId} already exists`);
+          return new Response('OK — duplicate, already processed', { status: 200 });
+        }
+        throw err;
+      }
 
-      console.log(`Order created in Sanity for session ${session.id}`);
+      console.log(`Order ${order._id} created in Sanity for session ${session.id}`);
 
       // Personalised lines: mark the session paid, link it to the order, and
       // clear expiresAt so the retention sweep leaves its images alone. The

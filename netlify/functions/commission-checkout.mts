@@ -679,8 +679,10 @@ export default async function handler(req: Request, _context: Context) {
         { status: 422, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // Build commission doc
+    // Build commission doc. The dotted _id keeps it (name, email, phone,
+    // address, brief) out of anonymous API reads; orderRef is already unique.
     const commissionDoc: any = {
+      _id: `commission.${orderRef}`,
       _type: 'commission',
       orderRef,
       service: { _type: 'reference', _ref: service._id },

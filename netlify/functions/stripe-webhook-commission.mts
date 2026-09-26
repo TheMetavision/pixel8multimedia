@@ -243,8 +243,11 @@ export default async function handler(req: Request, _context: Context) {
 
   try {
     // ── Idempotency: if already processed, do nothing (Stripe retries safely) ──
+    // metadata.commissionId is the _id at checkout time. Sessions opened
+    // before the private-id migration carry the old random id, which the
+    // migration keeps as legacyId — match either, then use the doc's real _id.
     const existing = await sanity.fetch(
-      `*[_type == "commission" && _id == $id][0]{
+      `*[_type == "commission" && (_id == $id || legacyId == $id)][0]{
         _id, status, paidAt, orderRef, customerName, customerEmail, amount, deliveryType,
         "serviceTitle": service->title
       }`,
@@ -309,7 +312,7 @@ export default async function handler(req: Request, _context: Context) {
       patch.customerPhone = phone;
     }
 
-    await sanity.patch(commissionId).set(patch).commit();
+    await sanity.patch(existing._id).set(patch).commit();
     console.log(`Commission ${commissionId} marked paid${shippingAddressText ? ' (with address)' : ''}`);
 
     // ── Finalise the Groupon voucher ──────────────────────────────────────
@@ -325,14 +328,20 @@ export default async function handler(req: Request, _context: Context) {
           0,
           (session.amount_total ?? 0)
         );
+        // Same legacy-id fallback as the commission lookup above.
+        const voucherDocId: string =
+          (await sanity.fetch(
+            `*[_type == "grouponVoucher" && (_id == $id || legacyId == $id)][0]._id`,
+            { id: grouponVoucherId }
+          )) || grouponVoucherId;
         await sanity
-          .patch(grouponVoucherId)
+          .patch(voucherDocId)
           .set({
             status: 'redeemed',
             redeemedAt: new Date().toISOString(),
             orderRef: existing.orderRef,
             customerEmail: existing.customerEmail,
-            commission: { _type: 'reference', _ref: commissionId },
+            commission: { _type: 'reference', _ref: existing._id },
             discountAppliedPence: discountPence,
             upgradePaidPence,
           })
@@ -404,7 +413,7 @@ export default async function handler(req: Request, _context: Context) {
           total,
           deliveryType,
           shippingAddress: shippingAddressText,
-          commissionId,
+          commissionId: existing._id,
         }),
       });
       if (error) {
@@ -422,7 +431,7 @@ export default async function handler(req: Request, _context: Context) {
     if (emailErrors.length) {
       try {
         await sanity
-          .patch(commissionId)
+          .patch(existing._id)
           .set({ notifyError: `${new Date().toISOString()} - ${emailErrors.join('; ')}` })
           .commit();
       } catch (e) {

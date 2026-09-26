@@ -14,6 +14,7 @@ import type { Context, Config } from '@netlify/functions';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
 import { nanoid } from 'nanoid';
+import { randomUUID } from 'node:crypto';
 
 const sanity = createClient({
   projectId: 'bqb4w421',
@@ -158,6 +159,8 @@ export default async (req: Request, _context: Context) => {
     // ── Sanity log ─────────────────────────────────────────────────────────
     try {
       await sanity.create({
+        // Dotted _id: hidden from anonymous API reads (name, email, message).
+        _id: `contactSubmission.${randomUUID()}`,
         _type: 'contactSubmission',
         refCode,
         name,
