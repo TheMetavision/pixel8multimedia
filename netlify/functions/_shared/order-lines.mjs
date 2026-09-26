@@ -77,7 +77,10 @@ export function orderLineFromItem(item, n, stamp = Date.now()) {
       line.productSlug = item.slug;
       if (item.styleLetter) line.styleLetter = item.styleLetter;
       if (item.listingImageRef) {
-        line.listingImageRef = { _type: 'reference', _ref: item.listingImageRef, _weak: true };
+        // Stored as an image (the schema's field type), so Studio shows a
+        // thumbnail. A normal (strong) asset reference: the listing image
+        // can't be deleted from the media library while an order shows it.
+        line.listingImageRef = { _type: 'image', asset: { _type: 'reference', _ref: item.listingImageRef } };
       }
     }
   }

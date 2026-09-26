@@ -43,7 +43,10 @@ export default defineType({
           { name: 'formatKey', title: 'Format key', type: 'string', readOnly: true },
           { name: 'sizeKey', title: 'Size key', type: 'string', readOnly: true },
           { name: 'styleLetter', title: 'Style letter', type: 'string', readOnly: true },
-          { name: 'listingImageRef', title: 'Listing image (at time of order)', type: 'reference', to: [{ type: 'sanity.imageAsset' }], weak: true, readOnly: true },
+          // An image field, not a reference: sanity.imageAsset isn't a schema
+          // type a reference can target ("Unknown type"), and this way Studio
+          // shows the listing image as a thumbnail on the line.
+          { name: 'listingImageRef', title: 'Listing image (at time of order)', type: 'image', readOnly: true },
         ],
         preview: {
           select: { title: 'productTitle', quantity: 'quantity', unitPrice: 'unitPrice' },

@@ -32,7 +32,9 @@ say('\n1. A NEW-STYLE STOCK LINE\n');
   const line = orderLineFromItem(item, 0, 123);
   ok(KEYS.every((k) => k in line), 'has every key', KEYS.filter((k) => !(k in line)).join(',') || 'all present');
   ok(line.productRef._ref === 'product-hulk-style-c' && line.productRef._weak === true, 'productRef is a WEAK reference to the product');
-  ok(line.listingImageRef._ref === 'image-abc-1024x1024-png' && line.listingImageRef._weak === true, 'listingImageRef is a weak reference to the asset');
+  ok(line.listingImageRef._type === 'image' && line.listingImageRef.asset?._type === 'reference'
+    && line.listingImageRef.asset._ref === 'image-abc-1024x1024-png' && !('_ref' in line.listingImageRef),
+    'listingImageRef is an image object { _type: image, asset: { _type: reference, _ref } }', JSON.stringify(line.listingImageRef));
   ok(line.formatKey === 'canvasGallery' && line.sizeKey === 'large' && line.styleLetter === 'C' && line.productSlug === 'hulk-style-c', 'keys have the right values');
   ok(line.format === 'Canvas (Gallery Frame)' && line.size === 'Large (20×20")', 'the label fields are still written');
   ok(line.quantity === 2 && line.unitPrice === 47.99 && line.productTitle === 'Hulk — Option C', 'quantity, price, title');
