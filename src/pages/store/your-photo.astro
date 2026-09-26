@@ -11,10 +11,12 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { sanityClient } from '../../lib/sanity';
 import {
-  PRICES, FORMAT_LABELS, SIZE_LABELS, SIZE_DIMENSIONS, FORMATS, SIZES,
+  FORMAT_LABELS, SIZE_LABELS, SIZE_DIMENSIONS, FORMATS, SIZES,
 } from '../../data/products';
-
-const PERSONALISATION_FEE = 5;
+// The same constants checkout.mjs charges from — shown price = charged price.
+import {
+  YOUR_PHOTO_PRICES as PRICES, PERSONALISATION_FEE,
+} from '../../../netlify/functions/_shared/pricing.mjs';
 
 type StyleDoc = { key: string; letter: string; label: string; blurb?: string; exampleUrl?: string };
 

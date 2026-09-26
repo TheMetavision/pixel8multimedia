@@ -1,5 +1,8 @@
 import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
+import {
+  FORMAT_LABELS, SIZE_LABELS, YOUR_PHOTO_PRODUCT_ID, priceCart, shippingPenceFor,
+} from './_shared/pricing.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -11,28 +14,30 @@ const sanity = createClient({
   apiVersion: '2026-04-14',
   token: process.env.SANITY_TOKEN,
   useCdn: false,
+  // With a token the default perspective also returns drafts; prices must
+  // come from the published product only.
+  perspective: 'published',
 });
 
-// Keys match src/data/products.ts (the cart sends camelCase formats and
-// square sizes) — the previous maps used 'canvas-standard' and 12×8", so
-// Stripe descriptions showed the raw key and the wrong dimensions.
-const FORMAT_LABELS = {
-  poster: 'Poster Print',
-  canvasStandard: 'Canvas (Standard Frame)',
-  canvasGallery: 'Canvas (Gallery Frame)',
-};
-
-const SIZE_LABELS = {
-  small: 'Small (12×12")',
-  medium: 'Medium (16×16")',
-  large: 'Large (20×20")',
-};
-
-// Free-shipping threshold (GBP) and standard rate (pence)
-const FREE_SHIPPING_THRESHOLD_GBP = 50;
-const STANDARD_SHIPPING_PENCE = 495;
-
 const PID_RE = /^[A-Za-z0-9_-]{20,24}$/;
+
+/** Stripe reads an empty metadata value as "unset this key" — leave them out. */
+const withoutEmpty = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v != null && v !== ''));
+
+/** The Sanity products a cart refers to, by _id or (fallback) slug. */
+async function loadProducts(items) {
+  const stock = items.filter((i) => i && i.productId !== YOUR_PHOTO_PRODUCT_ID && !i.personalisationId);
+  const ids = [...new Set(stock.map((i) => String(i.productId || '')).filter(Boolean))];
+  const slugs = [...new Set(stock.map((i) => String(i.slug || '')).filter(Boolean))];
+  if (!ids.length && !slugs.length) return [];
+  return sanity.fetch(
+    `*[_type == "product" && (_id in $ids || slug.current in $slugs)]{
+      _id, "slug": slug.current, title, category, style, prices,
+      "imageRef": images[0].asset._ref
+    }`,
+    { ids, slugs },
+  );
+}
 
 /**
  * Personalised lines must point at a session that is actually ready, in the
@@ -82,6 +87,24 @@ export default async (req, context) => {
       });
     }
 
+    // Prices come from the server, never the browser: stock lines from the
+    // Sanity product, Your Photo lines from _shared/pricing.mjs. The browser's
+    // unitPrice is only compared, to spot a stale cart or tampering.
+    const priced = priceCart(items, await loadProducts(items));
+    if (!priced.ok) {
+      console.warn(`checkout: rejected cart — ${priced.problems.join('; ')}`);
+      return new Response(JSON.stringify({ error: priced.error, problems: priced.problems }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    for (const m of priced.mismatches) {
+      console.warn(
+        `checkout: client price ignored on line ${m.line} (${m.slug} ${m.formatKey}/${m.sizeKey}): ` +
+        `client ${m.clientPence}p, server ${m.serverPence}p`
+      );
+    }
+
     const problem = await validatePersonalised(items);
     if (problem) {
       return new Response(JSON.stringify({ error: problem }), {
@@ -93,40 +116,47 @@ export default async (req, context) => {
     // Everything the webhook needs to rebuild the order rides on each line's
     // own product metadata (each value ≤ 500 chars, unlimited lines) rather
     // than one JSON blob in session metadata, which overflowed at ~4 lines.
-    const lineItems = items.map((item) => {
-      const personalised = Boolean(item.personalisationId);
+    // format/size are kept for older webhook code; formatKey/sizeKey and the
+    // rest are what marks a line as keyed (see _shared/order-lines.mjs).
+    const lineItems = priced.lines.map((line) => {
+      const personalised = line.kind === 'your-photo';
       const description = [
-        `${FORMAT_LABELS[item.format] || item.format} — ${SIZE_LABELS[item.size] || item.size}`,
+        `${FORMAT_LABELS[line.formatKey]} — ${SIZE_LABELS[line.sizeKey]}`,
         personalised ? 'Personalised — we email a proof to approve before printing' : null,
       ].filter(Boolean).join('. ');
       return {
         price_data: {
           currency: 'gbp',
           product_data: {
-            name: item.title,
+            name: line.title,
             description,
-            metadata: {
-              productId: item.productId,
-              slug: item.slug,
-              title: item.title,
-              collection: item.collection || '',
-              format: item.format,
-              size: item.size,
-              ...(personalised ? { personalisationId: item.personalisationId, styleKey: item.styleKey } : {}),
-            },
+            metadata: withoutEmpty({
+              productId: line.productId,
+              slug: line.slug,
+              title: line.title,
+              collection: line.collection,
+              format: line.formatKey,
+              size: line.sizeKey,
+              formatKey: line.formatKey,
+              sizeKey: line.sizeKey,
+              styleLetter: line.styleLetter,
+              listingImageRef: line.listingImageRef,
+              ...(personalised ? { personalisationId: line.personalisationId, styleKey: line.styleKey } : {}),
+            }),
           },
-          unit_amount: Math.round(item.unitPrice * 100),
+          unit_amount: line.unitPence,
         },
-        quantity: item.quantity,
+        quantity: line.quantity,
       };
     });
 
     const siteUrl = process.env.URL || process.env.SITE_URL || 'https://pixel8multimedia.co.uk';
 
-    // Conditional shipping — free over £50, otherwise £4.95 flat (GB only).
-    const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-    const freeShipping = subtotal >= FREE_SHIPPING_THRESHOLD_GBP;
-    const hasPersonalised = items.some((i) => i.personalisationId);
+    // Conditional shipping — free over £50, otherwise £4.95 flat (GB only),
+    // on the server-priced subtotal.
+    const shippingPence = shippingPenceFor(priced.subtotalPence);
+    const freeShipping = shippingPence === 0;
+    const hasPersonalised = priced.lines.some((l) => l.kind === 'your-photo');
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -140,7 +170,7 @@ export default async (req, context) => {
           shipping_rate_data: {
             type: 'fixed_amount',
             fixed_amount: {
-              amount: freeShipping ? 0 : STANDARD_SHIPPING_PENCE,
+              amount: shippingPence,
               currency: 'gbp',
             },
             display_name: freeShipping ? 'FREE UK P&P' : 'UK Standard P&P (£4.95)',
@@ -153,7 +183,7 @@ export default async (req, context) => {
       ],
       metadata: {
         source: 'shop',
-        lines: String(items.length),
+        lines: String(priced.lines.length),
         personalised: hasPersonalised ? 'yes' : 'no',
       },
       success_url: `${siteUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
