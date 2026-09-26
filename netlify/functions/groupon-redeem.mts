@@ -180,7 +180,7 @@ export default async function handler(req: Request, _context: Context) {
       // Strict mode: refuse at input. No record is created, so no order can
       // ever exist against a code Groupon hasn't told us about.
       recordFailure(`redeem:${ip}`);
-      console.log(`groupon-redeem: unknown code refused (strict mode) from ${ip}`);
+      console.log('groupon-redeem: unknown code refused (strict mode)');
       return json({ error: CODE_NOT_ON_FILE, reason: 'not-on-file' }, 404);
     }
 
@@ -197,7 +197,7 @@ export default async function handler(req: Request, _context: Context) {
       { ip }
     );
     if (uncheckedFromIp >= MAX_UNCHECKED_PER_IP) {
-      console.warn(`groupon-redeem: ${ip} has ${uncheckedFromIp} unchecked vouchers — refusing`);
+      console.warn(`groupon-redeem: an IP has ${uncheckedFromIp} unchecked vouchers — refusing`);
       return json({ error: TOO_MANY }, 429);
     }
 

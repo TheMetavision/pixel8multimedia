@@ -329,7 +329,7 @@ async function handleComplete(commissionId: string): Promise<Response> {
     .set({ status: 'delivered', deliveredAt: new Date().toISOString() })
     .commit();
 
-  console.log(`Commission ${commissionId} delivered to ${commission.customerEmail}`);
+  console.log(`Commission ${commissionId} (${commission.orderRef}) download email sent`);
   return new Response('Delivered', { status: 200 });
 }
 
@@ -401,7 +401,7 @@ async function handleShipped(commissionId: string): Promise<Response> {
     .set({ dispatchedAt: new Date().toISOString() })
     .commit();
 
-  console.log(`Commission ${commissionId} dispatch email sent to ${commission.customerEmail}`);
+  console.log(`Commission ${commissionId} (${commission.orderRef}) dispatch email sent`);
   return new Response('Dispatched', { status: 200 });
 }
 

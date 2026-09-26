@@ -86,7 +86,8 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
       });
     }
 
-    console.log(`upload: receiving ${f.name} (${f.size} bytes, ${f.type}) for field ${fieldKey}`);
+    // Not the original filename: customers name files after people.
+    console.log(`upload: receiving ${f.size} bytes (${f.type}) for field ${fieldKey}`);
 
     // Sanity's @sanity/client uses `get-it` under the hood, which expects
     // the body to be a Node Buffer, Readable stream, Blob, or string —
