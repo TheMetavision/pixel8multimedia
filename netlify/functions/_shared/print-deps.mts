@@ -7,7 +7,7 @@ import { getStore } from '@netlify/blobs';
 import { createClient } from '@sanity/client';
 import sharp from 'sharp';
 import { FILES_STORE } from './print-keys.mjs';
-import { loadSource, upscaleForPrint } from './print-sources.mjs';
+import { loadSource, upscaleForPrint, MASTERS_STORE } from './print-sources.mjs';
 import { renderPrint, lowMemorySharp } from './print-render.mjs';
 import { printGeometry } from './print-spec.mjs';
 import { triggerInternal, TRIGGER_BUDGETS } from './origin.mjs';
@@ -26,12 +26,19 @@ const sanity = createClient({
 
 const stores = (name: string) => getStore({ name, consistency: 'strong' });
 
+// Stock products: what print-masters is keyed by (tools/print-masters uses the same filter).
+const STOCK = '_type == "product" && category != "personalised" && defined(slug.current)';
+
 export function printDeps(req?: Request) {
   return {
     files: stores(FILES_STORE),
     stores,
     now: () => Date.now(),
     fetchOrder: (id: string) => sanity.fetch(`*[_type == "order" && _id == $id][0]{ _id, lineItems }`, { id }),
+    // Ad-hoc files (/admin/print-any)
+    findProduct: (slug: string) => sanity.fetch(`*[${STOCK} && slug.current == $slug][0]{ "slug": slug.current, title }`, { slug }),
+    listProducts: () => sanity.fetch(`*[${STOCK}] | order(title asc){ "slug": slug.current, title, "thumb": images[0].asset->url }`),
+    listMasters: async () => (await stores(MASTERS_STORE).list()).blobs.map((b: any) => b.key),
     trigger: (body: object) => triggerInternal('/api/print-file/render-background', {
       req,
       body,

@@ -2,6 +2,8 @@
 //
 // GET /admin/api/print-file/download?order=<orderId>&line=<lineKey>
 //     → the order line's finished print file (from Blobs "print-files")
+// GET /admin/api/print-file/download?adhoc=print/adhoc/<slug>/<file>.jpg
+//     → an ad-hoc file made on /admin/print-any (same store)
 // GET /admin/api/print-file/download?store=personalisation&key=personalisation/<pid>/print.(png|jpg)&name=<file>
 //     → a personalised print built by the approve flow (used by the old
 //       /admin/personalisation/print route, which redirects here)
@@ -20,7 +22,7 @@
 import { getStore } from '@netlify/blobs';
 import type { Config } from '@netlify/edge-functions';
 import { checkBasicAuth } from '../edge-lib/basic-auth.mjs';
-import { FILES_STORE, SERVABLE, isSafeId, stateKey } from '../functions/_shared/print-keys.mjs';
+import { FILES_STORE, SERVABLE, isAdhocKey, isSafeId, stateKey } from '../functions/_shared/print-keys.mjs';
 
 const text = (body: string, status: number) =>
   new Response(body, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
@@ -47,6 +49,11 @@ export default async function handler(req: Request): Promise<Response> {
       .get(stateKey(orderId, lineKey), { type: 'json' }).catch(() => null) as { state?: string; key?: string } | null;
     if (state?.state !== 'ready' || !state.key) return text('This print file has not been made yet — open the print-file page first.', 409);
     key = state.key;
+  } else if (url.searchParams.has('adhoc')) {
+    // An ad-hoc file from /admin/print-any: its key IS its address.
+    key = url.searchParams.get('adhoc') || '';
+    if (!isAdhocKey(key)) return text('Bad ad-hoc file key.', 400);
+    storeName = FILES_STORE;
   } else if (url.searchParams.get('store') === 'personalisation') {
     storeName = 'personalisation';
     key = url.searchParams.get('key') || '';
