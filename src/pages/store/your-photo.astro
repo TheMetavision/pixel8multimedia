@@ -10,6 +10,7 @@
 
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { sanityClient } from '../../lib/sanity';
+import { WRAP_COPY } from '../../../netlify/functions/_shared/print-spec.mjs';
 import {
   FORMAT_LABELS, SIZE_LABELS, SIZE_DIMENSIONS, FORMATS, SIZES,
 } from '../../data/products';
@@ -188,7 +189,7 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
             </div>
             <div id="canvas-wrap-notice" class="hidden mt-3 px-3 py-2.5 bg-pixel-cyan/5 border border-pixel-cyan/20 rounded text-xs text-mid-grey font-dm leading-relaxed">
               <strong class="text-off-white font-medium">Full design preserved.</strong>
-              Canvas edges use a block colour wrap sampled from your artwork — nothing is cropped or hidden.
+              {WRAP_COPY.short}
               <a href="/faqs#canvas-wrap" class="text-pixel-cyan underline hover:no-underline">Learn more</a>
             </div>
           </div>

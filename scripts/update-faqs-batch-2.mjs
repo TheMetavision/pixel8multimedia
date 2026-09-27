@@ -20,6 +20,7 @@
  */
 
 import { createClient } from '@sanity/client';
+import { FAQ_COPY } from '../netlify/functions/_shared/print-spec.mjs';
 
 const client = createClient({
   projectId: 'bqb4w421',
@@ -41,11 +42,8 @@ const NEW_SIZES =
 
 // ── 3. Finishes ─────────────────────────────────────────────────────────────
 const FINISHES_ID = 'pqsf8ly4J5ZHPrl9Dk3jpJ';
-const NEW_FINISHES =
-  `Three professional finishes:\n\n` +
-  `Poster Print — sleek high-definition satin, ready for framing.\n\n` +
-  `Canvas Standard Frame — modern look with a complementary block colour wrap on the edges (rather than wrapping the artwork itself round the frame, we sample the design's dominant colour and use that on the sides, so none of the design is lost).\n\n` +
-  `Canvas Gallery Frame — deep-edge premium presentation, with the same block-colour wrap technique to preserve the full design on the front face.`;
+// Wording lives in the shared print spec (one version everywhere).
+const NEW_FINISHES = FAQ_COPY.finishes;
 
 // ── 4. Turnaround ───────────────────────────────────────────────────────────
 const TURNAROUND_ID = 'pqsf8ly4J5ZHPrl9Dk3jGb';

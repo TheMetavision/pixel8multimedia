@@ -12,6 +12,7 @@
  */
 
 import { createClient } from '@sanity/client';
+import { FAQ_COPY } from '../netlify/functions/_shared/print-spec.mjs';
 
 const client = createClient({
   projectId: 'bqb4w421',
@@ -28,11 +29,8 @@ const NEW_FAQ = {
   _id: NEW_FAQ_ID,
   _type: 'faq',
   question: 'Will any of my design be lost around the edges of a canvas print?',
-  answer:
-    `No. Our canvas prints use a "block colour wrap" technique to protect your design.\n\n` +
-    `Standard canvas prints wrap the actual artwork around the wooden frame edges — meaning a portion of the design ends up hidden behind the sides of the canvas. We don't do this.\n\n` +
-    `Instead, we sample the dominant colour from your chosen artwork and use that colour as a solid wrap on all four sides. The full square design sits on the front face of the canvas, completely intact, and the wrapped edges blend seamlessly into the artwork as a coloured frame border.\n\n` +
-    `This works equally well for our Standard and Gallery canvas frames, and means what you see on screen is exactly what you receive on your wall.`,
+  // Wording lives in the shared print spec (one version everywhere).
+  answer: FAQ_COPY.canvasWrap,
   category: 'product-info',
   displayOrder: 18, // After existing displayOrder 14-17 in product-info
 };
@@ -40,11 +38,7 @@ const NEW_FAQ = {
 // Update the existing "What finishes are available?" FAQ to correctly
 // describe the wrap behaviour.
 const FINISHES_FAQ_ID = 'pqsf8ly4J5ZHPrl9Dk3jpJ';
-const UPDATED_FINISHES_ANSWER =
-  `Three professional finishes:\n\n` +
-  `Poster Print — sleek high-definition matte, ready for framing.\n\n` +
-  `Canvas Standard Frame — modern look with a complementary block colour wrap on the edges (rather than wrapping the artwork itself round the frame, we sample the design's dominant colour and use that on the sides, so none of the design is lost).\n\n` +
-  `Canvas Gallery Frame — deep-edge premium presentation, with the same block-colour wrap technique to preserve the full design on the front face.`;
+const UPDATED_FINISHES_ANSWER = FAQ_COPY.finishes;
 
 async function run() {
   if (!process.env.SANITY_TOKEN) {
