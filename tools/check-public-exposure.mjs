@@ -10,7 +10,9 @@
  *
  * Exit code 1 if any customer DOCUMENT type is visible. Customer photo ASSETS
  * are reported as a warning: asset documents stay listable while the dataset
- * is public, whatever their ids — that needs moving them out of Sanity.
+ * is public, whatever their ids. New customer photos go to the private Blobs
+ * store "commission-uploads"; after tools/migrate-commission-photos.mjs
+ * --apply this count should read 0.
  */
 const PROJECT = 'bqb4w421';
 const DATASET = 'production';
@@ -43,7 +45,8 @@ function report(result) {
     console.log(`  ${n > 0 ? 'EXPOSED' : 'ok     '}  ${t.padEnd(24)} ${n}`);
   }
   console.log('');
-  console.log(`  ${result.customerUploads > 0 ? 'WARN   ' : 'ok     '}  ${'customer-upload assets'.padEnd(24)} ${result.customerUploads}   (label "commission-upload")`);
+  console.log(`  ${result.customerUploads > 0 ? 'WARN   ' : 'ok     '}  ${'customer-upload assets'.padEnd(24)} ${result.customerUploads}   (label "commission-upload"; should be 0 — new photos go to Blobs)`);
+  if (result.customerUploads > 0) console.log('           → run tools/migrate-commission-photos.mjs to move/delete them');
   console.log(`  info     ${'all assets'.padEnd(24)} ${result.allAssets}`);
   console.log(exposed
     ? `\n  ${exposed} customer document type(s) readable without a token.\n`

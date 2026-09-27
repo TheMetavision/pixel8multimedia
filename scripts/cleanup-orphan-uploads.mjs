@@ -1,5 +1,10 @@
 // scripts/cleanup-orphan-uploads.mjs
 //
+// LEGACY (fix/customer-photos-blobs): commission photos now go to the private
+// Blobs store "commission-uploads", and the hourly personalisation-sweep
+// deletes abandoned ones there. tools/migrate-commission-photos.mjs deletes
+// the orphans left in Sanity. Kept only for anything uploaded before that.
+//
 // Deletes Sanity image assets that were uploaded via the commission wizard
 // (/.netlify/functions/upload) but never ended up referenced by a commission
 // document. This happens when a customer uploads photos then abandons the
