@@ -34,7 +34,8 @@ scheduled functions are picked up from `config.schedule`.
 Env (site-level, secret): `GOOGLE_AI_API_KEY`, `PERSONALISATION_SALT`,
 `SANITY_TOKEN` (exists). Optional: `TURNSTILE_SECRET_KEY` (upload skips the
 check while it's unset — set it before launch, along with the site key in the
-UI), and any of the tunables below.
+UI), and any of the tunables below. (The widget itself is rendered explicitly
+by the page module and resets after each upload — see PHASE3-NOTES.md.)
 
 | Env | Default | Meaning |
 |---|---|---|

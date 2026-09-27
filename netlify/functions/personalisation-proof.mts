@@ -25,9 +25,10 @@ import { STYLE_META } from './_shared/styles.mjs';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_FROM || 'Pixel8 Multimedia <orders@pixel8multimedia.co.uk>';
 
-import { SIZE_SHORT_LABELS, FORMAT_LABELS as SPEC_FORMAT_LABELS } from './_shared/print-spec.mjs';
+import { SIZE_LABELS as SPEC_SIZE_LABELS, FORMAT_LABELS as SPEC_FORMAT_LABELS } from './_shared/print-spec.mjs';
 
-const SIZE_LABELS: Record<string, string> = SIZE_SHORT_LABELS;
+// The same labels as the shop, cart, order emails and Studio.
+const SIZE_LABELS: Record<string, string> = SPEC_SIZE_LABELS;
 const FORMAT_LABELS: Record<string, string> = SPEC_FORMAT_LABELS;
 
 export default async function handler(req: Request): Promise<Response> {

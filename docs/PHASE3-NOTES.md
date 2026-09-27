@@ -55,6 +55,14 @@ Details worth knowing:
 - Turnstile renders only if `PUBLIC_TURNSTILE_SITE_KEY` is set in the Astro env;
   the upload function skips verification while `TURNSTILE_SECRET_KEY` is unset.
   Set both together before launch.
+- *Updated (fix/turnstile-upload):* the widget is no longer the implicit
+  `class="cf-turnstile"` div with an `async` api.js tag — that raced the page
+  module and the token was never captured, so every upload got a 403. The page
+  module now loads api.js with `render=explicit` and renders the widget itself,
+  sends the token as the `turnstile` form field, resets the widget after every
+  upload attempt, clears it on expiry, and blocks "Use this crop" until a
+  token exists. The upload function logs siteverify `error-codes` and
+  `hostname` on failure (never the token or secret).
 
 ## 4. Checkout and webhook — the important change
 
