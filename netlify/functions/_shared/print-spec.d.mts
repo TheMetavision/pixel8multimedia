@@ -17,4 +17,11 @@ export declare function isFormatKey(k: unknown): k is FormatKey;
 export declare function printGeometry(sizeKey: SizeKey, formatKey: FormatKey): {
   faceIn: number; wrapIn: number; sheetIn: number; facePx: number; wrapPx: number; sheetPx: number;
 };
+export type Orientation = 'landscape' | 'portrait';
+export declare const COMMISSION_SIZE_INCHES: Record<Orientation, Record<SizeKey, [number, number]>>;
+export declare const COMMISSION_SIZE_LABELS: Record<Orientation, Record<SizeKey, string>>;
+export declare const COMMISSION_SIZE_VALUES: Record<Orientation, Record<SizeKey, string>>;
+export declare const WRAP_COPY: { short: string; terms: string };
+export declare const POSTER_FINISH: string;
+export declare const FAQ_COPY: { canvasWrap: string; finishes: string };
 export declare const OUTPUT: { format: 'jpeg'; mime: string; ext: string; quality: number; chromaSubsampling: string; icc: string };

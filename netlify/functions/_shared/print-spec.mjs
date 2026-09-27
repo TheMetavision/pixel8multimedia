@@ -62,6 +62,55 @@ export function printGeometry(sizeKey, formatKey) {
   return { faceIn, wrapIn, sheetIn, facePx, wrapPx, sheetPx: facePx + 2 * wrapPx };
 }
 
+// ── Commission print sizes ───────────────────────────────────────────────────
+// Commissions (service pages) are a separate set from shop prints: 3:2, in
+// landscape or portrait as the service's artwork needs. 16×12 is retired —
+// medium is 18×12. The KEYS are the shop's (small/medium/large), so existing
+// commissions, service printUpcharges and Stripe metadata keep working; only
+// the dimensions and labels differ. Square services (Back in Time, and
+// Cartoonify via the default) use the shop's square set above.
+
+/** [width, height] in inches. */
+export const COMMISSION_SIZE_INCHES = {
+  landscape: { small: [12, 8], medium: [18, 12], large: [24, 16] },
+  portrait: { small: [8, 12], medium: [12, 18], large: [16, 24] },
+};
+const dims = (orientation, k) => COMMISSION_SIZE_INCHES[orientation][k];
+const label = (name, [w, h]) => `${name} (${w}×${h}")`;
+export const COMMISSION_SIZE_LABELS = {
+  landscape: { small: label('Small', dims('landscape', 'small')), medium: label('Medium', dims('landscape', 'medium')), large: label('Large', dims('landscape', 'large')) },
+  portrait: { small: label('Small', dims('portrait', 'small')), medium: label('Medium', dims('portrait', 'medium')), large: label('Large', dims('portrait', 'large')) },
+};
+/** "12x8"-style values, as the (legacy) commission form posts them. */
+export const COMMISSION_SIZE_VALUES = {
+  landscape: { small: '12x8', medium: '18x12', large: '24x16' },
+  portrait: { small: '8x12', medium: '12x18', large: '16x24' },
+};
+
+// ── Customer-facing wording ──────────────────────────────────────────────────
+// What the canvas wrap is, said the same way everywhere (PDP, Your Photo, T&Cs,
+// FAQ, llms.txt). Accurate to the code: print-render.mjs's edgeColour() takes
+// the average colour of a band around the design's edges.
+export const WRAP_COPY = {
+  short: 'Canvas edges are a solid colour wrap, sampled from the edges of the design. The full design stays on the front: nothing is wrapped round the frame, cropped or hidden.',
+  terms: 'On canvas orders the full design is printed on the front of the canvas, and the edges that wrap around the frame are a solid colour sampled from the edges of the design. Nothing from your design is lost around the sides.',
+};
+export const POSTER_FINISH = 'satin';
+
+/** FAQ answers that describe the wrap and finishes (tools/fix-label-copy.mjs writes them to Sanity). */
+export const FAQ_COPY = {
+  canvasWrap:
+    `No. Our canvas prints use a solid colour wrap, so none of your design is lost.\n\n` +
+    `Many canvas prints wrap the artwork itself around the wooden frame, which hides part of the design on the sides. We don't do that.\n\n` +
+    `Instead, the full square design is printed on the front of the canvas, and the edges that fold around the frame are a solid colour sampled from the edges of the design, so they blend in as a border.\n\n` +
+    `It's the same for our Standard and Gallery canvas frames: what you see on screen is what goes on your wall.`,
+  finishes:
+    `Three professional finishes:\n\n` +
+    `Poster Print — sleek high-definition ${POSTER_FINISH}, ready for framing.\n\n` +
+    `Canvas Standard Frame — a modern look, with a solid colour wrap on the edges sampled from the edges of the design, so the full design stays on the front and nothing is lost round the frame.\n\n` +
+    `Canvas Gallery Frame — deep-edge premium presentation, with the same solid colour wrap so the full design stays on the front.`,
+};
+
 /** Output file settings. */
 export const OUTPUT = {
   format: 'jpeg',
