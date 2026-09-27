@@ -126,5 +126,45 @@ say('\n4. WRAP WIDTH, COLOUR, OVERRIDE\n');
   ok(poster.wrapPx === 0 && poster.width === 3600, 'poster: no wrap even with an override');
 }
 
+say('\n5. EXACT WRAP WIDTH, ALL 9 COMBINATIONS (on pixels)\n');
+{
+  // Expected wrap per edge in px: 1.5" and 2.5" at 300 dpi, and 1.75" for the
+  // 20" gallery (the 23.5" roll).
+  const WRAP_PX = {
+    small: { poster: 0, canvasStandard: 450, canvasGallery: 750 },
+    medium: { poster: 0, canvasStandard: 450, canvasGallery: 750 },
+    large: { poster: 0, canvasStandard: 450, canvasGallery: 525 },
+  };
+  // An override colour that differs from the artwork's border, so the exact
+  // column where the wrap ends and the face begins is visible.
+  const wrapCol = parseHex('#00ff7f');
+  for (const s of SIZE_KEYS) for (const f of FORMAT_KEYS) {
+    const want = WRAP_PX[s][f];
+    const r = await renderPrint({ source: src, sizeKey: s, formatKey: f, wrapColour: '#00ff7f' });
+    const y = Math.floor(r.height / 2);
+    const label = `${s.padEnd(6)} ${f.padEnd(14)} wrap ${want} px`;
+    if (want === 0) {
+      const left = await pixel(r.buffer, 0, y);
+      const right = await pixel(r.buffer, r.width - 1, y);
+      ok(r.wrapPx === 0 && printGeometry(s, f).wrapPx === 0 && nearRGB(left, border) && nearRGB(right, border),
+        `${label}: edge pixels are artwork, no wrap band`);
+      continue;
+    }
+    const checks = await Promise.all([
+      pixel(r.buffer, want - 1, y),            // last wrap column, left
+      pixel(r.buffer, want, y),                // first face column, left
+      pixel(r.buffer, r.width - want, y),      // first wrap column, right
+      pixel(r.buffer, r.width - want - 1, y),  // last face column, right
+      pixel(r.buffer, r.width / 2, want - 1),  // last wrap row, top
+      pixel(r.buffer, r.width / 2, want),      // first face row, top
+    ]);
+    const [lw, lf, rw, rf, tw, tf] = checks;
+    ok(r.wrapPx === want && printGeometry(s, f).wrapPx === want
+      && nearRGB(lw, wrapCol) && nearRGB(rw, wrapCol) && nearRGB(tw, wrapCol)
+      && nearRGB(lf, border) && nearRGB(rf, border) && nearRGB(tf, border),
+      `${label}: wrap on left/right/top ends exactly at ${want} px, face starts at ${want}`);
+  }
+}
+
 say(`\n${pass} passed, ${fail} failed.`);
 process.exitCode = fail ? 1 : 0;
