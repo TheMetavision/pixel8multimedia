@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import {
   storeUpload, photosForCommission, sweepAbandonedUploads, isUploadKey, MAX_FILE_SIZE, ABANDONED_AFTER_MS,
 } from '../../netlify/functions/_shared/commission-uploads.mjs';
+import { stripMetadata, FRIENDLY_HEIC } from '../../netlify/functions/_shared/strip-metadata.mjs';
 import { planMigration, migratePhoto, deleteOrphans, deterministicUuid, refPaths } from '../commission-photos/migrate-lib.mjs';
 
 let pass = 0, fail = 0;
@@ -36,6 +37,8 @@ function memStore(initial = {}) {
 let n = 0;
 const uuid = () => `00000000-0000-0000-0000-${String(++n).padStart(12, '0')}`;
 const UID = '11111111-2222-3333-4444-555555555555';
+// Metadata stripping has its own tests (forms-hardening-tests.mjs); here it passes bytes through.
+const strip = async (buffer) => ({ buffer, removed: [], hadGps: false });
 
 say('\n1. UPLOAD → BLOBS, NO FILENAME\n');
 {
@@ -43,7 +46,7 @@ say('\n1. UPLOAD → BLOBS, NO FILENAME\n');
   const bytes = Buffer.from('fake-jpeg-bytes');
   const r = await storeUpload(
     { bytes, contentType: 'image/jpeg', fieldKey: 'sourcePhotos', uploadId: UID },
-    { store, uuid, now: () => new Date('2026-09-27T10:00:00Z'), imageSize: async () => ({ width: 3000, height: 2000 }) },
+    { store, uuid, strip, now: () => new Date('2026-09-27T10:00:00Z'), imageSize: async () => ({ width: 3000, height: 2000 }) },
   );
   const saved = store.m.get(r.uploadKey);
   ok(r.ok && isUploadKey(r.uploadKey) && r.uploadKey.startsWith(`commission-upload/${UID}/`) && r.uploadKey.endsWith('.jpg'), 'key commission-upload/<uploadId>/<uuid>.jpg', r.uploadKey);
@@ -56,20 +59,20 @@ say('\n1. UPLOAD → BLOBS, NO FILENAME\n');
   ok(!/f\.name|originalName|filename/.test(src.replace(/^\s*\/\/.*$/gm, '')), 'upload.mts never reads or sends the original filename (code, comments aside)');
   ok(!/originalName/.test(readFileSync(new URL('../../src/components/CommissionWorkflow.jsx', import.meta.url), 'utf8').replace(/^\s*\/\/.*$/gm, '')), 'the wizard no longer sends originalName');
 
-  const heic = await storeUpload({ bytes, contentType: 'image/heic', uploadId: UID }, { store, uuid, imageSize: async () => { throw new Error('no decoder'); } });
-  ok(heic.ok && heic.width === null && heic.uploadKey.endsWith('.heic'), 'HEIC accepted even if its size can\'t be read (as before)');
-  const bad = await storeUpload({ bytes, contentType: 'application/pdf' }, { store, uuid });
+  const heic = await storeUpload({ bytes, contentType: 'image/heic', uploadId: UID }, { store, uuid, strip: (b, t) => stripMetadata(b, t) });
+  ok(!heic.ok && heic.status === 400 && heic.error === FRIENDLY_HEIC, 'HEIC refused with a friendly message (HEIC metadata cannot be stripped here; the browser converts it first where it can)');
+  const bad = await storeUpload({ bytes, contentType: 'application/pdf' }, { store, uuid, strip });
   ok(!bad.ok && bad.status === 400, 'a PDF is refused, 400');
-  const big = await storeUpload({ bytes: new Uint8Array(MAX_FILE_SIZE + 1), contentType: 'image/png' }, { store, uuid });
+  const big = await storeUpload({ bytes: new Uint8Array(MAX_FILE_SIZE + 1), contentType: 'image/png' }, { store, uuid, strip });
   ok(!big.ok && big.status === 413, 'over 10 MB refused, 413 (same limit as before)');
-  const minted = await storeUpload({ bytes, contentType: 'image/png', uploadId: '../../evil' }, { store, uuid });
+  const minted = await storeUpload({ bytes, contentType: 'image/png', uploadId: '../../evil' }, { store, uuid, strip });
   ok(minted.ok && isUploadKey(minted.uploadKey) && !minted.uploadKey.includes('evil'), 'a bogus uploadId is replaced, never put in the key');
 }
 
 say('\n2. CHECKOUT ACCEPTS ONLY REAL KEYS\n');
 {
   const store = memStore();
-  const up = await storeUpload({ bytes: Buffer.from('x'), contentType: 'image/png', fieldKey: 'f', uploadId: UID }, { store, uuid });
+  const up = await storeUpload({ bytes: Buffer.from('x'), contentType: 'image/png', fieldKey: 'f', uploadId: UID }, { store, uuid, strip });
   const good = await photosForCommission([{ fieldKey: 'f', uploadKey: up.uploadKey }], { store, makeKey: () => 'k1' });
   ok(good.ok && good.photos[0].key === up.uploadKey && good.photos[0].contentType === 'image/png' && !('originalName' in good.photos[0]), 'known key → entry with key, type, bytes, size; no filename');
   const gone = await photosForCommission([{ uploadKey: `commission-upload/${UID}/${UID}.png` }], { store, makeKey: () => 'k' });

@@ -11,6 +11,10 @@
  *             name files after people.
  *   metadata  { uploadId, fieldKey, contentType, bytes, width, height, uploadedAt }
  *
+ * Location and camera metadata (EXIF incl. GPS, XMP, IPTC, text chunks) is
+ * removed before storing — losslessly, see strip-metadata.mjs. HEIC/HEIF is
+ * refused with a friendly message (it can't be checked here).
+ *
  * The commission doc stores, per photo: fieldKey, key, contentType, bytes,
  * width, height (field uploadedPhotos). Staff view them through the
  * /admin/commission-photo/… edge function.
@@ -41,9 +45,10 @@ export const isUploadId = (s) => typeof s === 'string' && UUID_RE.test(s);
 export const isUploadKey = (s) => typeof s === 'string' && UPLOAD_KEY_RE.test(s);
 
 /**
- * Validate and store one uploaded photo.
+ * Validate, strip metadata from, and store one uploaded photo.
  * @param {{ bytes: Uint8Array|Buffer, contentType: string, fieldKey?: string, uploadId?: string }} input
- * @param {{ store, uuid: () => string, now?: () => Date, imageSize?: (buf) => Promise<{width,height}|null> }} deps
+ * @param {{ store, uuid: () => string, now?: () => Date, imageSize?: (buf) => Promise<{width,height}|null>,
+ *           strip: (buf, type) => Promise<{ buffer, removed, hadGps }> }} deps
  * @returns {Promise<{ ok: true, uploadKey, uploadId, fieldKey, contentType, bytes, width, height } | { ok: false, status, error }>}
  */
 export async function storeUpload(input, deps) {
@@ -56,19 +61,30 @@ export async function storeUpload(input, deps) {
   if (bytes > MAX_FILE_SIZE) {
     return { ok: false, status: 413, error: `File too large (${(bytes / 1048576).toFixed(1)}MB). The single-file limit is ${MAX_FILE_SIZE / 1048576}MB.` };
   }
+  let clean;
+  try {
+    clean = await deps.strip(input.bytes, input.contentType);
+  } catch (err) {
+    return { ok: false, status: 400, error: err?.customerMessage || "We couldn't read that image. Please try a different photo." };
+  }
+  const stored = clean.buffer;
   const uploadId = isUploadId(input.uploadId) ? input.uploadId : deps.uuid();
   const fieldKey = String(input.fieldKey || 'unknown').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 60) || 'unknown';
   const uploadKey = `${KEY_PREFIX}${uploadId}/${deps.uuid()}.${ext}`;
 
   let size = null;
-  try { size = deps.imageSize ? await deps.imageSize(input.bytes) : null; } catch { size = null; } // HEIC may not decode; that's fine
+  try { size = deps.imageSize ? await deps.imageSize(stored) : null; } catch { size = null; }
   const metadata = {
-    uploadId, fieldKey, contentType: input.contentType, bytes,
+    uploadId, fieldKey, contentType: input.contentType, bytes: stored.length,
     width: size?.width ?? null, height: size?.height ?? null,
     uploadedAt: (deps.now ? deps.now() : new Date()).toISOString(),
   };
-  await deps.store.set(uploadKey, input.bytes, { metadata });
-  return { ok: true, uploadKey, uploadId, fieldKey, contentType: metadata.contentType, bytes, width: metadata.width, height: metadata.height };
+  await deps.store.set(uploadKey, stored, { metadata });
+  return {
+    ok: true, uploadKey, uploadId, fieldKey, contentType: metadata.contentType, bytes: stored.length,
+    width: metadata.width, height: metadata.height,
+    stripped: clean.removed || [], hadGps: Boolean(clean.hadGps), // for the log only; not stored
+  };
 }
 
 /**

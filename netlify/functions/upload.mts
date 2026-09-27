@@ -17,6 +17,9 @@
 //   - 'fieldKey'  → which briefingField the file belongs to (e.g. "sourcePhotos")
 //   - 'uploadId'  → optional UUID grouping this visit's uploads (minted if absent)
 //
+// Location and camera metadata (EXIF incl. GPS, XMP, IPTC) is stripped before
+// the photo is stored (_shared/strip-metadata.mjs); HEIC/HEIF is refused.
+//
 // Returns:
 //   { ok: true, uploadKey, uploadId, fieldKey, contentType, bytes, width, height }
 //   { ok: false, error: '...' }
@@ -27,6 +30,7 @@ import { getStore } from '@netlify/blobs';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import { UPLOADS_STORE, storeUpload } from './_shared/commission-uploads.mjs';
+import { stripMetadata } from './_shared/strip-metadata.mjs';
 
 function jsonResponse(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -64,6 +68,7 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
       {
         store: getStore({ name: UPLOADS_STORE, consistency: 'strong' }),
         uuid: randomUUID,
+        strip: (buf: Uint8Array, type: string) => stripMetadata(buf, type, { sharp }),
         imageSize: async (buf: Uint8Array) => {
           const m = await sharp(buf).metadata();
           return m.width && m.height ? { width: m.width, height: m.height } : null;
@@ -72,8 +77,9 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
     );
 
     if (!r.ok) return jsonResponse(r.status, { ok: false, error: r.error });
-    console.log(`upload: stored ${r.bytes} bytes (${r.contentType}, ${r.width ?? '?'}×${r.height ?? '?'}) for field ${r.fieldKey} as ${r.uploadKey}`);
-    return jsonResponse(200, { ...r });
+    const { stripped, hadGps, ...out } = r;
+    console.log(`upload: stored ${r.bytes} bytes (${r.contentType}, ${r.width ?? '?'}×${r.height ?? '?'}) for field ${r.fieldKey} as ${r.uploadKey}; removed [${stripped.join(', ')}]`);
+    return jsonResponse(200, { ...out });
   } catch (err: any) {
     console.error('upload error:', err?.name, err?.message);
     return jsonResponse(500, { ok: false, error: 'Upload failed. Please try again.' });
