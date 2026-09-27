@@ -32,7 +32,28 @@ export default defineConfig({
             S.documentTypeListItem('service').title('Services'),
             S.divider(),
             S.documentTypeListItem('commission').title('Commissions'),
-            S.documentTypeListItem('order').title('Orders'),
+            S.listItem()
+              .title('Orders')
+              .schemaType('order')
+              .child(
+                S.list()
+                  .title('Orders')
+                  .items([
+                    // An order line whose print source (master or personalised
+                    // render) was missing when the order came in. The sale went
+                    // through; the file can't be made until the source exists.
+                    S.listItem()
+                      .title('Needs attention')
+                      .child(
+                        S.documentList()
+                          .title('Print file missing')
+                          .filter('_type == "order" && count(lineItems[printFileMissing == true]) > 0')
+                          .defaultOrdering([{ field: '_createdAt', direction: 'desc' }])
+                      ),
+                    S.divider(),
+                    S.documentTypeListItem('order').title('All orders'),
+                  ])
+              ),
             S.divider(),
             // "Your Photo" personalisations, worked as a queue: what needs
             // printing today comes first, then what's waiting on a customer.

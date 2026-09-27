@@ -1,4 +1,5 @@
 import { defineType, defineField } from 'sanity';
+import { PrintFiles } from '../components/PrintFiles';
 
 export default defineType({
   name: 'order',
@@ -47,14 +48,36 @@ export default defineType({
           // type a reference can target ("Unknown type"), and this way Studio
           // shows the listing image as a thumbnail on the line.
           { name: 'listingImageRef', title: 'Listing image (at time of order)', type: 'image', readOnly: true },
+          // Print file. Set by the Stripe webhook when the line's print source
+          // (master or personalised render) wasn't there at order time.
+          { name: 'printFileMissing', title: 'Print file missing at order time', type: 'boolean', readOnly: true },
+          {
+            name: 'wrapColour',
+            title: 'Wrap colour override',
+            type: 'string',
+            description: 'Optional #rrggbb for the canvas wrap. Empty = the average colour of the artwork\'s edges. Publish, then generate the print file again.',
+            validation: (Rule) => Rule.custom((v?: string) =>
+              !v || /^#[0-9a-fA-F]{6}$/.test(v) ? true : 'Use a hex colour like #1a2b3c'),
+          },
         ],
         preview: {
-          select: { title: 'productTitle', quantity: 'quantity', unitPrice: 'unitPrice' },
-          prepare({ title, quantity, unitPrice }) {
-            return { title: `${title} × ${quantity}`, subtitle: `£${((unitPrice || 0) * (quantity || 0)).toFixed(2)}` };
+          select: { title: 'productTitle', quantity: 'quantity', unitPrice: 'unitPrice', missing: 'printFileMissing' },
+          prepare({ title, quantity, unitPrice, missing }) {
+            return {
+              title: `${missing ? '⚠ ' : ''}${title} × ${quantity}`,
+              subtitle: `£${((unitPrice || 0) * (quantity || 0)).toFixed(2)}${missing ? ' · print file missing' : ''}`,
+            };
           },
         },
       }],
+    }),
+    // Not stored: a panel with a "Download print file" link per line.
+    defineField({
+      name: 'printFiles',
+      title: 'Print files',
+      type: 'string',
+      readOnly: true,
+      components: { input: PrintFiles },
     }),
     defineField({ name: 'totalAmount', title: 'Total (£)', type: 'number', readOnly: true }),
     defineField({
