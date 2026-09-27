@@ -16,6 +16,7 @@
  */
 
 import { createClient } from '@sanity/client';
+import { SIZE_DIMENSIONS } from '../netlify/functions/_shared/print-spec.mjs';
 import { readFileSync, existsSync } from 'node:fs';
 
 const PROJECT_ID = 'bqb4w421';
@@ -78,7 +79,7 @@ function buildDocument(fill, assetId) {
       canvasStandard: { small: 27.99, medium: 32.99, large: 44.99 },
       canvasGallery:  { small: 29.99, medium: 35.99, large: 47.99 },
     },
-    sizes: { small: '12x8', medium: '16x12', large: '24x16' },
+    sizes: { ...SIZE_DIMENSIONS },
     // Matches existing sport-category tag convention (duplicated 'sport' confirmed)
     tags: ['sport', `style-${fill.slot}`, fill.tagName, 'sport'],
     description: [{

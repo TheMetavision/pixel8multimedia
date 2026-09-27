@@ -1,4 +1,10 @@
 import { defineType, defineField } from 'sanity';
+// Size and format labels come from the shared print spec, like the site.
+import { FORMAT_LABELS, SIZE_DIMENSIONS, SIZE_LABELS } from '../../netlify/functions/_shared/print-spec.mjs';
+
+// Shown on the site as "Option A" … "Option J" (PDP pills, badges, product
+// titles, order lines). The stored values stay style-a … style-j.
+const OPTION_LETTERS = 'ABCDEFGHIJ'.split('');
 
 export default defineType({
   name: 'product',
@@ -29,18 +35,7 @@ export default defineType({
       title: 'Style',
       type: 'string',
       options: {
-        list: [
-          { title: 'Style A — Neon Glow', value: 'style-a' },
-          { title: 'Style B — Minimalist Cool', value: 'style-b' },
-          { title: 'Style C — Retro Vibes', value: 'style-c' },
-          { title: 'Style D — Pixel Art', value: 'style-d' },
-          { title: 'Style E — Abstract Burst', value: 'style-e' },
-          { title: 'Style F — Pop Art', value: 'style-f' },
-          { title: 'Style G — Watercolour', value: 'style-g' },
-          { title: 'Style H — Noir', value: 'style-h' },
-          { title: 'Style I — Geometric', value: 'style-i' },
-          { title: 'Style J — Street Art', value: 'style-j' },
-        ],
+        list: OPTION_LETTERS.map((l) => ({ title: `Option ${l}`, value: `style-${l.toLowerCase()}` })),
         layout: 'dropdown',
       },
       validation: (Rule) => Rule.required(),
@@ -71,32 +66,32 @@ export default defineType({
       fields: [
         defineField({
           name: 'poster',
-          title: 'Poster Print',
+          title: FORMAT_LABELS.poster,
           type: 'object',
           fields: [
-            { name: 'small', title: 'Small', type: 'number', initialValue: 9.99 },
-            { name: 'medium', title: 'Medium', type: 'number', initialValue: 12.99 },
-            { name: 'large', title: 'Large', type: 'number', initialValue: 16.99 },
+            { name: 'small', title: SIZE_LABELS.small, type: 'number', initialValue: 9.99 },
+            { name: 'medium', title: SIZE_LABELS.medium, type: 'number', initialValue: 12.99 },
+            { name: 'large', title: SIZE_LABELS.large, type: 'number', initialValue: 16.99 },
           ],
         }),
         defineField({
           name: 'canvasStandard',
-          title: 'Canvas — Standard Frame',
+          title: FORMAT_LABELS.canvasStandard,
           type: 'object',
           fields: [
-            { name: 'small', title: 'Small', type: 'number', initialValue: 27.99 },
-            { name: 'medium', title: 'Medium', type: 'number', initialValue: 32.99 },
-            { name: 'large', title: 'Large', type: 'number', initialValue: 44.99 },
+            { name: 'small', title: SIZE_LABELS.small, type: 'number', initialValue: 27.99 },
+            { name: 'medium', title: SIZE_LABELS.medium, type: 'number', initialValue: 32.99 },
+            { name: 'large', title: SIZE_LABELS.large, type: 'number', initialValue: 44.99 },
           ],
         }),
         defineField({
           name: 'canvasGallery',
-          title: 'Canvas — Gallery Frame',
+          title: FORMAT_LABELS.canvasGallery,
           type: 'object',
           fields: [
-            { name: 'small', title: 'Small', type: 'number', initialValue: 29.99 },
-            { name: 'medium', title: 'Medium', type: 'number', initialValue: 35.99 },
-            { name: 'large', title: 'Large', type: 'number', initialValue: 47.99 },
+            { name: 'small', title: SIZE_LABELS.small, type: 'number', initialValue: 29.99 },
+            { name: 'medium', title: SIZE_LABELS.medium, type: 'number', initialValue: 35.99 },
+            { name: 'large', title: SIZE_LABELS.large, type: 'number', initialValue: 47.99 },
           ],
         }),
       ],
@@ -106,9 +101,9 @@ export default defineType({
       title: 'Available Sizes',
       type: 'object',
       fields: [
-        { name: 'small', title: 'Small', type: 'string', initialValue: '12x8' },
-        { name: 'medium', title: 'Medium', type: 'string', initialValue: '16x12' },
-        { name: 'large', title: 'Large', type: 'string', initialValue: '24x16' },
+        { name: 'small', title: SIZE_LABELS.small, type: 'string', initialValue: SIZE_DIMENSIONS.small },
+        { name: 'medium', title: SIZE_LABELS.medium, type: 'string', initialValue: SIZE_DIMENSIONS.medium },
+        { name: 'large', title: SIZE_LABELS.large, type: 'string', initialValue: SIZE_DIMENSIONS.large },
       ],
     }),
     defineField({
@@ -178,11 +173,9 @@ export default defineType({
         animations: 'Animations', music: 'Music', 'tv-movies': 'TV/Movies',
         sport: 'Sport', miscellaneous: 'Misc', personalised: 'Personalised',
       };
-      const styleLabels: Record<string, string> = {
-        'style-a': 'Neon Glow', 'style-b': 'Minimalist', 'style-c': 'Retro',
-        'style-d': 'Pixel Art', 'style-e': 'Abstract', 'style-f': 'Pop Art',
-        'style-g': 'Watercolour', 'style-h': 'Noir', 'style-i': 'Geometric', 'style-j': 'Street Art',
-      };
+      const styleLabels: Record<string, string> = Object.fromEntries(
+        OPTION_LETTERS.map((l) => [`style-${l.toLowerCase()}`, `Option ${l}`]),
+      );
       return {
         title,
         subtitle: `${catLabels[category] || category || '?'} · ${styleLabels[style] || style || '?'}`,

@@ -6,6 +6,8 @@
 //   node scripts/seed-personalised.cjs
 
 const { createClient } = require('@sanity/client');
+// Square shop sizes from the shared print spec (Node 22.12+ can require() ESM).
+const { SIZE_DIMENSIONS } = require('./netlify/functions/_shared/print-spec.mjs');
 
 const client = createClient({
   projectId: 'bqb4w421',
@@ -169,7 +171,7 @@ async function main() {
             canvasGallery: { small: 0, medium: 0, large: 0 },
           },
       sizes: svc.hasPrint
-        ? { small: '12x8', medium: '16x12', large: '24x16' }
+        ? { ...SIZE_DIMENSIONS }
         : { small: 'Digital', medium: 'Digital', large: 'Digital' },
       personalisationFee: svc.digitalPrice, // placeholder — update with real prices tomorrow
       featured: false,

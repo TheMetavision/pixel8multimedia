@@ -220,7 +220,9 @@ const DEFAULT_PRICES = {
   canvasGallery:  { small: 29.99, medium: 35.99, large: 47.99 },
 };
 
-const DEFAULT_SIZES = { small: '12x8', medium: '16x12', large: '24x16' };
+// Square shop sizes from the shared print spec (Node 22.12+ can require() ESM).
+const { SIZE_DIMENSIONS } = require('./netlify/functions/_shared/print-spec.mjs');
+const DEFAULT_SIZES = { ...SIZE_DIMENSIONS };
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp'];
 
 // ═══════════════════════════════════════════════════════════
