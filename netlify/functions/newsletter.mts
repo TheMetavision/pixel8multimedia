@@ -6,12 +6,13 @@
 //
 // Endpoint: /api/newsletter (rewritten via the export below)
 //
-// Expected POST body: { email: string, source?: string }
+// Expected POST body: { email: string, source?: string, turnstile: string }
 // `source` should be set by the frontend caller, e.g. "footer" or
 // "join-the-gallery" — purely for our own analytics in Sanity.
 
 import type { Context, Config } from '@netlify/functions';
 import { createClient } from '@sanity/client';
+import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
 
 const sanity = createClient({
   projectId: 'bqb4w421',
@@ -46,6 +47,15 @@ export default async (req: Request, _context: Context) => {
       return new Response(
         JSON.stringify({ error: 'Please enter a valid email address.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── Bot check (Cloudflare Turnstile) ───────────────────────────────────
+    const human = await verifyTurnstile(body?.turnstile ? String(body.turnstile) : null, { context: 'newsletter' });
+    if (!human.ok) {
+      return new Response(
+        JSON.stringify({ error: GENERIC_FAILURE, turnstile: true }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
 

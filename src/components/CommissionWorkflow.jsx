@@ -32,6 +32,34 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SIZE_LABELS } from '../../netlify/functions/_shared/print-spec.mjs';
+import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
+import { FRIENDLY_HEIC } from '../../netlify/functions/_shared/strip-metadata.mjs';
+
+// ─── Bot check ──────────────────────────────────────────────────────────────
+// One Cloudflare Turnstile check per visit. The first photo upload spends a
+// token and gets back a grant (bound to this visit's uploadId); later uploads
+// and the checkout send the grant. A checkout with no photo, or after the
+// grant was refused, sends a fresh token. See _shared/commission-grant.mjs.
+const gate = { widget: null, grant: '' };
+
+// Mounted once, outside the steps, so it survives step changes. Mostly
+// invisible: it only shows if Cloudflare needs the customer to click.
+function TurnstileBox() {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!gate.widget) gate.widget = mountTurnstile(ref.current, { size: 'flexible', appearance: 'interaction-only' });
+  }, []);
+  return <div ref={ref} className="cw__turnstile" />;
+}
+
+/** Proof for a request: { grant } or { turnstile }, or {} when checks are off. Throws if no token arrives. */
+async function botProof() {
+  if (gate.grant) return { grant: gate.grant };
+  if (!gate.widget?.enabled) return {};
+  const token = await gate.widget.waitForToken(8000);
+  if (!token) throw new Error(TURNSTILE_WAIT_MESSAGE);
+  return { turnstile: token };
+}
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -69,17 +97,24 @@ async function uploadCommissionPhoto(file, fieldKey) {
   fd.append('file', file, 'photo');
   fd.append('fieldKey', fieldKey);
   fd.append('uploadId', getUploadSessionId());
+  const proof = await botProof();
+  if (proof.grant) fd.append('grant', proof.grant);
+  if (proof.turnstile) fd.append('turnstile', proof.turnstile);
   let res;
   try {
     res = await fetch('/.netlify/functions/upload', { method: 'POST', body: fd });
   } catch (e) {
     throw new Error('Network error while uploading. Please check your connection and try again.');
+  } finally {
+    if (proof.turnstile) gate.widget.reset(); // spent, whatever the outcome
   }
   let body;
   try { body = await res.json(); } catch { body = {}; }
+  if (body.turnstile) gate.grant = ''; // refused: the next attempt takes a fresh check
   if (!res.ok || !body.ok) {
     throw new Error(body.error || `Upload failed (status ${res.status}).`);
   }
+  if (body.grant) gate.grant = body.grant;
   return {
     uploadKey: body.uploadKey,
     // A local preview of the customer's own file (there is no public URL).
@@ -136,17 +171,14 @@ function formatToSanityKey(f) {
 }
 
 async function resizeImage(file) {
-  // HEIC/HEIF can't be decoded by <canvas> in most browsers, and non-images
-  // have nothing to re-encode — pass them straight through.
-  if (
-    file.type === 'image/heic' ||
-    file.type === 'image/heif' ||
-    !file.type.startsWith('image/')
-  ) {
-    return file;
-  }
+  // Non-images have nothing to re-encode — pass them straight through.
+  if (!file.type.startsWith('image/')) return file;
+  // HEIC/HEIF: the server can't read it (so can't strip its location data).
+  // Browsers that can decode it (Safari) convert it to JPEG below via the
+  // canvas; everywhere else it is refused here with a friendly message.
+  const isHeic = file.type === 'image/heic' || file.type === 'image/heif';
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
@@ -203,7 +235,11 @@ async function resizeImage(file) {
       };
       attempt();
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      if (isHeic) reject(Object.assign(new Error(FRIENDLY_HEIC), { heic: true }));
+      else resolve(file); // the server still strips metadata from JPEG/PNG/WebP
+    };
     img.src = url;
   });
 }
@@ -432,7 +468,8 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
       let resized;
       try {
         resized = await resizeImage(original);
-      } catch {
+      } catch (resizeErr) {
+        if (resizeErr?.heic) { setError(resizeErr.message); break; }
         resized = original; // fall back to original on any resize hiccup
       }
       setProgressLabel(`Uploading photo ${i + 1} of ${toUpload.length}…`);
@@ -1142,13 +1179,22 @@ export default function CommissionWorkflow({ service }) {
         ...(grouponClaim ? { grouponClaimToken: grouponClaim.token } : {}),
       };
 
-      const res = await fetch('/.netlify/functions/commission-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const proof = await botProof();
+      if (proof.grant) payload.uploadGrant = proof.grant;
+      if (proof.turnstile) payload.turnstile = proof.turnstile;
+      let res;
+      try {
+        res = await fetch('/.netlify/functions/commission-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } finally {
+        if (proof.turnstile) gate.widget.reset(); // spent, whatever the outcome
+      }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        if (body.turnstile) gate.grant = ''; // refused: the next attempt takes a fresh check
         throw new Error(body.error || 'Something went wrong. Please try again.');
       }
       const { url } = await res.json();
@@ -1608,6 +1654,8 @@ export default function CommissionWorkflow({ service }) {
           </div>
         </section>
       )}
+
+      <TurnstileBox />
 
       {error && <div className="cw__error" role="alert">{error}</div>}
 

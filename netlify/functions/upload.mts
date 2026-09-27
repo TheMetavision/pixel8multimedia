@@ -16,12 +16,15 @@
 //   - 'file'      → the image file
 //   - 'fieldKey'  → which briefingField the file belongs to (e.g. "sourcePhotos")
 //   - 'uploadId'  → optional UUID grouping this visit's uploads (minted if absent)
+//   - 'turnstile' → Cloudflare Turnstile token (first upload of a visit), or
+//   - 'grant'     → the grant a previous upload in this visit returned
+//                   (see _shared/commission-grant.mjs: one check per visit)
 //
 // Location and camera metadata (EXIF incl. GPS, XMP, IPTC) is stripped before
 // the photo is stored (_shared/strip-metadata.mjs); HEIC/HEIF is refused.
 //
 // Returns:
-//   { ok: true, uploadKey, uploadId, fieldKey, contentType, bytes, width, height }
+//   { ok: true, uploadKey, uploadId, fieldKey, contentType, bytes, width, height, grant }
 //   { ok: false, error: '...' }
 // Never the original filename: customers name files after people.
 
@@ -29,8 +32,10 @@ import type { Context } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
-import { UPLOADS_STORE, storeUpload } from './_shared/commission-uploads.mjs';
+import { UPLOADS_STORE, storeUpload, isUploadId } from './_shared/commission-uploads.mjs';
 import { stripMetadata } from './_shared/strip-metadata.mjs';
+import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
+import { makeGrant, verifyGrant } from './_shared/commission-grant.mjs';
 
 function jsonResponse(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -58,12 +63,22 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
     }
     const f = file as File;
 
+    // Bot check: a valid grant for this visit, or a Turnstile token (which
+    // earns one). Skipped only while TURNSTILE_SECRET_KEY is unset.
+    const askedId = String(formData.get('uploadId') || '');
+    const uploadId = isUploadId(askedId) ? askedId : randomUUID();
+    const granted = verifyGrant(String(formData.get('grant') || ''));
+    if (!(granted && granted === uploadId)) {
+      const v = await verifyTurnstile(formData.get('turnstile') as string | null, { context: 'upload' });
+      if (!v.ok) return jsonResponse(403, { ok: false, error: GENERIC_FAILURE, turnstile: true });
+    }
+
     const r = await storeUpload(
       {
         bytes: new Uint8Array(await f.arrayBuffer()),
         contentType: f.type,
         fieldKey: String(formData.get('fieldKey') || 'unknown'),
-        uploadId: String(formData.get('uploadId') || ''),
+        uploadId,
       },
       {
         store: getStore({ name: UPLOADS_STORE, consistency: 'strong' }),
@@ -79,7 +94,7 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
     if (!r.ok) return jsonResponse(r.status, { ok: false, error: r.error });
     const { stripped, hadGps, ...out } = r;
     console.log(`upload: stored ${r.bytes} bytes (${r.contentType}, ${r.width ?? '?'}×${r.height ?? '?'}) for field ${r.fieldKey} as ${r.uploadKey}; removed [${stripped.join(', ')}]`);
-    return jsonResponse(200, { ...out });
+    return jsonResponse(200, { ...out, grant: makeGrant(r.uploadId) });
   } catch (err: any) {
     console.error('upload error:', err?.name, err?.message);
     return jsonResponse(500, { ok: false, error: 'Upload failed. Please try again.' });

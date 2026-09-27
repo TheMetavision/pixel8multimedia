@@ -243,6 +243,7 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
 
 <script>
   import { addToCart } from '../../stores/cart';
+  import { mountTurnstile } from '../../lib/turnstile';
 
   type StyleInfo = { key: string; letter: string; label: string };
   type Format = 'poster' | 'canvasStandard' | 'canvasGallery';
@@ -270,47 +271,14 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
   let quantity = 1;
 
   // ── Turnstile ────────────────────────────────────────────────────────────
-  // Explicit render from this module. The old implicit widget + async api.js
-  // tag raced this (deferred) module: the widget solved before
-  // window.onTurnstile existed, so the token was never captured and every
-  // upload went out without one. Loading api.js from here, after the onload
-  // hook is defined, removes the race. Tokens are single-use and expire after
-  // ~5 minutes, so the widget is reset after every upload attempt.
-  const turnstileBox = document.getElementById('turnstile-box');
-  const turnstileSiteKey = turnstileBox?.dataset.sitekey || '';
-  let turnstileToken = '';
-  let turnstileWidget: string | null = null;
-  const ts = () => (window as any).turnstile;
-  function mountTurnstile() {
-    if (!turnstileBox || turnstileWidget !== null || !ts()) return;
-    turnstileWidget = ts().render(turnstileBox, {
-      sitekey: turnstileSiteKey,
-      size: 'flexible',
-      callback: (t: string) => { turnstileToken = t; },
-      'expired-callback': () => { turnstileToken = ''; },
-      'timeout-callback': () => { turnstileToken = ''; },
-      'error-callback': () => { turnstileToken = ''; },
-    });
-  }
-  function currentTurnstileToken(): string {
-    if (turnstileToken) return turnstileToken;
-    if (turnstileWidget !== null) return ts()?.getResponse(turnstileWidget) || '';
-    return '';
-  }
-  function resetTurnstile() {
-    turnstileToken = '';
-    if (turnstileWidget !== null) ts()?.reset(turnstileWidget);
-  }
-  if (turnstileSiteKey) {
-    if (ts()) mountTurnstile();
-    else {
-      (window as any).onTurnstileLoad = mountTurnstile;
-      const s = document.createElement('script');
-      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad';
-      s.async = true;
-      document.head.appendChild(s);
-    }
-  }
+  // Rendered explicitly by the shared helper (src/lib/turnstile.ts), which
+  // loads api.js once per page — the footer newsletter form on this page has
+  // its own widget too. Tokens are single-use and expire after ~5 minutes, so
+  // the widget is reset after every upload attempt.
+  const turnstile = mountTurnstile(document.getElementById('turnstile-box'), { size: 'flexible' });
+  const turnstileSiteKey = turnstile.enabled;
+  const currentTurnstileToken = () => turnstile.token();
+  const resetTurnstile = () => turnstile.reset();
 
   // ── Crop ─────────────────────────────────────────────────────────────────
   const canvas = $<HTMLCanvasElement>('crop-canvas');

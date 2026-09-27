@@ -8,13 +8,14 @@
 //
 // Endpoint: /api/contact (rewritten via the export below)
 //
-// Expected POST body: { name, email, subject, message, honeypot? }
+// Expected POST body: { name, email, subject, message, website (honeypot), turnstile }
 
 import type { Context, Config } from '@netlify/functions';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
+import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
 
 const sanity = createClient({
   projectId: 'bqb4w421',
@@ -151,6 +152,15 @@ export default async (req: Request, _context: Context) => {
       return new Response(
         JSON.stringify({ error: 'Message is too long. Please shorten and try again.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── Bot check (Cloudflare Turnstile) ───────────────────────────────────
+    const human = await verifyTurnstile(body?.turnstile ? String(body.turnstile) : null, { context: 'contact' });
+    if (!human.ok) {
+      return new Response(
+        JSON.stringify({ error: GENERIC_FAILURE, turnstile: true }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
 

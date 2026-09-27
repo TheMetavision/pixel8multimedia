@@ -106,6 +106,8 @@ const currentYear = new Date().getFullYear();
 </footer>
 
 <script>
+  import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
+
   // Shared newsletter signup handler — wires up every form with class
   // "newsletter-form" anywhere on the page. The form's data-source attribute
   // identifies which form fired (footer, join-the-gallery, etc.) for analytics.
@@ -135,6 +137,14 @@ const currentYear = new Date().getFullYear();
   }
 
   document.querySelectorAll<HTMLFormElement>('.newsletter-form').forEach((form) => {
+    // Bot check: one compact, interaction-only Turnstile widget per form. It
+    // solves in the background and only shows itself if Cloudflare needs a
+    // click, so the inline form keeps its layout. It sits just after the form.
+    const box = document.createElement('div');
+    box.className = 'newsletter-turnstile mt-2';
+    form.insertAdjacentElement('afterend', box);
+    const turnstile = mountTurnstile(box, { size: 'compact', appearance: 'interaction-only' });
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -148,12 +158,19 @@ const currentYear = new Date().getFullYear();
       }
 
       lockForm(form, true);
+      // A token is required; the background check usually has one ready.
+      const token = turnstile.enabled ? await turnstile.waitForToken(8000) : '';
+      if (turnstile.enabled && !token) {
+        lockForm(form, false);
+        setFeedback(form, TURNSTILE_WAIT_MESSAGE, 'error');
+        return;
+      }
 
       try {
         const res = await fetch('/api/newsletter', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, source }),
+          body: JSON.stringify({ email, source, turnstile: token }),
         });
 
         const data = await res.json().catch(() => ({}));
@@ -169,6 +186,7 @@ const currentYear = new Date().getFullYear();
         setFeedback(form, 'Could not subscribe. Please try again.', 'error');
       } finally {
         lockForm(form, false);
+        turnstile.reset(); // spent, whatever the outcome
       }
     });
   });

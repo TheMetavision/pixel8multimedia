@@ -94,6 +94,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             </label>
           </div>
 
+          <!-- Bot check (Cloudflare Turnstile), rendered by the page script -->
+          <div id="contact-turnstile"></div>
+
           <div>
             <button id="contact-submit" type="submit" class="btn-primary text-xl">SEND MESSAGE</button>
           </div>
@@ -199,7 +202,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   </div>
 
   <script>
+    import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
+
     const form = document.getElementById('contact-form') as HTMLFormElement | null;
+    // Explicit render (shared helper); reset after every attempt — tokens are single-use.
+    const turnstile = mountTurnstile(document.getElementById('contact-turnstile'), { size: 'flexible' });
     const submitBtn = document.getElementById('contact-submit') as HTMLButtonElement | null;
     const successBox = document.getElementById('contact-success');
     const successDetail = document.getElementById('contact-success-detail');
@@ -249,6 +256,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         subject: (fd.get('subject') || '').toString().trim(),
         message: (fd.get('message') || '').toString().trim(),
         website: (fd.get('website') || '').toString().trim(), // honeypot
+        turnstile: '',
       };
 
       // Basic client-side validation
@@ -259,6 +267,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
         showError('Please enter a valid email address.');
         return;
+      }
+
+      // A token is required before sending.
+      if (turnstile.enabled) {
+        payload.turnstile = await turnstile.waitForToken(4000);
+        if (!payload.turnstile) { showError(TURNSTILE_WAIT_MESSAGE); return; }
       }
 
       lockForm(true);
@@ -287,6 +301,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         showError('Could not send your message. Please try again, or email us directly at hello@pixel8multimedia.co.uk.');
       } finally {
         lockForm(false);
+        turnstile.reset(); // spent, whatever the outcome
       }
     });
   </script>

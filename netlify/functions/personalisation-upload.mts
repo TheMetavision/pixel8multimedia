@@ -17,37 +17,15 @@ import {
   LIMITS, CONSENT_VERSION, sanity, images, newPid, docId, blobKey, sha256,
   ipHash, nowIso, hoursFromNow, json, bad, toArrayBuffer,
 } from './_shared/personalisation.mts';
+import { verifyTurnstile as verifyShared } from './_shared/turnstile.mjs';
 
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
-// Logs why verification failed (Cloudflare error-codes and hostname only —
-// never the secret or the token) so the reason shows in the function log.
-// remoteip is not sent: siteverify wants the raw client IP, and the old code
-// passed our salted hash instead.
+// Turnstile: the shared check (_shared/turnstile.mjs) — the same behaviour
+// this function had: skipped while TURNSTILE_SECRET_KEY is unset, logs
+// Cloudflare's error-codes and hostname on failure (never the token/secret).
 async function verifyTurnstile(token: string | null): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true; // not configured → skip (dev / pre-launch)
-  if (!token) {
-    console.warn('personalisation-upload: turnstile failed codes=[missing-input-response] hostname=- (no token in form)');
-    return false;
-  }
-  try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret, response: token }),
-      signal: AbortSignal.timeout(8000),
-    });
-    const data = (await res.json()) as { success?: boolean; 'error-codes'?: string[]; hostname?: string };
-    if (data.success === true) return true;
-    console.warn(
-      `personalisation-upload: turnstile failed codes=[${(data['error-codes'] || []).join(',')}] hostname=${data.hostname || '-'} http=${res.status}`,
-    );
-    return false;
-  } catch (err: any) {
-    console.error('personalisation-upload: turnstile siteverify unreachable', err?.name || '', err?.message || '');
-    return false;
-  }
+  return (await verifyShared(token, { context: 'personalisation-upload' })).ok;
 }
 
 export default async function handler(req: Request): Promise<Response> {

@@ -31,6 +31,8 @@ import {
 import { COMMISSION_SIZE_VALUES } from './_shared/print-spec.mjs';
 import { getStore } from '@netlify/blobs';
 import { UPLOADS_STORE, photosForCommission } from './_shared/commission-uploads.mjs';
+import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
+import { verifyGrant } from './_shared/commission-grant.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 
@@ -493,6 +495,23 @@ export default async function handler(req: Request, _context: Context) {
         JSON.stringify({ error: 'Missing required fields.' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Bot check, before any Sanity or Stripe work: the grant the photo
+    // upload returned (every photo must belong to that visit), or a fresh
+    // Turnstile token (e.g. a service with no photo field).
+    {
+      const grantedFor = verifyGrant(String(body.uploadGrant || ''));
+      const photoIds = uploadedAssetsIn.filter((a) => a.uploadKey).map((a) => String(a.uploadKey).split('/')[1]);
+      const grantOk = Boolean(grantedFor) && photoIds.every((id) => id === grantedFor);
+      if (!grantOk) {
+        const v = await verifyTurnstile(body.turnstile ? String(body.turnstile) : null, { context: 'commission-checkout' });
+        if (!v.ok) {
+          return new Response(JSON.stringify({ error: GENERIC_FAILURE, turnstile: true }), {
+            status: 403, headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
     }
 
     // C1: validate email format before creating anything. The download link and
