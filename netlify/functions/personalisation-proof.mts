@@ -25,12 +25,10 @@ import { STYLE_META } from './_shared/styles.mjs';
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.EMAIL_FROM || 'Pixel8 Multimedia <orders@pixel8multimedia.co.uk>';
 
-const SIZE_LABELS: Record<string, string> = { small: '12×12"', medium: '16×16"', large: '20×20"' };
-const FORMAT_LABELS: Record<string, string> = {
-  poster: 'Poster Print',
-  canvasStandard: 'Canvas (Standard Frame)',
-  canvasGallery: 'Canvas (Gallery Frame)',
-};
+import { SIZE_SHORT_LABELS, FORMAT_LABELS as SPEC_FORMAT_LABELS } from './_shared/print-spec.mjs';
+
+const SIZE_LABELS: Record<string, string> = SIZE_SHORT_LABELS;
+const FORMAT_LABELS: Record<string, string> = SPEC_FORMAT_LABELS;
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return bad('Method not allowed', 405);

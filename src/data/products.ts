@@ -1,26 +1,17 @@
 // Pixel8 Multimedia — Product types, pricing & metadata
 
+// Size and format keys and labels are defined once, in the print spec that the
+// Netlify functions (checkout, webhook, proof email, print renderer) also use.
+import * as spec from '../../netlify/functions/_shared/print-spec.mjs';
+
 export type ProductFormat = 'poster' | 'canvasStandard' | 'canvasGallery';
 export type ProductSize = 'small' | 'medium' | 'large';
 
-export const FORMAT_LABELS: Record<ProductFormat, string> = {
-  poster: 'Poster Print',
-  canvasStandard: 'Canvas (Standard Frame)',
-  canvasGallery: 'Canvas (Gallery Frame)',
-};
-
-export const SIZE_LABELS: Record<ProductSize, string> = {
-  small: 'Small (12×12")',
-  medium: 'Medium (16×16")',
-  large: 'Large (20×20")',
-};
+export const FORMAT_LABELS: Record<ProductFormat, string> = spec.FORMAT_LABELS;
+export const SIZE_LABELS: Record<ProductSize, string> = spec.SIZE_LABELS;
 
 // Inch dimensions per size — used as a fallback when Sanity product.sizes is missing.
-export const SIZE_DIMENSIONS: Record<ProductSize, string> = {
-  small: '12x12',
-  medium: '16x16',
-  large: '20x20',
-};
+export const SIZE_DIMENSIONS: Record<ProductSize, string> = spec.SIZE_DIMENSIONS;
 
 export const SIZES: ProductSize[] = ['small', 'medium', 'large'];
 export const FORMATS: ProductFormat[] = ['poster', 'canvasStandard', 'canvasGallery'];

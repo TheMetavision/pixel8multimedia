@@ -14,19 +14,9 @@
  * Pure: no Sanity or Stripe calls. The caller loads products and passes them in.
  */
 
-export const FORMAT_KEYS = ['poster', 'canvasStandard', 'canvasGallery'];
-export const SIZE_KEYS = ['small', 'medium', 'large'];
-
-export const FORMAT_LABELS = {
-  poster: 'Poster Print',
-  canvasStandard: 'Canvas (Standard Frame)',
-  canvasGallery: 'Canvas (Gallery Frame)',
-};
-export const SIZE_LABELS = {
-  small: 'Small (12×12")',
-  medium: 'Medium (16×16")',
-  large: 'Large (20×20")',
-};
+// Keys and labels come from the print spec (one definition for the whole site).
+import { FORMAT_KEYS, SIZE_KEYS, FORMAT_LABELS, SIZE_LABELS } from './print-spec.mjs';
+export { FORMAT_KEYS, SIZE_KEYS, FORMAT_LABELS, SIZE_LABELS };
 
 /** Per-unit fee on every "Your Photo" print, in GBP. */
 export const PERSONALISATION_FEE = 5;
