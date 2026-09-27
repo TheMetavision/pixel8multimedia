@@ -7,6 +7,8 @@ import {
   itemsFromLineItems, itemsFromCartItemsBlob, orderLineFromItem, personalisedLinesByPid,
 } from './_shared/order-lines.mjs';
 import { triggerInternal, TRIGGER_BUDGETS } from './_shared/origin.mjs';
+import { getStore } from '@netlify/blobs';
+import { flagMissingPrintFiles, teamSubject, missingBlockHtml } from './_shared/print-alerts.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -105,6 +107,14 @@ export default async (req, context) => {
       // lines from the server-priced checkout. See _shared/order-lines.mjs.
       const stamp = Date.now();
       const lineItems = cartItems.map((item, n) => orderLineFromItem(item, n, stamp));
+
+      // Print sources: flag any new keyed line whose master (or personalised
+      // render) isn't in Blobs, so the team hears about it now rather than at
+      // print time. Alert only: ≤ 1.5 s, and if Blobs can't be reached nothing
+      // is flagged and the order carries on exactly as normal.
+      const printCheck = await flagMissingPrintFiles(lineItems, (name) => getStore({ name, consistency: 'strong' }));
+      if (printCheck.skipped) console.warn(`webhook: print-source check skipped (${printCheck.skipped}) — no lines flagged`);
+      if (printCheck.missing.length) console.warn(`webhook: PRINT FILE MISSING on ${printCheck.missing.length} line(s) of ${orderId}`);
 
       // Create order in Sanity. `create` with a fixed _id rather than
       // createIfNotExists: both refuse to overwrite, but createIfNotExists
@@ -278,13 +288,14 @@ export default async (req, context) => {
         await resend.emails.send({
           from: process.env.EMAIL_FROM || 'Pixel8 Multimedia <orders@pixel8multimedia.co.uk>',
           to: [teamEmail],
-          subject: `NEW ORDER — £${totalAmount.toFixed(2)} — ${customerName}`,
+          subject: teamSubject({ total: totalAmount, customerName, missingCount: printCheck.missing.length }),
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1a1a1a;">
               <div style="background: #F07828; padding: 16px; text-align: center;">
                 <h1 style="color: #000; margin: 0; font-size: 22px;">NEW ORDER RECEIVED</h1>
               </div>
               <div style="padding: 24px;">
+                ${missingBlockHtml(printCheck.missing)}
                 <h2 style="margin: 0 0 4px;">${customerName}</h2>
                 <p style="color: #666; margin: 0 0 20px;">${customerEmail}</p>
                 ${orderTable}
