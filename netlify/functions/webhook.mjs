@@ -9,6 +9,7 @@ import {
 import { triggerInternal, TRIGGER_BUDGETS } from './_shared/origin.mjs';
 import { getStore } from '@netlify/blobs';
 import { flagMissingPrintFiles, teamSubject, missingBlockHtml } from './_shared/print-alerts.mjs';
+import { stockLineKeys } from './_shared/print-job.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -344,6 +345,24 @@ export default async (req, context) => {
           .set({ proofTriggerError: `${new Date().toISOString()} — ${String(r.error).slice(0, 200)}` })
           .commit()
           .catch((e) => console.error(`webhook: could not flag ${pid}:`, e?.message));
+      }
+
+      // Print files for the stock lines, made now so they're ready when the
+      // order is opened. ONE awaited call to a background function (it answers
+      // 202 at once), ≤ 2.5 s (TRIGGER_BUDGETS.prewarm). Only a head start: a
+      // failure is logged, never flagged or retried, and the print-file page
+      // still makes any missing file when it's opened. Personalised lines are
+      // pre-warmed on proof approval instead (their print source exists only
+      // then). Duplicate deliveries returned above, so this runs once per order.
+      if (stockLineKeys({ lineItems }).length) {
+        const r = await triggerInternal('/api/print-file/prewarm-background', {
+          req,
+          body: { orderId: order._id },
+          headers: { 'x-personalisation-key': internalKey() },
+          ...TRIGGER_BUDGETS.prewarm,
+        });
+        if (r.ok) console.log(`webhook: print pre-warm started for ${order._id}`);
+        else console.warn(`webhook: print pre-warm not started for ${order._id} (${r.error}) — files will be made on demand`);
       }
     } catch (err) {
       console.error('Error processing checkout.session.completed:', err);

@@ -14,6 +14,7 @@ import {
   sanity, docId, getSession, isPid, nowIso, siteUrl, INTERNAL_HEADER, internalKey,
 } from './_shared/personalisation.mts';
 import { triggerInternal, TRIGGER_BUDGETS } from './_shared/origin.mjs';
+import { orderedLineTargets } from './_shared/print-job.mjs';
 
 function page(title: string, body: string, tone: 'ok' | 'info' | 'error' = 'ok'): Response {
   const accent = tone === 'error' ? '#E5484D' : tone === 'info' ? '#22D3EE' : '#76FF03';
@@ -52,20 +53,28 @@ export default async function handler(req: Request): Promise<Response> {
     return page('We couldn\u2019t find that design', '<p>Reply to your proof email and we\u2019ll sort it out.</p>', 'error');
   }
 
-  if (s.status === 'approved' || s.status === 'printed') {
-    return page('Already approved', '<p>Thanks — this design is approved and in the queue. We\u2019ll email you when it\u2019s on its way.</p>', 'info');
-  }
+  const already = () => page('Already approved', '<p>Thanks — this design is approved and in the queue. We\u2019ll email you when it\u2019s on its way.</p>', 'info');
+  if (s.status === 'approved' || s.status === 'printed') return already();
 
   const stored = (s as any).proofToken;
   if (!stored || stored !== token) {
     return page('That link has expired', '<p>It may already have been used. Reply to your proof email and we\u2019ll send a fresh one.</p>', 'error');
   }
 
-  await sanity
+  // Only from the revision just read: two clicks at the same moment both pass
+  // the checks above, and only one may approve (and so start the builds).
+  const rev = (s as any)._rev;
+  let approve = sanity
     .patch(docId(pid))
     .set({ status: 'approved', approvedAt: nowIso() })
-    .unset(['proofToken'])   // single use
-    .commit();
+    .unset(['proofToken']);  // single use
+  if (rev) approve = approve.ifRevisionId(rev);
+  try {
+    await approve.commit();
+  } catch (err: any) {
+    if (err?.statusCode === 409) return already();
+    throw err;
+  }
 
   // Build the print file in the background. AWAITED: the old fire-and-forget
   // fetch could be frozen with this function once it returned, so the build
@@ -88,6 +97,23 @@ export default async function handler(req: Request): Promise<Response> {
       .set({ printTriggerError: `${nowIso()} — ${String(trigger.error).slice(0, 200)}` })
       .commit()
       .catch((e: any) => console.error(`approve: could not flag ${pid}:`, e?.message));
+  }
+
+  // Print files for every order line this design was bought on, made now so
+  // they're ready when the order is opened (the source only exists once the
+  // proof is approved). ONE awaited call to a background function, ≤ 2.5 s
+  // (TRIGGER_BUDGETS.prewarm). A failure is logged only: the print-file page
+  // still makes any missing file when it's opened. A repeat click returned
+  // "Already approved" above, so this runs once per approval.
+  const lines = orderedLineTargets((s as any).orderedLines);
+  if (lines.length) {
+    const warm = await triggerInternal('/api/print-file/prewarm-background', {
+      req,
+      body: { lines },
+      headers: { [INTERNAL_HEADER]: internalKey() },
+      ...TRIGGER_BUDGETS.prewarm,
+    });
+    if (!warm.ok) console.warn(`approve: print pre-warm not started for ${pid} (${warm.error}) — files will be made on demand`);
   }
 
   console.log(`personalisation-approve: ${pid} approved`);

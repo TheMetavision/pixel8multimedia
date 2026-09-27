@@ -22,9 +22,14 @@
  *   deps.fetchOrder(id) → the order doc (published) or null
  *   deps.trigger(body)  → Promise<{ ok, error? }>  starts the background render
  *   deps.now()          → ms
+ *
+ * The same start / status / render steps also serve ad-hoc files
+ * (print-adhoc.mjs) and pre-warming (prewarmLines, below): one code path, one
+ * set of cache keys, whichever way a file is asked for.
  */
 import { lineSpec, sourceInfo } from './print-sources.mjs';
 import { FILES_STORE, isSafeId, isHexColour, stateKey, wrapToken, cacheKey } from './print-keys.mjs';
+import { printGeometry } from './print-spec.mjs';
 
 export { FILES_STORE, isSafeId, stateKey, wrapToken, cacheKey };
 /** A pending job older than this is assumed dead (the background limit is 15 min). */
@@ -67,51 +72,54 @@ export async function planLine(orderId, lineKey, deps) {
   return { status: 'ok', order, line, spec, source, key };
 }
 
-const readState = (deps, orderId, lineKey) =>
-  deps.files.get(stateKey(orderId, lineKey), { type: 'json' }).catch(() => null);
-const writeState = (deps, orderId, lineKey, state) =>
-  deps.files.setJSON(stateKey(orderId, lineKey), { ...state, at: new Date(deps.now()).toISOString() });
+const readNote = (deps, sk) => deps.files.get(sk, { type: 'json' }).catch(() => null);
+const writeNote = (deps, sk, state) =>
+  deps.files.setJSON(sk, { ...state, at: new Date(deps.now()).toISOString() });
+const isFreshPending = (note, key, deps) =>
+  note?.state === 'pending' && note.key === key && deps.now() - Date.parse(note.at) < STALE_PENDING_MS;
 
-/**
- * Start (idempotent). A cache hit answers "ready" at once. A job already
- * pending for the same key isn't started twice. Otherwise the pending note is
- * written BEFORE the trigger — the renderer can finish before the trigger call
- * returns, and a note written afterwards would overwrite its "ready".
- */
-export async function startJob(orderId, lineKey, deps) {
-  const plan = await planLine(orderId, lineKey, deps);
-  if (plan.status !== 'ok') return { state: plan.status, message: plan.message };
-
-  const hit = await deps.files.getMetadata(plan.key);
-  if (hit) {
-    await writeState(deps, orderId, lineKey, { state: 'ready', key: plan.key });
-    return { state: 'ready', cached: true, key: plan.key, ...hit.metadata };
-  }
-
-  const cur = await readState(deps, orderId, lineKey);
-  if (cur?.state === 'pending' && cur.key === plan.key && deps.now() - Date.parse(cur.at) < STALE_PENDING_MS) {
-    return { state: 'pending', key: plan.key, already: true };
-  }
-
-  await writeState(deps, orderId, lineKey, { state: 'pending', key: plan.key });
-  const r = await deps.trigger({ orderId, lineKey, key: plan.key });
-  if (!r.ok) {
-    const error = `could not start the renderer: ${r.error || 'unknown error'}`;
-    await writeState(deps, orderId, lineKey, { state: 'failed', key: plan.key, error });
-    return { state: 'failed', key: plan.key, error };
-  }
-  const now = await readState(deps, orderId, lineKey);
-  if (now?.state === 'ready' && now.key === plan.key) {
-    const meta = await deps.files.getMetadata(plan.key);
-    if (meta) return { state: 'ready', cached: false, key: plan.key, ...meta.metadata };
-  }
-  return { state: 'pending', key: plan.key };
+/** Face and wrap in pixels, for the pages to show beside the file. */
+export function geometryOf(sizeKey, formatKey) {
+  try { const g = printGeometry(sizeKey, formatKey); return { facePx: g.facePx, wrapPx: g.wrapPx }; }
+  catch { return {}; }
 }
 
-/** Status: what the note says, checked against the store. */
-export async function jobStatus(orderId, lineKey, deps) {
-  if (!isSafeId(orderId) || !isSafeId(lineKey)) return { state: 'invalid', message: 'bad order or line id' };
-  const s = await readState(deps, orderId, lineKey);
+/**
+ * The shared start: a cache hit answers "ready" at once; a job already
+ * pending for the same key isn't started twice; otherwise the pending note is
+ * written BEFORE the trigger — the renderer can finish before the trigger call
+ * returns, and a note written afterwards would overwrite its "ready".
+ * @param key          the file's cache key
+ * @param sk           where its .state note lives
+ * @param triggerBody  what the background renderer is sent
+ */
+export async function startKeyed(key, sk, triggerBody, deps) {
+  const hit = await deps.files.getMetadata(key);
+  if (hit) {
+    await writeNote(deps, sk, { state: 'ready', key });
+    return { state: 'ready', cached: true, key, ...hit.metadata };
+  }
+
+  if (isFreshPending(await readNote(deps, sk), key, deps)) return { state: 'pending', key, already: true };
+
+  await writeNote(deps, sk, { state: 'pending', key });
+  const r = await deps.trigger(triggerBody);
+  if (!r.ok) {
+    const error = `could not start the renderer: ${r.error || 'unknown error'}`;
+    await writeNote(deps, sk, { state: 'failed', key, error });
+    return { state: 'failed', key, error };
+  }
+  const now = await readNote(deps, sk);
+  if (now?.state === 'ready' && now.key === key) {
+    const meta = await deps.files.getMetadata(key);
+    if (meta) return { state: 'ready', cached: false, key, ...meta.metadata };
+  }
+  return { state: 'pending', key };
+}
+
+/** The shared status: what the note says, checked against the store. */
+export async function statusKeyed(sk, deps) {
+  const s = await readNote(deps, sk);
   if (!s) return { state: 'absent' };
   if (s.state === 'ready') {
     const meta = await deps.files.getMetadata(s.key);
@@ -124,9 +132,58 @@ export async function jobStatus(orderId, lineKey, deps) {
 }
 
 /**
- * The background half: re-plan from Sanity (never trust the caller beyond the
- * ids), load the source, render, store, mark ready. Any failure is written to
- * the note so the page stops polling and says why.
+ * The shared render: load the source, render, store with its metadata, mark
+ * the note ready. A key already in the store is just marked ready. Any failure
+ * is written to the note so the page stops polling and says why.
+ * @param job  { key, spec, source, filename } — spec from lineSpec (or the
+ *             ad-hoc equivalent), source from sourceInfo
+ */
+export async function renderKeyed(job, sk, deps) {
+  const { key, spec, source: info, filename } = job;
+  try {
+    if (await deps.files.getMetadata(key)) {
+      await writeNote(deps, sk, { state: 'ready', key });
+      return { ok: true, cached: true, key };
+    }
+    let source = await deps.loadSource(info);
+    if (!source) throw new Error('source disappeared before it could be read');
+    if (deps.prepare) source = await deps.prepare(source, spec);
+    const out = await deps.render({
+      source, sizeKey: spec.sizeKey, formatKey: spec.formatKey,
+      wrapColour: spec.wrapColour || undefined, identity: info.identity,
+    });
+    const metadata = {
+      width: out.width, height: out.height, dpi: out.dpi, bytes: out.bytes,
+      wrapColour: out.wrapColour, wrapSource: out.wrapSource, identity: out.identity,
+      sizeKey: spec.sizeKey, formatKey: spec.formatKey, style: spec.style,
+      padded: out.padded, filename, renderedAt: new Date(deps.now()).toISOString(),
+    };
+    await deps.files.set(key, out.buffer, { metadata });
+    await writeNote(deps, sk, { state: 'ready', key });
+    return { ok: true, key, metadata };
+  } catch (err) {
+    const error = String(err?.message || err).slice(0, 300);
+    await writeNote(deps, sk, { state: 'failed', key, error }).catch(() => {});
+    return { ok: false, error };
+  }
+}
+
+/** Start (idempotent) for one order line. */
+export async function startJob(orderId, lineKey, deps) {
+  const plan = await planLine(orderId, lineKey, deps);
+  if (plan.status !== 'ok') return { state: plan.status, message: plan.message };
+  return startKeyed(plan.key, stateKey(orderId, lineKey), { orderId, lineKey, key: plan.key }, deps);
+}
+
+/** Status for one order line. */
+export async function jobStatus(orderId, lineKey, deps) {
+  if (!isSafeId(orderId) || !isSafeId(lineKey)) return { state: 'invalid', message: 'bad order or line id' };
+  return statusKeyed(stateKey(orderId, lineKey), deps);
+}
+
+/**
+ * The background half for one order line: re-plan from Sanity (never trust
+ * the caller beyond the ids), then the shared render.
  *
  * deps additionally: loadSource(info) → Buffer, render(opts) → renderPrint result,
  *                    prepare(buffer, spec, geometry) → Buffer (personalised upscale)
@@ -134,33 +191,78 @@ export async function jobStatus(orderId, lineKey, deps) {
 export async function runRender(orderId, lineKey, deps) {
   const plan = await planLine(orderId, lineKey, deps);
   if (plan.status !== 'ok') {
-    await writeState(deps, orderId, lineKey, { state: 'failed', error: plan.message });
+    await writeNote(deps, stateKey(orderId, lineKey), { state: 'failed', error: plan.message });
     return { ok: false, error: plan.message };
   }
-  try {
-    if (await deps.files.getMetadata(plan.key)) {
-      await writeState(deps, orderId, lineKey, { state: 'ready', key: plan.key });
-      return { ok: true, cached: true, key: plan.key };
-    }
-    let source = await deps.loadSource(plan.source);
-    if (!source) throw new Error('source disappeared before it could be read');
-    if (deps.prepare) source = await deps.prepare(source, plan.spec);
-    const out = await deps.render({
-      source, sizeKey: plan.spec.sizeKey, formatKey: plan.spec.formatKey,
-      wrapColour: plan.spec.wrapColour || undefined, identity: plan.source.identity,
-    });
-    const metadata = {
-      width: out.width, height: out.height, dpi: out.dpi, bytes: out.bytes,
-      wrapColour: out.wrapColour, wrapSource: out.wrapSource, identity: out.identity,
-      sizeKey: plan.spec.sizeKey, formatKey: plan.spec.formatKey, style: plan.spec.style,
-      padded: out.padded, filename: fileName(plan), renderedAt: new Date(deps.now()).toISOString(),
-    };
-    await deps.files.set(plan.key, out.buffer, { metadata });
-    await writeState(deps, orderId, lineKey, { state: 'ready', key: plan.key });
-    return { ok: true, key: plan.key, metadata };
-  } catch (err) {
-    const error = String(err?.message || err).slice(0, 300);
-    await writeState(deps, orderId, lineKey, { state: 'failed', key: plan.key, error }).catch(() => {});
-    return { ok: false, error };
+  const job = { key: plan.key, spec: plan.spec, source: plan.source, filename: fileName(plan) };
+  return renderKeyed(job, stateKey(orderId, lineKey), deps);
+}
+
+// ── Pre-warming ──────────────────────────────────────────────────────────────
+// Make an order's print files before anyone opens them. Same plan, same keys,
+// same notes and same render as on-demand, so opening the print-file page
+// later is a cache hit ("Ready (already made)").
+
+/** At most this many lines per pre-warm call (a big order still finishes well inside 15 min). */
+export const PREWARM_MAX_LINES = 40;
+
+/** The lines of an order worth pre-warming from the webhook: keyed stock lines. */
+export function stockLineKeys(order) {
+  return (order?.lineItems || []).filter((l) => lineSpec(l).kind === 'stock').map((l) => l._key);
+}
+
+/**
+ * The lines to pre-warm when a personalised proof is approved: the pid's
+ * orderedLines (one per order line it was bought on, see order-lines.mjs
+ * personalisedLinesByPid), as { orderId, lineKey }, de-duplicated.
+ */
+export function orderedLineTargets(orderedLines) {
+  const seen = new Set();
+  const out = [];
+  for (const l of Array.isArray(orderedLines) ? orderedLines : []) {
+    if (!isSafeId(l?.orderId) || !isSafeId(l?._key)) continue;
+    const id = `${l.orderId}/${l._key}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({ orderId: l.orderId, lineKey: l._key });
   }
+  return out;
+}
+
+/**
+ * Pre-warm one line. Nothing is written for a line that can't be made
+ * (historic, invalid, no master): the print-file page reports those itself
+ * when it's opened, exactly as before.
+ * @returns {{ lineKey, result: 'rendered'|'ready'|'pending'|'failed'|'historic'|'no-source'|'invalid'|'not-found', error? }}
+ */
+export async function prewarmLine(orderId, lineKey, deps) {
+  const plan = await planLine(orderId, lineKey, deps);
+  if (plan.status !== 'ok') return { lineKey, result: plan.status };
+  const sk = stateKey(orderId, lineKey);
+  if (await deps.files.getMetadata(plan.key)) {
+    await writeNote(deps, sk, { state: 'ready', key: plan.key });
+    return { lineKey, result: 'ready' };
+  }
+  if (isFreshPending(await readNote(deps, sk), plan.key, deps)) return { lineKey, result: 'pending' };
+  await writeNote(deps, sk, { state: 'pending', key: plan.key });
+  const job = { key: plan.key, spec: plan.spec, source: plan.source, filename: fileName(plan) };
+  const r = await renderKeyed(job, sk, deps);
+  return r.ok ? { lineKey, result: 'rendered' } : { lineKey, result: 'failed', error: r.error };
+}
+
+/**
+ * Pre-warm several lines, one after another (one render in memory at a time).
+ * @param targets  [{ orderId, lineKey }]
+ */
+export async function prewarmLines(targets, deps) {
+  const seen = new Set();
+  const out = [];
+  for (const t of targets) {
+    const id = `${t.orderId}/${t.lineKey}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    if (out.length >= PREWARM_MAX_LINES) { out.push({ orderId: t.orderId, lineKey: t.lineKey, result: 'skipped-limit' }); continue; }
+    out.push({ orderId: t.orderId, ...(await prewarmLine(t.orderId, t.lineKey, deps)) });
+  }
+  return out;
 }

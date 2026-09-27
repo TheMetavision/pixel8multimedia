@@ -154,6 +154,12 @@ export const TRIGGER_BUDGETS = {
   // well under a second and a rebuild is harmless, so timeouts may be
   // retried; 10 s total only so the customer's page never hangs.
   approvePrint: { attempts: 3, baseDelayMs: 300, timeoutMs: 5000, budgetMs: 10000, retryOnTimeout: true },
+  // Webhook / proof approval → print-file pre-warm. Only a head start: the
+  // print-file page makes any file that's missing when it's opened, so a
+  // failure is logged and nothing else. Short, and within the webhook's cap.
+  // A background function answers 202 at once; a timeout isn't retried (a
+  // second pre-warm would find the first's pending notes and skip anyway).
+  prewarm: { attempts: 2, baseDelayMs: 200, timeoutMs: 2000, budgetMs: 2500, retryOnTimeout: false },
   // Hourly sweep re-trying a flagged trigger. Same shape as the webhook's.
   sweepRetry: { attempts: 2, baseDelayMs: 200, timeoutMs: 5000, budgetMs: 6000, retryOnTimeout: false },
 };
