@@ -5,7 +5,7 @@
  *   - artworkFee: £5 (standalone single-print only)
  *   - artworkBundledWithDigital: TRUE (default — bundle waives the fee)
  *   - printUpcharges: standard in-house pricing
- *   - printSizeLabels: portrait imperial (8×12 / 12×18 / 18×24)
+ *   - printSizeLabels: portrait imperial (8×12 / 12×18 / 16×24)
  *   - NO animation paths (poster-only service)
  *
  * Briefing fields (8 + consent = 9 total):
@@ -24,6 +24,7 @@
  */
 
 import { createClient } from '@sanity/client';
+import { COMMISSION_SIZE_LABELS } from '../netlify/functions/_shared/print-spec.mjs';
 
 const client = createClient({
   projectId: 'bqb4w421',
@@ -43,11 +44,8 @@ const PRINT_UPCHARGES = {
 };
 
 // Portrait imperial sizes (option a)
-const PRINT_SIZE_LABELS = {
-  small:  'Small (8×12")',
-  medium: 'Medium (12×18")',
-  large:  'Large (18×24")',
-};
+// 3:2 commission sizes from the shared print spec (16×12 is retired).
+const PRINT_SIZE_LABELS = { ...COMMISSION_SIZE_LABELS.portrait };
 
 const BRIEFING_FIELDS = [
   {
@@ -203,7 +201,7 @@ async function run() {
   console.log('   artworkFee:                  £5 (standalone print only)');
   console.log('   artworkBundledWithDigital:   TRUE (bundle waives the fee)');
   console.log('   printUpcharges:              standard in-house pricing');
-  console.log('   printSizeLabels:             portrait imperial 8×12 / 12×18 / 18×24');
+  console.log('   printSizeLabels:             portrait imperial 8×12 / 12×18 / 16×24');
   console.log('   briefingFields:              10 fields incl. consent checkbox');
   console.log('   no animation paths:          poster-only service');
   console.log('   examples:                    LEFT UNCHANGED\n');

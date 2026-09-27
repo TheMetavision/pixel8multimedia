@@ -4,7 +4,7 @@
  *   - animationMusicPrice: £79.99 (30-sec animation + music + digital still)
  *   - animationVoPrice: £99.99 (30-sec animation + music + AI voiceover + digital still)
  *   - artworkFee: £19.99 (per standalone print without other base order)
- *   - printSizeLabels: rectangular sizes (12×8, 16×12, 24×16)
+ *   - printSizeLabels: rectangular sizes (12×8, 18×12, 24×16)
  *   - printUpcharges: in-house print prices from the live shop pricing page
  *
  * Also rebuilds briefingFields with the conditional showFor mappings for
@@ -22,6 +22,7 @@
  */
 
 import { createClient } from '@sanity/client';
+import { COMMISSION_SIZE_LABELS } from '../netlify/functions/_shared/print-spec.mjs';
 
 const client = createClient({
   projectId: 'bqb4w421',
@@ -41,11 +42,8 @@ const PRINT_UPCHARGES = {
   canvasGallery:  { small: 28.99, medium: 33.99, large: 46.99 },
 };
 
-const PRINT_SIZE_LABELS = {
-  small: 'Small (12×8")',
-  medium: 'Medium (16×12")',
-  large: 'Large (24×16")',
-};
+// 3:2 commission sizes from the shared print spec (16×12 is retired).
+const PRINT_SIZE_LABELS = { ...COMMISSION_SIZE_LABELS.landscape };
 
 // ── Briefing fields with conditional showFor ────────────────────────────────
 const BRIEFING_FIELDS = [
@@ -304,7 +302,7 @@ async function run() {
   console.log('   animationMusicPrice: £79.99');
   console.log('   animationVoPrice:    £99.99');
   console.log('   artworkFee:          £19.99');
-  console.log('   printSizeLabels:     12×8 / 16×12 / 24×16 (rectangular)');
+  console.log('   printSizeLabels:     12×8 / 18×12 / 24×16 (rectangular)');
   console.log('   briefingFields:      18 fields with conditional showFor');
   console.log('   steps:               rewritten for new model');
   console.log('   importantNote:       animation expectations copy\n');

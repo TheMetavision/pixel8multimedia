@@ -23,6 +23,7 @@
  */
 
 import { createClient } from '@sanity/client';
+import { COMMISSION_SIZE_LABELS } from '../netlify/functions/_shared/print-spec.mjs';
 
 const client = createClient({
   projectId: 'bqb4w421',
@@ -41,11 +42,8 @@ const PRINT_UPCHARGES = {
   canvasGallery:  { small: 28.99, medium: 33.99, large: 46.99 },
 };
 
-const PRINT_SIZE_LABELS = {
-  small: 'Small (12×8")',
-  medium: 'Medium (16×12")',
-  large: 'Large (24×16")',
-};
+// 3:2 commission sizes from the shared print spec (16×12 is retired).
+const PRINT_SIZE_LABELS = { ...COMMISSION_SIZE_LABELS.landscape };
 
 const BRIEFING_FIELDS = [
   {

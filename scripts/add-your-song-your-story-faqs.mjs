@@ -52,7 +52,7 @@ const NEW_FAQS = [
     answer:
       `If you add a print to your order, you upload a photo as the background — a portrait, a landscape, a meaningful place, the recipient — anything you like. We then lay the song title and full lyrics over the top with typography that complements the photo.\n\n` +
       `Higher-resolution photos make for better prints. Both portrait and landscape photos work — we fit the layout to whichever print size you choose.\n\n` +
-      `Prints are available in three sizes (12×8, 16×12, 24×16) and three finishes (poster, canvas standard, canvas gallery). All sizes share the same lyrics layout — so if you want the same piece on the wall AND on a desk, you only pay the £10 artwork fee once.`,
+      `Prints are available in three sizes (12×8, 18×12, 24×16) and three finishes (poster, canvas standard, canvas gallery). All sizes share the same lyrics layout — so if you want the same piece on the wall AND on a desk, you only pay the £10 artwork fee once.`,
     category: 'custom-services',
     displayOrder: 42,
   },

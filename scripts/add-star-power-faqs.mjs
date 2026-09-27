@@ -40,7 +40,7 @@ const NEW_FAQS = [
       `Available print sizes:\n` +
       `• Small — 8×12"\n` +
       `• Medium — 12×18"\n` +
-      `• Large — 18×24"\n\n` +
+      `• Large — 16×24"\n\n` +
       `Each poster includes dramatic lighting, an epic backdrop, a stylised title treatment (with your chosen title or one we invent), and your subject placed front and centre as the star. Think real cinema poster aesthetic — not a photograph in a frame.`,
     category: 'custom-services',
     displayOrder: 121,

@@ -3,6 +3,7 @@
 // Handles file upload, brief, delivery type selection, and Stripe checkout redirect
 
 import { useState, useRef } from 'react';
+import { SIZE_KEYS, COMMISSION_SIZE_LABELS, COMMISSION_SIZE_VALUES } from '../../netlify/functions/_shared/print-spec.mjs';
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -335,9 +336,9 @@ export default function CommissionForm({ service }) {
                 className="commission-form__select"
               >
                 <option value="">Select size…</option>
-                <option value="12x8">Small (12×8″)</option>
-                <option value="16x12">Medium (16×12″)</option>
-                <option value="24x16">Large (24×16″)</option>
+                {SIZE_KEYS.map((k) => (
+                  <option key={k} value={COMMISSION_SIZE_VALUES.landscape[k]}>{COMMISSION_SIZE_LABELS.landscape[k]}</option>
+                ))}
               </select>
             </label>
           </div>

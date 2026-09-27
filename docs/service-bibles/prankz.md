@@ -158,7 +158,7 @@ Pricing mirrors Missing Moment exactly. The structural similarity is intentional
 
 Print format pricing (live in Sanity printUpcharges)
 
-FormatSmall (12×8")Medium (16×12")Large (24×16")Poster£9.99£12.99£16.99Canvas Standard£26.99£31.99£44.99Canvas Gallery£28.99£33.99£46.99
+FormatSmall (12×8")Medium (18×12")Large (24×16")Poster£9.99£12.99£16.99Canvas Standard£26.99£31.99£44.99Canvas Gallery£28.99£33.99£46.99
 
 Artwork fee logic
 

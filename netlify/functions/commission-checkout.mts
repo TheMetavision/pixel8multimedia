@@ -28,6 +28,7 @@ import {
   minutesFromNow,
   type VoucherDoc,
 } from './_shared/groupon.mts';
+import { COMMISSION_SIZE_VALUES } from './_shared/print-spec.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 
@@ -59,8 +60,16 @@ const FORMAT_TO_SANITY_KEY: Record<string, string> = {
   'canvas-gallery': 'canvasGallery',
 };
 
+// Posted size → key. Commission sizes are 3:2 (see COMMISSION_SIZE_VALUES in
+// _shared/print-spec.mjs): 12x8 / 18x12 / 24x16, or 8x12 / 12x18 / 16x24 in
+// portrait; square services use 12x12 / 16x16 / 20x20. '16x12' is the
+// retired medium, still accepted so a page open from before the change works.
 const SIZE_KEY_MAP: Record<string, 'small' | 'medium' | 'large'> = {
-  '12x8': 'small',  '16x12': 'medium', '24x16': 'large',
+  ...Object.fromEntries(
+    Object.values(COMMISSION_SIZE_VALUES).flatMap((set) =>
+      Object.entries(set).map(([key, value]) => [value, key as 'small' | 'medium' | 'large'])),
+  ),
+  '16x12': 'medium',
   '12x12': 'small', '16x16': 'medium', '20x20': 'large',
   small: 'small',   medium: 'medium',  large: 'large',
 };

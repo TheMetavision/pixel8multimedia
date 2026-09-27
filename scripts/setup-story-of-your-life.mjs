@@ -8,7 +8,7 @@
  *   - artworkBundledWithDigital: TRUE (default — bundle path waives the fee)
  *   - artworkFeePerOrder: FALSE (default — per-print)
  *   - printUpcharges: standard in-house pricing
- *   - printSizeLabels: rectangular (12×8 / 16×12 / 24×16)
+ *   - printSizeLabels: rectangular (12×8 / 18×12 / 24×16)
  *
  * Briefing fields rebuilt:
  *   - Always: name, email, who is this for, how many moments, list each moment,
@@ -33,6 +33,7 @@
  */
 
 import { createClient } from '@sanity/client';
+import { COMMISSION_SIZE_LABELS } from '../netlify/functions/_shared/print-spec.mjs';
 
 const client = createClient({
   projectId: 'bqb4w421',
@@ -50,11 +51,8 @@ const PRINT_UPCHARGES = {
   canvasGallery:  { small: 28.99, medium: 33.99, large: 46.99 },
 };
 
-const PRINT_SIZE_LABELS = {
-  small: 'Small (12×8")',
-  medium: 'Medium (16×12")',
-  large: 'Large (24×16")',
-};
+// 3:2 commission sizes from the shared print spec (16×12 is retired).
+const PRINT_SIZE_LABELS = { ...COMMISSION_SIZE_LABELS.landscape };
 
 const BRIEFING_FIELDS = [
   {
@@ -355,7 +353,7 @@ async function run() {
   console.log('   artworkFee:                  £14.99 (standalone print only)');
   console.log('   artworkBundledWithDigital:   TRUE (bundle path waives the fee)');
   console.log('   printUpcharges:              standard in-house pricing');
-  console.log('   printSizeLabels:             12×8 / 16×12 / 24×16');
+  console.log('   printSizeLabels:             12×8 / 18×12 / 24×16');
   console.log('   briefingFields:              rebuilt — 16 fields with conditional + leave-to-us');
   console.log('   examples:                    Love Story orphans merged (now 3 clean entries)');
   console.log('   steps + description:         refreshed for new model\n');

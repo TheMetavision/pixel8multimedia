@@ -31,6 +31,7 @@
 //   3 — Review & Pay
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { SIZE_LABELS } from '../../netlify/functions/_shared/print-spec.mjs';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -85,12 +86,10 @@ const LEGACY_AJ_SWATCHES = [
   { key: 'I', color: '#7C4DFF' }, { key: 'J', color: '#FF5252' },
 ];
 
-// Default size labels (Cartoonify uses these — square 1:1 sizes)
-const DEFAULT_SIZE_LABELS = {
-  small: 'Small (12×12")',
-  medium: 'Medium (16×16")',
-  large: 'Large (20×20")',
-};
+// Size labels come from the service's printSizeLabels in Sanity: the 3:2
+// commission set (COMMISSION_SIZE_LABELS in the print spec) for most services.
+// A service with none set (Cartoonify) falls back to the square shop sizes.
+const DEFAULT_SIZE_LABELS = SIZE_LABELS;
 
 const FORMAT_LABELS = {
   poster: 'Poster Print',

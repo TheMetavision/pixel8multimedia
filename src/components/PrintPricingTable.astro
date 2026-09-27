@@ -5,8 +5,10 @@
 // only order a print with no digital or animation base).
 //
 // Renders nothing if the service has no printUpcharges configured.
-// Respects per-service printSizeLabels (Cartoonify uses 12×12/16×16/20×20,
-// Missing Moment uses 12×8/16×12/24×16).
+// Respects per-service printSizeLabels: most services use the 3:2 commission
+// set (COMMISSION_SIZE_LABELS in the print spec, e.g. 12×8/18×12/24×16);
+// a service with none set (Cartoonify) shows the square shop sizes.
+import { SIZE_LABELS } from '../../netlify/functions/_shared/print-spec.mjs';
 
 interface Props {
   service: {
@@ -24,11 +26,7 @@ interface Props {
 
 const { service } = Astro.props;
 
-const DEFAULT_SIZE_LABELS = {
-  small: 'Small (12×12")',
-  medium: 'Medium (16×16")',
-  large: 'Large (20×20")',
-};
+const DEFAULT_SIZE_LABELS = SIZE_LABELS;
 
 const sizeLabels = {
   small: service.printSizeLabels?.small || DEFAULT_SIZE_LABELS.small,

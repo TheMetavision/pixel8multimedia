@@ -1,4 +1,5 @@
 import { defineType, defineField } from 'sanity';
+import { COMMISSION_SIZE_LABELS } from '../../netlify/functions/_shared/print-spec.mjs';
 
 export default defineType({
   name: 'service',
@@ -289,11 +290,11 @@ export default defineType({
       type: 'object',
       group: 'pricing',
       description:
-        'Customer-facing labels for the small/medium/large print sizes for THIS service. Cartoonify uses 12×12/16×16/20×20 squares; Missing Moment uses 12×8/16×12/24×16 rectangles. Leave blank to use defaults (square sizes).',
+        'Customer-facing labels for the small/medium/large print sizes for THIS service. Commission prints are 3:2: landscape 12×8 / 18×12 / 24×16 or portrait 8×12 / 12×18 / 16×24 (16×12 is retired). Square services use 12×12 / 16×16 / 20×20. Leave blank for the square sizes.',
       fields: [
-        { name: 'small', title: 'Small label', type: 'string', description: 'E.g. "Small (12×8\\")"' },
-        { name: 'medium', title: 'Medium label', type: 'string', description: 'E.g. "Medium (16×12\\")"' },
-        { name: 'large', title: 'Large label', type: 'string', description: 'E.g. "Large (24×16\\")"' },
+        { name: 'small', title: 'Small label', type: 'string', description: `E.g. ${COMMISSION_SIZE_LABELS.landscape.small}` },
+        { name: 'medium', title: 'Medium label', type: 'string', description: `E.g. ${COMMISSION_SIZE_LABELS.landscape.medium}` },
+        { name: 'large', title: 'Large label', type: 'string', description: `E.g. ${COMMISSION_SIZE_LABELS.landscape.large}` },
       ],
     }),
     defineField({
