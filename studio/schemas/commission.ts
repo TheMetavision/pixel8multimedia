@@ -1,4 +1,5 @@
 import { defineType, defineField } from 'sanity';
+import { CommissionPhotos } from '../components/CommissionPhotos';
 
 export default defineType({
   name: 'commission',
@@ -200,12 +201,38 @@ export default defineType({
       hidden: ({ document }) =>
         document?.deliveryType !== 'print' && document?.deliveryType !== 'both',
     }),
+    // Customer photos, in the private Blobs store "commission-uploads".
+    // Written by commission-checkout; shown as links to /admin/commission-photo/….
+    defineField({
+      name: 'uploadedPhotos',
+      title: 'Customer Photos',
+      type: 'array',
+      group: 'brief',
+      readOnly: true,
+      components: { input: CommissionPhotos },
+      of: [{
+        type: 'object',
+        name: 'commissionPhoto',
+        fields: [
+          { name: 'fieldKey', title: 'Brief field', type: 'string' },
+          { name: 'key', title: 'Blobs key', type: 'string' },
+          { name: 'contentType', title: 'Content type', type: 'string' },
+          { name: 'bytes', title: 'Bytes', type: 'number' },
+          { name: 'width', title: 'Width (px)', type: 'number' },
+          { name: 'height', title: 'Height (px)', type: 'number' },
+        ],
+      }],
+    }),
+    // Legacy: photos stored as Sanity image assets (public by URL) before the
+    // move to Blobs. tools/migrate-commission-photos.mjs moves them into
+    // uploadedPhotos; hidden once empty.
     defineField({
       name: 'uploadedFiles',
-      title: 'Customer Uploads',
+      title: 'Customer Uploads (legacy, in Sanity)',
       type: 'array',
       of: [{ type: 'image' }],
       group: 'brief',
+      hidden: ({ document }) => !(document?.uploadedFiles as unknown[] | undefined)?.length,
     }),
 
     // ── Delivery ───────────────────────────────

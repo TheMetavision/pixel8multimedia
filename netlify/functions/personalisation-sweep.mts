@@ -9,7 +9,10 @@
 //      blobs, keep the doc. (Printed work is on the customer's wall; we don't
 //      need to hold their photo any longer than the returns window plus
 //      margin.)
-//   3. Sessions flagged proofTriggerError / printTriggerError → try the
+//   3. Commission photos (Blobs "commission-uploads") that no commission
+//      refers to and are over 48 h old → deleted: a customer who uploaded
+//      and then abandoned the form (_shared/commission-uploads.mjs).
+//   4. Sessions flagged proofTriggerError / printTriggerError → try the
 //      trigger again (up to 3 times; see _shared/trigger-retry.mjs).
 //
 // Jobs 1 and 2 are idempotent, so running hourly (it was daily) only makes
@@ -34,6 +37,8 @@
 import { LIMITS, sanity, images, blobKey, nowIso, json, INTERNAL_HEADER, internalKey } from './_shared/personalisation.mts';
 import { triggerInternal, TRIGGER_BUDGETS } from './_shared/origin.mjs';
 import { retryFlagged } from './_shared/trigger-retry.mjs';
+import { getStore } from '@netlify/blobs';
+import { UPLOADS_STORE, sweepAbandonedUploads } from './_shared/commission-uploads.mjs';
 
 type Row = { _id: string; pid: string; status: string };
 
@@ -78,7 +83,25 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  // ── 3. Re-try failed triggers ──────────────────────────────────────────
+  // ── 3. Abandoned commission photos ─────────────────────────────────────
+  // Attached = any key on any published commission. Only commission-checkout
+  // writes these, always to the published doc; a Studio draft carries the same keys.
+  let uploads: Record<string, number> | { error: string } = { skipped: 1 };
+  try {
+    const attached: string[] = await sanity.fetch(
+      `array::unique(*[_type == "commission" && defined(uploadedPhotos)].uploadedPhotos[].key)`,
+    );
+    uploads = await sweepAbandonedUploads({
+      store: getStore({ name: UPLOADS_STORE, consistency: 'strong' }),
+      attachedKeys: new Set(attached || []),
+      timeLeft: () => SWEEP_BUDGET_MS - (Date.now() - started),
+      dry,
+    });
+  } catch (err: any) {
+    uploads = { error: String(err?.message || err).slice(0, 200) };
+  }
+
+  // ── 4. Re-try failed triggers ──────────────────────────────────────────
   const flagged = await sanity.fetch(
     `*[_type == "pendingPersonalisation" && (defined(proofTriggerError) || defined(printTriggerError))]
       | order(_updatedAt asc){ _id, pid, status, proofTriggerError, printTriggerError, printBuiltAt, triggerRetries }`,
@@ -102,7 +125,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const summary = {
     ok: true, dry, expired: unpaid.length, purged: printed.length, blobsDeleted: blobs,
-    flagged: flagged.length, retries, ms: Date.now() - started,
+    commissionUploads: uploads, flagged: flagged.length, retries, ms: Date.now() - started,
   };
   console.log('personalisation-sweep:', JSON.stringify(summary));
   return json(200, summary);
