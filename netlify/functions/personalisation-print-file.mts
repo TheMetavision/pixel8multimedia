@@ -38,9 +38,6 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 
-  const buf = await images().get(want.key, { type: 'arrayBuffer' });
-  if (!buf) return bad('File has been purged.', 410);
-
   const name = [
     'pixel8',
     pid,
@@ -49,6 +46,21 @@ export default async function handler(req: Request): Promise<Response> {
     doc.size || '',
     kind,
   ].filter(Boolean).join('-');
+
+  // Print files are far past a function's response limit (6 MB buffered,
+  // 20 MB streamed), so they're streamed by the print-file-download edge
+  // function instead. Works for old print.png keys and new print.jpg ones.
+  if (kind === 'print') {
+    const ext = want.key.endsWith('.jpg') ? 'jpg' : 'png';
+    const q = new URLSearchParams({ store: 'personalisation', key: want.key, name: `${name}.${ext}` });
+    return new Response(null, {
+      status: 302,
+      headers: { Location: `/admin/api/print-file/download?${q}`, 'Cache-Control': 'no-store' },
+    });
+  }
+
+  const buf = await images().get(want.key, { type: 'arrayBuffer' });
+  if (!buf) return bad('File has been purged.', 410);
 
   return new Response(buf, {
     headers: {

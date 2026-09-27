@@ -14,7 +14,7 @@
 
 import { createClient } from '@sanity/client';
 import { getStore } from '@netlify/blobs';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 // ── Tunables (env override → default) ────────────────────────────────────────
 const num = (name: string, dflt: number) => {
@@ -148,6 +148,11 @@ export async function chargeGuards(ip: string): Promise<GuardResult> {
 /** Internal calls (foreground → background) carry this header. */
 export const INTERNAL_HEADER = 'x-personalisation-key';
 export const internalKey = () => sha256(`internal:${process.env.PERSONALISATION_SALT || 'dev-salt'}`).slice(0, 40);
-export const isInternal = (req: Request) => req.headers.get(INTERNAL_HEADER) === internalKey();
+/** Constant-time: a wrong key takes as long to refuse as a nearly-right one. */
+export const isInternal = (req: Request) => {
+  const got = Buffer.from(req.headers.get(INTERNAL_HEADER) || '');
+  const want = Buffer.from(internalKey());
+  return got.length === want.length && timingSafeEqual(got, want);
+};
 
 export const siteUrl = () => process.env.URL || process.env.SITE_URL || 'https://pixel8multimedia.co.uk';
