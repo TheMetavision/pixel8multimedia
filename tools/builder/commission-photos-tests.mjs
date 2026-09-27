@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import {
   storeUpload, photosForCommission, sweepAbandonedUploads, isUploadKey, MAX_FILE_SIZE, ABANDONED_AFTER_MS,
 } from '../../netlify/functions/_shared/commission-uploads.mjs';
-import { planMigration, migratePhoto, deterministicUuid } from '../commission-photos/migrate-lib.mjs';
+import { planMigration, migratePhoto, deleteOrphans, deterministicUuid, refPaths } from '../commission-photos/migrate-lib.mjs';
 
 let pass = 0, fail = 0;
 const ok = (c, l, e = '') => {
@@ -120,59 +120,171 @@ say('\n4. HOURLY SWEEP OF ABANDONED UPLOADS\n');
 
 say('\n5. MIGRATION\n');
 {
+  const ASSET = 'image-abc-10x10-png';
+  const CID = 'commission.PX-TEST';
   const bytes = Buffer.from('the customer photo bytes');
-  const plan = planMigration([{ _id: 'commission.PX-TEST', hasDraft: true, entries: [
-    { _key: 'e1', fieldKey: 'sourcePhoto', assetId: 'image-abc-10x10-png', bytes: bytes.length, mime: 'image/png', w: 10, h: 10, url: 'u' },
-  ] }], [{ _id: 'image-orphan-1x1-jpg', size: 9, mimeType: 'image/jpeg', _createdAt: '2026-06-02T00:00:00Z' }]);
-  const p = plan.photos[0];
-  ok(isUploadKey(p.newKey) && p.newKey === planMigration([{ _id: 'commission.PX-TEST', entries: [{ _key: 'e1', assetId: 'image-abc-10x10-png', mime: 'image/png' }] }], []).photos[0].newKey,
-    'deterministic key that the site accepts (safe to re-run)', p.newKey);
-  ok(deterministicUuid('a') !== deterministicUuid('b'), 'different assets → different keys');
+  const entryRef = (k) => ({ _type: 'object', _key: k, fieldKey: 'sourcePhoto', asset: { _type: 'reference', _ref: ASSET } });
 
-  const commits = [];
-  const commitPhoto = async (photo, entry, o) => { commits.push({ photo, entry, ...o }); };
+  /** A tiny in-memory Sanity: documents, references($id), patches, deletes — with Sanity's rule that
+   *  a delete is checked against references as they were BEFORE its transaction. */
+  function fakeSanity(docs) {
+    const db = new Map(docs.map((d) => [d._id, structuredClone(d)]));
+    const refsIn = (d, id) => refPaths(d, id).length > 0;
+    const unset = (doc, path) => {
+      const m = /^(\w+)(?:\[_key=="([^"]+)"\])?$/.exec(path);
+      if (!m) throw new Error(`test fake can't unset ${path}`);
+      if (m[2]) doc[m[1]] = (doc[m[1]] || []).filter((x) => x._key !== m[2]);
+      else delete doc[m[1]];
+    };
+    const api = {
+      db, commits: [], deletes: [],
+      refsTo: async (id) => [...db.values()].filter((d) => refsIn(d, id)).map((d) => structuredClone(d)),
+      commitRefs: async (patches, { dryRun }) => {
+        api.commits.push({ ids: patches.map((p) => p.id), dryRun });
+        const out = patches.map((p) => {
+          const doc = structuredClone(db.get(p.id));
+          if (doc._rev !== p.rev) throw new Error('revision mismatch');
+          if (p.append) doc.uploadedPhotos = [...(doc.uploadedPhotos || []), p.append];
+          for (const path of p.unset) unset(doc, path);
+          return doc;
+        });
+        if (!dryRun) for (const d of out) db.set(d._id, { ...d, _rev: `${d._rev}+` });
+        return out;
+      },
+      deleteAsset: async (id) => {
+        if ([...db.values()].some((d) => refsIn(d, id))) throw new Error(`cannot be deleted as there are references to it`);
+        api.deletes.push(id);
+      },
+      deleteAssets: async (ids, { dryRun }) => { if (!dryRun) api.deletes.push(...ids); },
+    };
+    return api;
+  }
+  const photoFor = (extra = {}) => planMigration([{ _id: CID, entries: [
+    { _key: 'e1', fieldKey: 'sourcePhoto', assetId: ASSET, bytes: bytes.length, mime: 'image/png', w: 10, h: 10, url: 'u' },
+  ], ...extra }], []).photos[0];
   const fetchBytes = async () => bytes;
 
-  const s1 = memStore();
-  const dry = await migratePhoto(p, { mode: 'dry', store: s1, fetchBytes, commitPhoto });
-  ok(s1.sets === 0 && commits.length === 0 && dry.entry.key === p.newKey && !('originalName' in dry.entry), 'dry run: nothing written to Blobs or Sanity');
+  const p = photoFor();
+  ok(isUploadKey(p.newKey) && p.newKey === photoFor().newKey, 'deterministic key that the site accepts (safe to re-run)', p.newKey);
+  ok(deterministicUuid('a') !== deterministicUuid('b'), 'different assets → different keys');
 
-  const s2 = memStore();
-  await migratePhoto(p, { mode: 'validate', store: s2, fetchBytes, commitPhoto });
-  ok(s2.sets === 0 && commits.length === 1 && commits[0].dryRun === true, '--validate: no Blobs write; the Sanity transaction is sent with dryRun');
+  // Sanity's actual rule, as seen on the real data: removing the last reference
+  // and deleting the asset can't happen in one transaction.
+  {
+    const s = fakeSanity([{ _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')] }]);
+    let e = null; try { await s.deleteAsset(ASSET); } catch (x) { e = x; }
+    ok(e && /references/.test(e.message), 'the fake enforces Sanity\'s rule: no delete while referenced');
+  }
 
-  commits.length = 0;
-  const s3 = memStore();
-  const applied = await migratePhoto(p, { mode: 'apply', store: s3, fetchBytes, commitPhoto });
-  ok(s3.sets === 1 && sha(s3.m.get(p.newKey).data) === sha(bytes) && s3.m.get(p.newKey).metadata.sha256 === sha(bytes) && commits[0].dryRun === false,
-    'apply: copied to Blobs, verified, then committed');
-  ok(applied.entry.fieldKey === 'sourcePhoto' && applied.entry.bytes === bytes.length && applied.entry.contentType === 'image/png', 'new entry: fieldKey, key, contentType, bytes, pixel size');
+  {
+    const s = fakeSanity([{ _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')] }]);
+    const st = memStore();
+    const dry = await migratePhoto(p, { mode: 'dry', store: st, fetchBytes, ...s });
+    ok(st.sets === 0 && s.commits.length === 0 && s.deletes.length === 0 && !('originalName' in dry.entry), 'dry run: nothing written to Blobs or Sanity');
+  }
 
-  commits.length = 0;
-  const again = await migratePhoto(p, { mode: 'apply', store: s3, fetchBytes, commitPhoto });
-  ok(again.alreadyThere && s3.sets === 1, 're-run: the identical blob is not uploaded again');
+  {
+    const s = fakeSanity([{ _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')] }]);
+    const st = memStore();
+    await migratePhoto(p, { mode: 'validate', store: st, fetchBytes, ...s });
+    ok(st.sets === 0 && s.commits.length === 1 && s.commits[0].dryRun === true && s.deletes.length === 0,
+      '--validate: no Blobs write; transaction 1 sent as dryRun; no delete attempted');
+  }
 
-  commits.length = 0;
-  const liar = memStore();
-  liar.get = async () => Buffer.from('something else entirely');
-  let err = null;
-  try { await migratePhoto(p, { mode: 'apply', store: liar, fetchBytes, commitPhoto }); } catch (e) { err = e; }
-  ok(err && /hash mismatch/.test(err.message) && commits.length === 0, 'hash mismatch after upload → refused, Sanity NOT touched', err?.message);
+  {
+    const s = fakeSanity([{ _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')] }]);
+    const st = memStore();
+    const r = await migratePhoto(p, { mode: 'apply', store: st, fetchBytes, ...s });
+    const doc = s.db.get(CID);
+    ok(r.deleted && s.deletes.join() === ASSET && doc.uploadedFiles.length === 0 && doc.uploadedPhotos[0].key === p.newKey && sha(st.m.get(p.newKey).data) === sha(bytes),
+      'apply: Blobs verified → transaction 1 moves the entry → transaction 2 deletes the asset');
+  }
 
-  // A bad blob left behind (metadata claims the right sha, bytes are wrong):
-  // a re-run must re-send it, not skip it.
-  commits.length = 0;
-  const stale = memStore({ [p.newKey]: { data: Buffer.from('corrupt'), metadata: { sha256: sha(bytes) } } });
-  const fixed = await migratePhoto(p, { mode: 'apply', store: stale, fetchBytes, commitPhoto });
-  ok(!fixed.alreadyThere && stale.sets === 1 && sha(stale.m.get(p.newKey).data) === sha(bytes) && commits.length === 1,
-    're-run over a corrupt blob: re-uploaded and verified, not skipped');
+  {
+    // A DRAFT of the commission also references the asset.
+    const s = fakeSanity([
+      { _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')] },
+      { _id: `drafts.${CID}`, _rev: 'd1', _type: 'commission', uploadedFiles: [entryRef('e1')], notes: 'staff editing' },
+    ]);
+    const r = await migratePhoto(photoFor({ hasDraft: true }), { mode: 'apply', store: memStore(), fetchBytes, ...s });
+    const draft = s.db.get(`drafts.${CID}`);
+    ok(r.deleted && r.patched.sort().join() === [CID, `drafts.${CID}`].sort().join() && draft.uploadedFiles.length === 0 && draft.uploadedPhotos.length === 1 && draft.notes === 'staff editing',
+      'a draft referencing it is updated in the same transaction; only then is the asset deleted', r.patched.join(' + '));
+  }
 
-  commits.length = 0;
-  let err2 = null;
-  try { await migratePhoto(p, { mode: 'apply', store: memStore(), fetchBytes: async () => Buffer.from('short'), commitPhoto }); } catch (e) { err2 = e; }
-  ok(err2 && /bytes/.test(err2.message) && commits.length === 0, 'downloaded size ≠ asset size → refused before anything is written');
+  {
+    // A leftover legacy image field holding the same asset.
+    const s = fakeSanity([{ _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')],
+      sourcePhoto: { _type: 'image', asset: { _type: 'reference', _ref: ASSET } } }]);
+    const r = await migratePhoto(p, { mode: 'apply', store: memStore(), fetchBytes, ...s });
+    ok(r.deleted && !('sourcePhoto' in s.db.get(CID)), 'a leftover legacy image field is removed too, so the delete can succeed');
+  }
 
-  ok(plan.orphans.length === 1 && plan.orphans[0]._id === 'image-orphan-1x1-jpg', 'orphans listed by id');
+  {
+    // Transaction 1 succeeded, transaction 2 didn't (e.g. network) → re-run finishes it.
+    const s = fakeSanity([{ _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')] }]);
+    const failingDelete = { ...s, deleteAsset: async () => { throw new Error('socket hang up'); } };
+    let e = null;
+    try { await migratePhoto(p, { mode: 'apply', store: memStore(), fetchBytes, ...failingDelete }); } catch (x) { e = x; }
+    const between = s.db.get(CID);
+    ok(e && between.uploadedPhotos?.[0]?.key === p.newKey && between.uploadedFiles.length === 0, 'between the two steps: the commission already points at Blobs (safe)');
+    // Re-run: the photo is no longer in the plan (its uploadedFiles entry is gone); the asset is an orphan.
+    const replan = planMigration([{ _id: CID, entries: [] }], [{ _id: ASSET, size: bytes.length, mimeType: 'image/png', _createdAt: 'x' }]);
+    ok(replan.photos.length === 0 && replan.orphans.length === 1, 're-run: nothing left to move; the asset is picked up as an orphan');
+    const o = await deleteOrphans(replan.orphans, { mode: 'apply', ...s });
+    ok(o.deleted.join() === ASSET && s.deletes.join() === ASSET, 're-run: the orphan phase finishes the delete (nothing references it any more)');
+  }
+
+  {
+    // An "orphan" that turns out to be referenced (e.g. by a draft).
+    const s = fakeSanity([{ _id: `drafts.${CID}`, _rev: 'd1', _type: 'commission', uploadedFiles: [entryRef('e1')] }]);
+    const o = await deleteOrphans([{ _id: ASSET }, { _id: 'image-free-1x1-jpg' }], { mode: 'apply', ...s });
+    ok(o.skipped.length === 1 && o.skipped[0].id === ASSET && o.skipped[0].by.join() === `drafts.${CID}` && s.deletes.join() === 'image-free-1x1-jpg',
+      'an orphan that is referenced (even by a draft) is skipped and reported; the rest are deleted');
+    const d = await deleteOrphans([{ _id: 'image-free-1x1-jpg' }], { mode: 'dry', ...fakeSanity([]) });
+    ok(d.deleted.length === 1, 'orphans in a dry run: listed, not deleted');
+  }
+
+  {
+    // Referenced by some unrelated document → refuse, touch nothing.
+    const s = fakeSanity([
+      { _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')] },
+      { _id: 'blogPost.x', _rev: 'b1', _type: 'blogPost', hero: { _type: 'image', asset: { _type: 'reference', _ref: ASSET } } },
+    ]);
+    let e = null;
+    try { await migratePhoto(p, { mode: 'apply', store: memStore(), fetchBytes, ...s }); } catch (x) { e = x; }
+    ok(e && /also referenced by blogPost\.x/.test(e.message) && s.commits.length === 0 && s.deletes.length === 0, 'a reference from another document stops the run before any Sanity change', e?.message);
+  }
+
+  {
+    const s = fakeSanity([{ _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')] }]);
+    const liar = memStore();
+    liar.get = async () => Buffer.from('something else entirely');
+    let e = null;
+    try { await migratePhoto(p, { mode: 'apply', store: liar, fetchBytes, ...s }); } catch (x) { e = x; }
+    ok(e && /hash mismatch/.test(e.message) && s.commits.length === 0 && s.deletes.length === 0, 'hash mismatch after upload → refused, Sanity NOT touched');
+
+    const stale = memStore({ [p.newKey]: { data: Buffer.from('corrupt'), metadata: { sha256: sha(bytes) } } });
+    const fixed = await migratePhoto(p, { mode: 'apply', store: stale, fetchBytes, ...fakeSanity([{ _id: CID, _rev: 'r1', _type: 'commission', uploadedFiles: [entryRef('e1')] }]) });
+    ok(!fixed.alreadyThere && stale.sets === 1 && sha(stale.m.get(p.newKey).data) === sha(bytes), 're-run over a corrupt blob: re-uploaded and verified, not skipped');
+
+    let e2 = null;
+    try { await migratePhoto(p, { mode: 'apply', store: memStore(), fetchBytes: async () => Buffer.from('short'), ...fakeSanity([]) }); } catch (x) { e2 = x; }
+    ok(e2 && /bytes/.test(e2.message), 'downloaded size ≠ asset size → refused before anything is written');
+  }
+}
+
+say('\n6. ORIGINAL BYTES ONLY\n');
+{
+  // Sanity's image CDN re-encodes JPEGs (same size problem seen on the real data), so
+  // the migration downloads ?dlRaw= and checks the asset's sha1hash.
+  const bytes = Buffer.from('the customer photo bytes');
+  const p = planMigration([{ _id: 'commission.PX-SHA', entries: [{ _key: 'e1', fieldKey: 'f', assetId: 'image-s-1x1-jpg', bytes: bytes.length,
+    sha1: createHash('sha1').update(bytes).digest('hex'), mime: 'image/jpeg', url: 'u' }] }], []).photos[0];
+  let e = null; let touched = 0;
+  const same = Buffer.from('THE CUSTOMER PHOTO BYTES'); // same length, different content (a re-encode)
+  try { await migratePhoto(p, { mode: 'apply', store: memStore(), fetchBytes: async () => same, refsTo: async () => { touched++; return []; } }); } catch (x) { e = x; }
+  ok(e && /sha1hash/.test(e.message) && touched === 0, 'same size but different bytes (not the original) → refused before Blobs or Sanity', e?.message);
 }
 
 say(`\n${pass} passed, ${fail} failed.`);
