@@ -50,13 +50,25 @@ const CLIENT_RESIZE_QUALITY = 0.9;
 const CLIENT_UPLOAD_TARGET_BYTES = Math.round(4.5 * 1024 * 1024);
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
 
-// POST a single file to /.netlify/functions/upload, returning the Sanity
-// asset metadata. Surfaces server-side validation errors so the dropzone
-// can show them to the customer.
-async function uploadFileToSanity(file, fieldKey) {
+// One id per visit to the form, grouping this customer's uploads in the
+// private Blobs store (commission-upload/<uploadId>/…). Created on first use,
+// in the browser.
+let uploadSessionId = null;
+function getUploadSessionId() {
+  if (!uploadSessionId) uploadSessionId = crypto.randomUUID();
+  return uploadSessionId;
+}
+
+// POST a single file to /.netlify/functions/upload, which stores it in the
+// private Blobs store and returns its key. Surfaces server-side validation
+// errors so the dropzone can show them to the customer. The file's name is
+// kept here, in the browser, for the customer's own list — it is never sent
+// as data (the multipart part is named "photo").
+async function uploadCommissionPhoto(file, fieldKey) {
   const fd = new FormData();
-  fd.append('file', file, file.name);
+  fd.append('file', file, 'photo');
   fd.append('fieldKey', fieldKey);
+  fd.append('uploadId', getUploadSessionId());
   let res;
   try {
     res = await fetch('/.netlify/functions/upload', { method: 'POST', body: fd });
@@ -69,10 +81,10 @@ async function uploadFileToSanity(file, fieldKey) {
     throw new Error(body.error || `Upload failed (status ${res.status}).`);
   }
   return {
-    assetId: body.assetId,
-    url: body.url,
-    originalName: body.originalName || file.name,
-    name: body.originalName || file.name,
+    uploadKey: body.uploadKey,
+    // A local preview of the customer's own file (there is no public URL).
+    url: URL.createObjectURL(file),
+    name: file.name,
     size: file.size,
     type: file.type,
   };
@@ -335,9 +347,9 @@ function BriefField({ field, value, onChange, files, onFilesChange, styleOptions
 }
 
 // ─── Photo dropzone (used for fieldType=photo and photos) ───────────────────
-// Files are uploaded to Sanity via /.netlify/functions/upload as soon as
-// they're added. `files` is an array of metadata objects:
-//   { assetId, url, originalName, name, size, type }
+// Files are uploaded to the private Blobs store via /.netlify/functions/upload
+// as soon as they're added. `files` is an array of metadata objects:
+//   { uploadKey, url (local preview), name, size, type }
 // The submit handler then sends just these references (small JSON) to
 // commission-checkout, avoiding the Netlify Function payload limit.
 function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, onChange }) {
@@ -425,7 +437,7 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
       }
       setProgressLabel(`Uploading photo ${i + 1} of ${toUpload.length}…`);
       try {
-        const meta = await uploadFileToSanity(resized, fieldKey);
+        const meta = await uploadCommissionPhoto(resized, fieldKey);
         uploaded.push(meta);
       } catch (uploadErr) {
         setError(`Couldn\u2019t upload ${original.name}: ${uploadErr.message}`);
@@ -502,12 +514,14 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
             // HEIC/HEIF can't render in <img> in most browsers — show a tile.
             const isHeic = /heic|heif/i.test(f.type || '') || /\.hei[cf]$/i.test(f.name || '');
             // Build a lightweight square crop from the Sanity CDN url.
+            // A blob: preview of the customer's own file; a Sanity CDN URL only
+            // on an entry from before the move to Blobs.
             const thumbSrc = f.url
-              ? `${f.url}${f.url.includes('?') ? '&' : '?'}w=240&h=240&fit=crop&auto=format`
+              ? (f.url.startsWith('blob:') ? f.url : `${f.url}${f.url.includes('?') ? '&' : '?'}w=240&h=240&fit=crop&auto=format`)
               : null;
             const ext = (f.name?.split('.').pop() || 'img').toUpperCase();
             return (
-              <li key={`${f.assetId || f.name}-${f.size}-${i}`} className="cw__thumb-card">
+              <li key={`${f.uploadKey || f.assetId || f.name}-${f.size}-${i}`} className="cw__thumb-card">
                 <div className="cw__thumb-media">
                   {thumbSrc && !isHeic ? (
                     <img className="cw__thumb-img" src={thumbSrc} alt={f.name} loading="lazy" />
@@ -522,7 +536,7 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
                     </div>
                   )}
 
-                  {f.assetId && (
+                  {(f.uploadKey || f.assetId) && (
                     <span className="cw__thumb-badge" aria-label="Uploaded">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -553,9 +567,9 @@ function PhotoDropzone({ fieldKey, multiple, minFiles, maxFiles, accept, files, 
 // NOTE: This dropzone still stores raw File objects rather than uploading
 // them via /api/upload. No live service currently uses fieldType='file', so
 // this hasn't been migrated. If you ever add a service with non-image file
-// uploads, swap the addFiles() body to call uploadFileToSanity() the way
-// PhotoDropzone does — commission-checkout already expects asset references,
-// not files in the request body.
+// uploads, swap the addFiles() body to call uploadCommissionPhoto() the way
+// PhotoDropzone does — commission-checkout expects Blobs upload keys, not
+// files in the request body (and upload.mts accepts images only).
 function FileDropzone({ fieldKey, accept, maxSizeBytes, files, onChange }) {
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
@@ -1070,20 +1084,13 @@ export default function CommissionWorkflow({ service }) {
     setError('');
     setSubmitting(true);
     try {
-      // Photos uploaded to Sanity already (by PhotoDropzone via /api/upload).
-      // Each entry in briefFiles[fieldKey] now holds asset metadata, not a
-      // raw File. We collect them into a flat array for the checkout function
-      // to attach as references on the commission doc.
+      // Photos are already in the private Blobs store (PhotoDropzone uploaded
+      // them). Send just their keys — never filenames — for the checkout
+      // function to check and record on the commission doc.
       const uploadedAssets = [];
       Object.entries(briefFiles).forEach(([fieldKey, arr]) => {
         (arr || []).forEach((meta) => {
-          if (meta?.assetId) {
-            uploadedAssets.push({
-              fieldKey,
-              assetId: meta.assetId,
-              originalName: meta.originalName || meta.name || 'upload',
-            });
-          }
+          if (meta?.uploadKey) uploadedAssets.push({ fieldKey, uploadKey: meta.uploadKey });
         });
       });
 

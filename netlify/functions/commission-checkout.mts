@@ -29,6 +29,8 @@ import {
   type VoucherDoc,
 } from './_shared/groupon.mts';
 import { COMMISSION_SIZE_VALUES } from './_shared/print-spec.mjs';
+import { getStore } from '@netlify/blobs';
+import { UPLOADS_STORE, photosForCommission } from './_shared/commission-uploads.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 
@@ -474,15 +476,15 @@ export default async function handler(req: Request, _context: Context) {
         }));
     }
 
-    // Photos uploaded ahead of time. Shape: { fieldKey, assetId, originalName }
-    let uploadedAssetsIn: Array<{ fieldKey: string; assetId: string; originalName: string }> = [];
+    // Photos: keys in the private Blobs store (current), or — from a page
+    // loaded before the move to Blobs — Sanity asset ids. Never a filename.
+    let uploadedAssetsIn: Array<{ fieldKey: string; uploadKey?: string; assetId?: string }> = [];
     if (Array.isArray(body.uploadedAssets)) {
       uploadedAssetsIn = body.uploadedAssets
-        .filter((a: any) => a && typeof a === 'object' && a.assetId)
+        .filter((a: any) => a && typeof a === 'object' && (a.uploadKey || a.assetId))
         .map((a: any) => ({
           fieldKey: String(a.fieldKey || 'unknown'),
-          assetId: String(a.assetId),
-          originalName: String(a.originalName || 'upload'),
+          ...(a.uploadKey ? { uploadKey: String(a.uploadKey) } : { assetId: String(a.assetId) }),
         }));
     }
 
@@ -615,20 +617,27 @@ export default async function handler(req: Request, _context: Context) {
       }
     }
 
-    // Photos were uploaded to Sanity ahead of time via /api/upload. We
-    // just need to reshape them into the embedded-object format the
-    // commission doc's `uploadedFiles` field expects.
-    const uploadedAssets: Array<{
-      _type: 'object'; _key: string;
-      fieldKey: string;
-      asset: { _type: 'reference'; _ref: string };
-      originalName: string;
-    }> = uploadedAssetsIn.map((a) => ({
-      _type: 'object',
+    // Photos were uploaded ahead of time via /.netlify/functions/upload into
+    // the private Blobs store; check each key is really there and record it
+    // (content type, bytes, pixel size — no filename) as uploadedPhotos.
+    const blobRefs = uploadedAssetsIn.filter((a) => a.uploadKey);
+    const checked = await photosForCommission(blobRefs, {
+      store: getStore({ name: UPLOADS_STORE, consistency: 'strong' }),
+      makeKey: () => nanoid(8),
+    });
+    if (!checked.ok) {
+      return new Response(JSON.stringify({ error: checked.error }), {
+        status: 400, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const uploadedPhotos = checked.photos;
+    // Legacy: Sanity asset ids from a page opened before the switch. Kept as
+    // references (tools/migrate-commission-photos.mjs moves them to Blobs).
+    const uploadedAssets = uploadedAssetsIn.filter((a) => a.assetId).map((a) => ({
+      _type: 'object' as const,
       _key: nanoid(8),
       fieldKey: a.fieldKey,
-      originalName: a.originalName,
-      asset: { _type: 'reference', _ref: a.assetId },
+      asset: { _type: 'reference' as const, _ref: a.assetId! },
     }));
 
     const orderRef = `PX-${nanoid(8).toUpperCase()}`;
@@ -715,7 +724,8 @@ export default async function handler(req: Request, _context: Context) {
       bundleCollection: bundleCollection,
       // shippingAddress is patched onto this doc by the Stripe webhook after
       // payment completes. Stripe collects it directly on the checkout page.
-      uploadedFiles: uploadedAssets,
+      ...(uploadedPhotos.length ? { uploadedPhotos } : {}),
+      ...(uploadedAssets.length ? { uploadedFiles: uploadedAssets } : {}),
       amount: breakdown.total,
       priceBreakdown: {
         orderType: breakdown.orderType,
