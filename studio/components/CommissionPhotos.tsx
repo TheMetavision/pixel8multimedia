@@ -18,7 +18,7 @@ export function CommissionPhotos() {
   const photos = ((useFormValue(['uploadedPhotos']) as Photo[]) || []);
   if (!photos.length) return <Text size={1} muted>No customer photos.</Text>;
   return (
-    <Stack space={2}>
+    <Stack gap={2}>
       {photos.map((p, i) => {
         const href = p.key?.startsWith(PREFIX) ? `${ADMIN_ORIGIN}/admin/commission-photo/${p.key.slice(PREFIX.length)}` : '';
         const size = [

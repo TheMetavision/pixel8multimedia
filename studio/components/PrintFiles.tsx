@@ -44,7 +44,7 @@ export function PrintFiles() {
   if (!lines.length) return <Text size={1} muted>No lines on this order.</Text>;
 
   return (
-    <Stack space={3}>
+    <Stack gap={3}>
       {isDraft && (
         <Card padding={3} radius={2} tone="caution">
           <Text size={1}>Unpublished changes (e.g. a wrap colour) aren't used for print files until you publish.</Text>
@@ -55,7 +55,7 @@ export function PrintFiles() {
         if (!keyed) {
           return (
             <Card key={l._key} padding={3} radius={2} border>
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={1} weight="semibold">{l.productTitle || 'Line'}</Text>
                 <Text size={1} muted>Historic line — no print data</Text>
               </Stack>
@@ -66,7 +66,7 @@ export function PrintFiles() {
         const href = `${ADMIN_ORIGIN}/admin/print-file/${encodeURIComponent(orderId)}/${encodeURIComponent(l._key)}`;
         return (
           <Card key={l._key} padding={3} radius={2} border tone={l.printFileMissing ? 'critical' : 'default'}>
-            <Stack space={3}>
+            <Stack gap={3}>
               <Flex justify="space-between" align="center" gap={2} wrap="wrap">
                 <Text size={1} weight="semibold">
                   {l.productTitle || l.productSlug || 'Line'}{l.quantity && l.quantity > 1 ? ` × ${l.quantity}` : ''}

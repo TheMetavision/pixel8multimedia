@@ -20,7 +20,7 @@ export function CommissionArtwork() {
   const files = ((useFormValue(['finishedArtwork']) as Artwork[]) || []);
   const uploadHref = orderRef ? `${ADMIN_ORIGIN}/admin/commission-artwork/${encodeURIComponent(orderRef)}` : '';
   return (
-    <Stack space={2}>
+    <Stack gap={2}>
       {files.length === 0 && <Text size={1} muted>No finished artwork uploaded yet.</Text>}
       {files.map((f, i) => {
         const href = orderRef && f.uploadId
