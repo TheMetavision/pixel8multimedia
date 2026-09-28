@@ -105,7 +105,7 @@ export default defineType({
   preview: {
     select: { title: 'customerName', status: 'status', total: 'totalAmount', createdAt: 'createdAt' },
     prepare({ title, status, total, createdAt }) {
-      const emoji = { received: '📥', 'in-production': '🖨️', dispatched: '📦', delivered: '✅', refunded: '↩️' };
+      const emoji: Record<string, string> = { received: '📥', 'in-production': '🖨️', dispatched: '📦', delivered: '✅', refunded: '↩️' };
       return {
         title: `${emoji[status] || ''} ${title || 'Unknown'}`,
         subtitle: `£${(total || 0).toFixed(2)} — ${status} — ${createdAt ? new Date(createdAt).toLocaleDateString('en-GB') : ''}`,
