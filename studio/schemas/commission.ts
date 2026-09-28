@@ -1,5 +1,6 @@
 import { defineType, defineField } from 'sanity';
 import { CommissionPhotos } from '../components/CommissionPhotos';
+import { CommissionArtwork } from '../components/CommissionArtwork';
 
 export default defineType({
   name: 'commission',
@@ -64,13 +65,15 @@ export default defineType({
           }
           // H2: completing a digital/both order emails the customer their
           // download link, which needs the file. Block Complete until it's
-          // uploaded. Print-only orders have no download, so they're exempt.
+          // uploaded (Finished Artwork in Blobs, or a legacy Finished File).
+          // Print-only orders have no download, so they're exempt.
           if (
             status === 'complete' &&
             doc?.deliveryType !== 'print' &&
+            !(doc?.finishedArtwork as unknown[] | undefined)?.length &&
             !doc?.finishedFile?.asset?._ref
           ) {
-            return 'Upload a Finished File before setting status to Complete — completing emails the customer their download link.';
+            return 'Upload the finished artwork (Delivery → Finished Artwork → Upload finished artwork) before setting status to Complete — completing emails the customer their download link.';
           }
           return true;
         }),
@@ -236,13 +239,41 @@ export default defineType({
     }),
 
     // ── Delivery ───────────────────────────────
+    // Finished artwork, in the private Blobs store "commission-artwork". Added
+    // by the upload page's server-side check (sha256 verified); read-only here.
+    defineField({
+      name: 'finishedArtwork',
+      title: 'Finished Artwork',
+      type: 'array',
+      group: 'delivery',
+      readOnly: true,
+      description:
+        'Upload the completed work with the link below (any size up to 2 GB per file). When status is set to "complete", the customer is emailed a secure 30-day download link for each file.',
+      components: { input: CommissionArtwork },
+      of: [{
+        type: 'object',
+        name: 'commissionArtwork',
+        fields: [
+          { name: 'uploadId', title: 'Upload id', type: 'string' },
+          { name: 'filename', title: 'Download name', type: 'string' },
+          { name: 'contentType', title: 'Content type', type: 'string' },
+          { name: 'bytes', title: 'Bytes', type: 'number' },
+          { name: 'sha256', title: 'SHA-256', type: 'string' },
+          { name: 'uploadedAt', title: 'Uploaded', type: 'datetime' },
+        ],
+      }],
+    }),
+    // Legacy: finished work stored as a Sanity file asset (public by URL, and
+    // delivered through a function capped at 20 MB). Hidden once empty;
+    // tools/migrate-commission-artwork.mjs moves it into finishedArtwork.
     defineField({
       name: 'finishedFile',
-      title: 'Finished File',
+      title: 'Finished File (legacy, in Sanity)',
       type: 'file',
       group: 'delivery',
       description:
-        'Upload the completed work here. When status is set to "complete", the customer receives a secure download link via email.',
+        'Legacy. Use Finished Artwork above for new work. Still delivered if it is the only file.',
+      hidden: ({ document }) => !(document?.finishedFile as { asset?: unknown } | undefined)?.asset,
     }),
     defineField({
       name: 'carrier',
