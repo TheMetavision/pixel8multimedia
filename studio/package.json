@@ -8,13 +8,13 @@
     "deploy": "sanity deploy"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "sanity": "^4.22.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "sanity": "^5.31.2",
     "styled-components": "^6.5.3"
   },
   "devDependencies": {
-    "@types/react": "^18.3.0",
+    "@types/react": "^19.3.0",
     "typescript": "^5.5.0"
   }
 }
