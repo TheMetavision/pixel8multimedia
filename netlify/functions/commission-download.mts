@@ -1,6 +1,9 @@
 // netlify/functions/commission-download.mts
 // Secure file download — validates HMAC-signed, time-limited URL parameters,
 // fetches the finished file from Sanity CDN, and streams it to the customer.
+// Legacy: only for links to a Sanity-hosted finishedFile (a function's
+// response is capped at 20 MB streamed). Artwork uploaded to Blobs is served
+// by the commission-artwork-download edge function at /download/artwork.
 
 import type { Context } from '@netlify/functions';
 import { createClient } from '@sanity/client';

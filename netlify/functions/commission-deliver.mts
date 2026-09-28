@@ -20,6 +20,7 @@ import { createClient } from '@sanity/client';
 import { isValidSignature, SIGNATURE_HEADER_NAME } from '@sanity/webhook';
 import { Resend } from 'resend';
 import crypto from 'crypto';
+import { fileRefFor } from './_shared/artwork-keys.mjs';
 
 const sanity = createClient({
   projectId: 'bqb4w421',
@@ -52,7 +53,14 @@ async function verifySanityWebhook(body: string, signature: string | null, secre
 }
 
 // ── Generate signed download URL (delivery) ──
-function generateSignedUrl(commissionId: string, fileRef: string): string {
+// Sanity-hosted files (finishedFile, legacy) are served by the
+// commission-download function; Blobs artwork (finishedArtwork) by the
+// commission-artwork-download edge function, which has no size limit. Same
+// parameters, same signature, same expiry: only the path differs.
+const SANITY_FILE_PATH = '/.netlify/functions/commission-download';
+const BLOB_FILE_PATH = '/download/artwork';
+
+function generateSignedUrl(commissionId: string, fileRef: string, path: string = SANITY_FILE_PATH): string {
   const expiry = Date.now() + DOWNLOAD_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
   const payload = `${commissionId}:${fileRef}:${expiry}`;
   const hmac = crypto.createHmac('sha256', DOWNLOAD_SECRET);
@@ -66,7 +74,7 @@ function generateSignedUrl(commissionId: string, fileRef: string): string {
     sig,
   });
 
-  return `${SITE_URL}/.netlify/functions/commission-download?${params.toString()}`;
+  return `${SITE_URL}${path}?${params.toString()}`;
 }
 
 // ── Carrier tracking URL builder (dispatch) ──
@@ -104,8 +112,20 @@ function buildDeliveryEmailHtml(
   customerName: string,
   serviceTitle: string,
   orderRef: string,
-  downloadUrl: string
+  downloads: Array<{ url: string; filename?: string }>
 ): string {
+  const button = (url: string, label: string) => `
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td align="center" style="padding:8px 0 28px;">
+                <a href="${url}" style="display:inline-block;padding:14px 36px;background:#7c3aed;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;letter-spacing:0.3px;">
+                  ${label}
+                </a>
+              </td></tr>
+            </table>
+`;
+  const buttons = downloads.length === 1
+    ? button(downloads[0].url, 'Download Your File')
+    : downloads.map((d, i) => button(d.url, `Download file ${i + 1} of ${downloads.length}${d.filename ? ` — ${d.filename}` : ''}`)).join('');
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -131,17 +151,9 @@ function buildDeliveryEmailHtml(
               Great news — your <strong>${serviceTitle}</strong> commission (ref: <strong>${orderRef}</strong>) has been completed.
             </p>
 
-            <!-- Download Button -->
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td align="center" style="padding:8px 0 28px;">
-                <a href="${downloadUrl}" style="display:inline-block;padding:14px 36px;background:#7c3aed;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;letter-spacing:0.3px;">
-                  Download Your File
-                </a>
-              </td></tr>
-            </table>
-
+            <!-- Download Button -->${buttons}
             <p style="margin:0 0 4px;color:#9ca3af;font-size:13px;">
-              ⏱ This link stays active for ${DOWNLOAD_EXPIRY_DAYS} days.
+              ⏱ ${downloads.length === 1 ? 'This link stays' : 'These links stay'} active for ${DOWNLOAD_EXPIRY_DAYS} days.
             </p>
             <p style="margin:0;color:#9ca3af;font-size:13px;">
               If you have any questions, reply to this email and we'll be happy to help.
@@ -258,7 +270,8 @@ async function handleComplete(commissionId: string): Promise<Response> {
       _id, orderRef, customerName, customerEmail,
       deliveryType, status, deliveredAt, awaitingVoucherCheck,
       "serviceTitle": service->title,
-      "fileRef": finishedFile.asset._ref
+      "fileRef": finishedFile.asset._ref,
+      "artwork": finishedArtwork[defined(uploadId)]{ uploadId, filename }
     }`,
     { id: commissionId }
   );
@@ -300,12 +313,17 @@ async function handleComplete(commissionId: string): Promise<Response> {
     return new Response('Print-only order — marked delivered', { status: 200 });
   }
 
-  if (!commission.fileRef) {
+  // Finished artwork: files uploaded to Blobs (finishedArtwork, one link each)
+  // or, for older commissions, the Sanity file (finishedFile).
+  const artwork: Array<{ uploadId: string; filename?: string }> = commission.artwork || [];
+  if (!artwork.length && !commission.fileRef) {
     console.error(`Commission ${commissionId}: no finished file uploaded`);
     return new Response('No finished file — cannot deliver', { status: 400 });
   }
 
-  const downloadUrl = generateSignedUrl(commissionId, commission.fileRef);
+  const downloads = artwork.length
+    ? artwork.map((a) => ({ url: generateSignedUrl(commissionId, fileRefFor(commission.orderRef, a.uploadId), BLOB_FILE_PATH), filename: a.filename }))
+    : [{ url: generateSignedUrl(commissionId, commission.fileRef) }];
 
   const { error: emailError } = await resend.emails.send({
     from: FROM_EMAIL,
@@ -315,7 +333,7 @@ async function handleComplete(commissionId: string): Promise<Response> {
       commission.customerName,
       commission.serviceTitle,
       commission.orderRef,
-      downloadUrl
+      downloads
     ),
   });
 
@@ -329,7 +347,7 @@ async function handleComplete(commissionId: string): Promise<Response> {
     .set({ status: 'delivered', deliveredAt: new Date().toISOString() })
     .commit();
 
-  console.log(`Commission ${commissionId} (${commission.orderRef}) download email sent`);
+  console.log(`Commission ${commissionId} (${commission.orderRef}) download email sent — ${downloads.length} link(s), ${artwork.length ? 'Blobs' : 'Sanity file'}`);
   return new Response('Delivered', { status: 200 });
 }
 
