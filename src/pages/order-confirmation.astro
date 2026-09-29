@@ -1,7 +1,24 @@
 ---
 export const prerender = false;
 
+import Stripe from 'stripe';
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+// The delivery charge this order actually paid, from its Stripe session
+// (success_url carries ?session_id=): "£4.95" or "Free". If the session
+// can't be read, the line is left out rather than guessed.
+let delivery: string | null = null;
+const sessionId = Astro.url.searchParams.get('session_id') || '';
+const stripeKey = process.env.STRIPE_SECRET_KEY;
+if (stripeKey && /^cs_(test|live)_[A-Za-z0-9]{10,200}$/.test(sessionId)) {
+  try {
+    const session = await new Stripe(stripeKey, { apiVersion: '2024-12-18.acacia' }).checkout.sessions.retrieve(sessionId);
+    const pence = session.shipping_cost?.amount_total ?? session.total_details?.amount_shipping;
+    if (typeof pence === 'number') delivery = pence === 0 ? 'Free' : `£${(pence / 100).toFixed(2)}`;
+  } catch (err: any) {
+    console.warn('order-confirmation: could not read the Stripe session:', err?.message);
+  }
+}
 ---
 
 <BaseLayout
@@ -59,7 +76,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <div class="mt-6 pt-4 border-t-2 border-gray-700">
             <p class="font-dm text-gray-400 text-xs">
               <strong class="text-off-white">Estimated delivery:</strong> 3-6 working days from dispatch.
-              Free UK P&P included.
+              {delivery && <>UK P&amp;P: {delivery}.</>}
             </p>
           </div>
         </div>
