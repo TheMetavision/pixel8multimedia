@@ -17,6 +17,7 @@ import {
   SIZES,
   CATEGORY_LABELS,
 } from '../../data/products';
+import { offersFor, SITE_URL } from '../../lib/shopping-feed.mjs';
 
 export async function getStaticPaths() {
   try {
@@ -116,23 +117,20 @@ const variantPayloads = variants
   })
   .sort((a, b) => a.letter.localeCompare(b.letter));
 
+// One Offer per purchasable variant (Option × format × size): the same sku,
+// link and price as the Google Shopping feed (src/lib/shopping-feed.mjs),
+// priced by the function checkout charges with.
+const offers = offersFor(variants.filter((v) => /^style-[a-j]$/.test(v.style || '')));
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Product',
   name: characterDisplayName,
   description: seoDesc,
-  url: `https://pixel8multimedia.netlify.app/store/${character}`,
+  url: `${SITE_URL}/store/${character}/`,
   ...(mainImageUrl && { image: mainImageUrl }),
   brand: { '@type': 'Brand', name: 'Pixel8 Multimedia' },
   category: `Wall Art > ${categoryLabel}`,
-  offers: {
-    '@type': 'AggregateOffer',
-    lowPrice: (productPrices.poster?.small || 9.99).toFixed(2),
-    highPrice: (productPrices.canvasGallery?.large || 47.99).toFixed(2),
-    priceCurrency: 'GBP',
-    availability: 'https://schema.org/InStock',
-    offerCount: variantPayloads.length,
-  },
+  offers,
 };
 ---
 
@@ -357,6 +355,22 @@ const jsonLd = {
     'a';
   let selectedFormat: 'poster' | 'canvasStandard' | 'canvasGallery' = 'poster';
   let selectedSize: 'small' | 'medium' | 'large' = 'small';
+
+  // Links (Google Shopping, shared URLs) name the variant:
+  //   ?option=<a–j>&format=<poster|canvasStandard|canvasGallery>&size=<small|medium|large>
+  // The page is static, so it's read here, in the browser. canvas-standard /
+  // canvas-gallery are accepted too. Anything unknown is ignored.
+  const FORMAT_ALIASES: Record<string, typeof selectedFormat> = {
+    poster: 'poster', canvasstandard: 'canvasStandard', 'canvas-standard': 'canvasStandard',
+    canvasgallery: 'canvasGallery', 'canvas-gallery': 'canvasGallery',
+  };
+  const params = new URLSearchParams(window.location.search);
+  const askedOption = (params.get('option') || '').toLowerCase();
+  if (variants.some((v) => v.letter === askedOption)) activeLetter = askedOption;
+  const askedFormat = FORMAT_ALIASES[(params.get('format') || '').toLowerCase()];
+  if (askedFormat) selectedFormat = askedFormat;
+  const askedSize = (params.get('size') || '').toLowerCase();
+  if (askedSize === 'small' || askedSize === 'medium' || askedSize === 'large') selectedSize = askedSize;
   let quantity = 1;
 
   function active(): Variant | undefined {
@@ -421,16 +435,31 @@ const jsonLd = {
       el.classList.toggle('text-mid-grey', !isActive);
     });
 
-    // URL sync (preserves the rest of the URL, only edits ?option=)
-    const url = new URL(window.location.href);
-    if (v.letter === 'a') {
-      url.searchParams.delete('option');
-    } else {
-      url.searchParams.set('option', v.letter);
-    }
-    history.replaceState(null, '', url.toString());
+    syncUrl();
 
     paintPrice();
+  }
+
+  // Keep the address bar naming what's selected, so a copied link opens the
+  // same variant (defaults are left out: option a, poster, small).
+  function syncUrl() {
+    const url = new URL(window.location.href);
+    const set = (k: string, v: string, dflt: string) => (v === dflt ? url.searchParams.delete(k) : url.searchParams.set(k, v));
+    set('option', activeLetter, 'a');
+    set('format', selectedFormat, 'poster');
+    set('size', selectedSize, 'small');
+    history.replaceState(null, '', url.toString());
+  }
+
+  function highlight(selector: string, attr: string, value: string) {
+    document.querySelectorAll<HTMLElement>(selector).forEach((b) => {
+      const on = b.dataset[attr] === value;
+      b.classList.toggle('border-pop-orange', on);
+      b.classList.toggle('bg-pop-orange/10', on);
+      b.classList.toggle('text-pop-orange', on);
+      b.classList.toggle('border-edge-line', !on);
+      b.classList.toggle('text-mid-grey', !on);
+    });
   }
 
   function paintPrice() {
@@ -474,29 +503,21 @@ const jsonLd = {
 
   document.querySelectorAll<HTMLElement>('.format-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.format-btn').forEach((b) => {
-        b.classList.remove('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
-        b.classList.add('border-edge-line', 'text-mid-grey');
-      });
-      btn.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
-      btn.classList.remove('border-edge-line', 'text-mid-grey');
       selectedFormat = (btn.dataset.format as any) || 'poster';
+      highlight('.format-btn', 'format', selectedFormat);
       updateCanvasNotice();
       paintPrice();
+      syncUrl();
     });
   });
 
   // Size buttons
   document.querySelectorAll<HTMLElement>('.size-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.size-btn').forEach((b) => {
-        b.classList.remove('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
-        b.classList.add('border-edge-line', 'text-mid-grey');
-      });
-      btn.classList.add('border-pop-orange', 'bg-pop-orange/10', 'text-pop-orange');
-      btn.classList.remove('border-edge-line', 'text-mid-grey');
       selectedSize = (btn.dataset.size as any) || 'small';
+      highlight('.size-btn', 'size', selectedSize);
       paintPrice();
+      syncUrl();
     });
   });
 
@@ -526,6 +547,9 @@ const jsonLd = {
     });
   });
 
-  // Initial paint to align UI with ?option=
+  // Initial paint to match the URL: variant, format and size.
+  highlight('.format-btn', 'format', selectedFormat);
+  highlight('.size-btn', 'size', selectedSize);
+  updateCanvasNotice();
   paintVariant();
 </script>
