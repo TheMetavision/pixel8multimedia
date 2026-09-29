@@ -10,6 +10,7 @@ import type { Context } from '@netlify/functions';
 import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
+import { DIGITAL_CONSENT_CONFIRMATION } from './_shared/digital-consent.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 const endpointSecret = process.env.STRIPE_COMMISSION_WEBHOOK_SECRET!;
@@ -55,8 +56,10 @@ function customerEmailHtml(args: {
   total: number;
   deliveryType: string;
   hasShipping: boolean;
+  /** Set for digital-only orders: what the customer agreed to at checkout. */
+  digitalConsent?: string;
 }): string {
-  const { customerName, serviceTitle, orderRef, total, deliveryType, hasShipping } = args;
+  const { customerName, serviceTitle, orderRef, total, deliveryType, hasShipping, digitalConsent } = args;
   const nextSteps =
     deliveryType === 'print'
       ? 'Our team will create your artwork and prepare your print for dispatch. We\u2019ll email you a tracking update once it\u2019s on its way.'
@@ -99,6 +102,11 @@ function customerEmailHtml(args: {
             ${
               hasShipping
                 ? `<p style="margin:0 0 24px;color:#6b7280;font-size:13px;line-height:1.6;">We\u2019ll ship to the address you provided at checkout. If anything looks wrong, reply to this email straight away.</p>`
+                : ''
+            }
+            ${
+              digitalConsent
+                ? `<p style="margin:0 0 24px;color:#6b7280;font-size:13px;line-height:1.6;"><strong style="color:#1a1a2e;">Your right to cancel:</strong> ${digitalConsent}</p>`
                 : ''
             }
             <p style="margin:0;color:#9ca3af;font-size:13px;">
@@ -248,7 +256,7 @@ export default async function handler(req: Request, _context: Context) {
     // migration keeps as legacyId — match either, then use the doc's real _id.
     const existing = await sanity.fetch(
       `*[_type == "commission" && (_id == $id || legacyId == $id)][0]{
-        _id, status, paidAt, orderRef, customerName, customerEmail, amount, deliveryType,
+        _id, status, paidAt, orderRef, customerName, customerEmail, amount, deliveryType, digitalSupplyConsent,
         "serviceTitle": service->title
       }`,
       { id: commissionId }
@@ -387,6 +395,9 @@ export default async function handler(req: Request, _context: Context) {
           total,
           deliveryType,
           hasShipping: !!shippingAddressText,
+          // Digital-only: confirm the consent and acknowledgement given at
+          // checkout on a durable medium (CCRs 2013 reg. 37).
+          digitalConsent: deliveryType === 'digital' ? DIGITAL_CONSENT_CONFIRMATION : undefined,
         }),
       });
       if (error) {

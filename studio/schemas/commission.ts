@@ -172,6 +172,22 @@ export default defineType({
         ],
       },
     }),
+    // Digital-only orders: the customer's consent to supply straight away and
+    // acknowledgement that it ends the right to cancel (CCRs 2013 reg. 37),
+    // recorded by commission-checkout from the form's required checkbox.
+    defineField({
+      name: 'digitalSupplyConsent',
+      title: 'Digital supply consent',
+      type: 'object',
+      group: 'brief',
+      readOnly: true,
+      hidden: ({ document }) => !document?.digitalSupplyConsent,
+      fields: [
+        { name: 'consentedAt', title: 'Agreed at', type: 'datetime' },
+        { name: 'version', title: 'Wording version', type: 'string' },
+        { name: 'wording', title: 'Wording agreed', type: 'text', rows: 2 },
+      ],
+    }),
     defineField({
       name: 'printSize',
       title: 'Print Size',

@@ -34,6 +34,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { SIZE_LABELS } from '../../netlify/functions/_shared/print-spec.mjs';
 import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
 import { FRIENDLY_HEIC } from '../../netlify/functions/_shared/strip-metadata.mjs';
+import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION } from '../../netlify/functions/_shared/digital-consent.mjs';
 
 // ─── Bot check ──────────────────────────────────────────────────────────────
 // One Cloudflare Turnstile check per visit. The first photo upload spends a
@@ -738,6 +739,7 @@ export default function CommissionWorkflow({ service }) {
   const [step, setStep] = useState(startStep);
   const [orderType, setOrderType] = useState(availablePaths[0] || 'digital');
   const [includePrintsWithAnimation, setIncludePrintsWithAnimation] = useState(false);
+  const [digitalConsent, setDigitalConsent] = useState(false);
   // For bundle path: which digital collection is the customer bundling with prints?
   // 'primary' = main collection, 'secondary' = secondary, 'both' = both collections.
   // Only meaningful when hasSecondaryCollection is true.
@@ -833,6 +835,10 @@ export default function CommissionWorkflow({ service }) {
     orderType === 'singlePrint' ||
     orderType === 'bundle' ||
     ((orderType === 'animation-music' || orderType === 'animation-vo') && includePrintsWithAnimation);
+  // No prints = digital-only (the server's deliveryType 'digital'): the
+  // customer must consent to supply straight away and acknowledge losing the
+  // right to cancel (see _shared/digital-consent.mjs).
+  const digitalOnly = !orderInvolvesPrints;
 
   // ─── Pricing helpers ──────────────────────────────────────────────────────
   function lookupBasePrintPrice(format, size) {
@@ -1119,6 +1125,10 @@ export default function CommissionWorkflow({ service }) {
   // ─── Submit ────────────────────────────────────────────────────────────────
   async function submit() {
     setError('');
+    if (digitalOnly && !digitalConsent) {
+      setError('Please tick the box to confirm you want us to start straight away.');
+      return;
+    }
     setSubmitting(true);
     try {
       // Photos are already in the private Blobs store (PhotoDropzone uploaded
@@ -1177,6 +1187,7 @@ export default function CommissionWorkflow({ service }) {
         prints: validPrints,
         uploadedAssets,
         ...(grouponClaim ? { grouponClaimToken: grouponClaim.token } : {}),
+        ...(digitalOnly ? { digitalSupplyConsent: digitalConsent === true, digitalConsentVersion: DIGITAL_CONSENT_VERSION } : {}),
       };
 
       const proof = await botProof();
@@ -1653,6 +1664,19 @@ export default function CommissionWorkflow({ service }) {
             <strong>{priceLabel(pricing.total)}</strong>
           </div>
         </section>
+      )}
+
+      {step === 3 && digitalOnly && (
+        <label className="cw__checkbox-row">
+          <input
+            type="checkbox"
+            className="cw__checkbox"
+            checked={digitalConsent}
+            onChange={(e) => setDigitalConsent(e.target.checked)}
+            required
+          />
+          <span className="cw__checkbox-label">{DIGITAL_CONSENT_LABEL}</span>
+        </label>
       )}
 
       <TurnstileBox />

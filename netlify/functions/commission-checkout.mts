@@ -33,6 +33,7 @@ import { getStore } from '@netlify/blobs';
 import { UPLOADS_STORE, photosForCommission } from './_shared/commission-uploads.mjs';
 import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
 import { verifyGrant } from './_shared/commission-grant.mjs';
+import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 
@@ -716,6 +717,18 @@ export default async function handler(req: Request, _context: Context) {
         { status: 422, headers: { 'Content-Type': 'application/json' } });
     }
 
+    // Digital-only orders are digital content: the right to cancel ends on
+    // supply only with the customer's express consent to start straight away
+    // and their acknowledgement that it does (CCRs 2013 reg. 37). The form's
+    // required checkbox sends it; refuse without it, and record exactly what
+    // was agreed (the confirmation email repeats it).
+    const digitalOnly = needsDigitalConsent(deliveryType);
+    if (digitalOnly && body.digitalSupplyConsent !== true) {
+      return new Response(
+        JSON.stringify({ error: 'Please tick the box to confirm you want us to start straight away — digital orders can’t be taken without it.', digitalConsent: true }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
     // Build commission doc. The dotted _id keeps it (name, email, phone,
     // address, brief) out of anonymous API reads; orderRef is already unique.
     const commissionDoc: any = {
@@ -741,6 +754,9 @@ export default async function handler(req: Request, _context: Context) {
       orderType: breakdown.orderType,
       deliveryType,
       bundleCollection: bundleCollection,
+      ...(digitalOnly
+        ? { digitalSupplyConsent: { consentedAt: new Date().toISOString(), version: DIGITAL_CONSENT_VERSION, wording: DIGITAL_CONSENT_LABEL } }
+        : {}),
       // shippingAddress is patched onto this doc by the Stripe webhook after
       // payment completes. Stripe collects it directly on the checkout page.
       ...(uploadedPhotos.length ? { uploadedPhotos } : {}),
