@@ -10,7 +10,7 @@ import type { Context } from '@netlify/functions';
 import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
-import { DIGITAL_CONSENT_CONFIRMATION } from './_shared/digital-consent.mjs';
+import { DIGITAL_CONSENT_CONFIRMATION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 const endpointSecret = process.env.STRIPE_COMMISSION_WEBHOOK_SECRET!;
@@ -56,7 +56,7 @@ function customerEmailHtml(args: {
   total: number;
   deliveryType: string;
   hasShipping: boolean;
-  /** Set for digital-only orders: what the customer agreed to at checkout. */
+  /** Set for orders that include digital files: what the customer agreed to at checkout. */
   digitalConsent?: string;
 }): string {
   const { customerName, serviceTitle, orderRef, total, deliveryType, hasShipping, digitalConsent } = args;
@@ -395,9 +395,10 @@ export default async function handler(req: Request, _context: Context) {
           total,
           deliveryType,
           hasShipping: !!shippingAddressText,
-          // Digital-only: confirm the consent and acknowledgement given at
-          // checkout on a durable medium (CCRs 2013 reg. 37).
-          digitalConsent: deliveryType === 'digital' ? DIGITAL_CONSENT_CONFIRMATION : undefined,
+          // Orders that include digital files (on their own or with prints):
+          // confirm the consent and acknowledgement given at checkout on a
+          // durable medium (CCRs 2013 reg. 37).
+          digitalConsent: needsDigitalConsent(deliveryType) ? DIGITAL_CONSENT_CONFIRMATION : undefined,
         }),
       });
       if (error) {

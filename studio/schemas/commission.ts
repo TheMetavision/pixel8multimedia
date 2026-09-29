@@ -172,7 +172,7 @@ export default defineType({
         ],
       },
     }),
-    // Digital-only orders: the customer's consent to supply straight away and
+    // Orders that include digital files: the customer's consent to supply straight away and
     // acknowledgement that it ends the right to cancel (CCRs 2013 reg. 37),
     // recorded by commission-checkout from the form's required checkbox.
     defineField({

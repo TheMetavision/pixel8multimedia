@@ -717,15 +717,16 @@ export default async function handler(req: Request, _context: Context) {
         { status: 422, headers: { 'Content-Type': 'application/json' } });
     }
 
-    // Digital-only orders are digital content: the right to cancel ends on
+    // Orders that include digital files (digital, or digital + prints): those
+    // files are digital content, and the right to cancel them ends on
     // supply only with the customer's express consent to start straight away
     // and their acknowledgement that it does (CCRs 2013 reg. 37). The form's
     // required checkbox sends it; refuse without it, and record exactly what
     // was agreed (the confirmation email repeats it).
-    const digitalOnly = needsDigitalConsent(deliveryType);
-    if (digitalOnly && body.digitalSupplyConsent !== true) {
+    const includesDigital = needsDigitalConsent(deliveryType);
+    if (includesDigital && body.digitalSupplyConsent !== true) {
       return new Response(
-        JSON.stringify({ error: 'Please tick the box to confirm you want us to start straight away — digital orders can’t be taken without it.', digitalConsent: true }),
+        JSON.stringify({ error: 'Please tick the box to confirm you want us to start straight away — orders that include digital files can’t be taken without it.', digitalConsent: true }),
         { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
@@ -754,7 +755,7 @@ export default async function handler(req: Request, _context: Context) {
       orderType: breakdown.orderType,
       deliveryType,
       bundleCollection: bundleCollection,
-      ...(digitalOnly
+      ...(includesDigital
         ? { digitalSupplyConsent: { consentedAt: new Date().toISOString(), version: DIGITAL_CONSENT_VERSION, wording: DIGITAL_CONSENT_LABEL } }
         : {}),
       // shippingAddress is patched onto this doc by the Stripe webhook after

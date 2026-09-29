@@ -835,10 +835,11 @@ export default function CommissionWorkflow({ service }) {
     orderType === 'singlePrint' ||
     orderType === 'bundle' ||
     ((orderType === 'animation-music' || orderType === 'animation-vo') && includePrintsWithAnimation);
-  // No prints = digital-only (the server's deliveryType 'digital'): the
-  // customer must consent to supply straight away and acknowledge losing the
-  // right to cancel (see _shared/digital-consent.mjs).
-  const digitalOnly = !orderInvolvesPrints;
+  // Every order type except a single print includes digital files (the
+  // server's deliveryType 'digital' or 'both'): the customer must consent to
+  // supply straight away and acknowledge losing the right to cancel
+  // (see _shared/digital-consent.mjs).
+  const includesDigital = orderType !== 'singlePrint';
 
   // ─── Pricing helpers ──────────────────────────────────────────────────────
   function lookupBasePrintPrice(format, size) {
@@ -1125,7 +1126,7 @@ export default function CommissionWorkflow({ service }) {
   // ─── Submit ────────────────────────────────────────────────────────────────
   async function submit() {
     setError('');
-    if (digitalOnly && !digitalConsent) {
+    if (includesDigital && !digitalConsent) {
       setError('Please tick the box to confirm you want us to start straight away.');
       return;
     }
@@ -1187,7 +1188,7 @@ export default function CommissionWorkflow({ service }) {
         prints: validPrints,
         uploadedAssets,
         ...(grouponClaim ? { grouponClaimToken: grouponClaim.token } : {}),
-        ...(digitalOnly ? { digitalSupplyConsent: digitalConsent === true, digitalConsentVersion: DIGITAL_CONSENT_VERSION } : {}),
+        ...(includesDigital ? { digitalSupplyConsent: digitalConsent === true, digitalConsentVersion: DIGITAL_CONSENT_VERSION } : {}),
       };
 
       const proof = await botProof();
@@ -1570,11 +1571,11 @@ export default function CommissionWorkflow({ service }) {
             <p className="cw__shipping-note__heading">📦 Shipping</p>
             <p className="cw__shipping-note__body">
               You'll enter your delivery address on the secure payment page in the
-              next step. We ship to UK addresses only.
+              next step. We ship to UK mainland addresses only.
               {pricing.total >= 50 ? (
                 <> <strong>FREE UK P&amp;P on this order.</strong></>
               ) : (
-                <> UK P&amp;P is £4.95 standard, <strong>FREE on orders over £50</strong> (add {priceLabel(50 - pricing.total)} more to qualify).</>
+                <> UK P&amp;P is £4.95 standard, <strong>FREE on orders of £50 and over</strong> (add {priceLabel(50 - pricing.total)} more to qualify).</>
               )}
             </p>
           </div>
@@ -1666,7 +1667,7 @@ export default function CommissionWorkflow({ service }) {
         </section>
       )}
 
-      {step === 3 && digitalOnly && (
+      {step === 3 && includesDigital && (
         <label className="cw__checkbox-row">
           <input
             type="checkbox"

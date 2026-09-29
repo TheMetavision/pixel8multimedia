@@ -1,13 +1,14 @@
 /**
- * Digital-only commissions: consent to immediate supply + acknowledgement
+ * Commissions that include digital files: consent to immediate supply + acknowledgement
  * that it ends the right to cancel (CCRs 2013 reg. 37).
  *
  *   node tools/builder/digital-consent-tests.mjs
  *
  * The REAL commission-checkout and stripe-webhook-commission handlers, with
- * Stripe, Sanity, Resend and Blobs replaced by fakes: a digital-only order is
- * refused without the consent, recorded with it, and the confirmation email
- * states it; orders with prints don't ask. Nothing touches the network.
+ * Stripe, Sanity, Resend and Blobs replaced by fakes: an order that includes
+ * digital files (alone or with prints) is refused without the consent,
+ * recorded with it, and the confirmation email states it; a print-only order
+ * doesn't ask. Nothing touches the network.
  */
 import { registerHooks } from 'node:module';
 import { readFileSync } from 'node:fs';
@@ -49,7 +50,7 @@ M.stripe = {
 M.sanity = {
   fetch: async (q) => {
     if (q.includes('_type == "service"')) {
-      return { _id: 'svc-cartoonify', title: 'Cartoonify Me', digitalPrice: 14.99, styleOptions: [{ key: 'a', label: 'A' }], artworkFee: 5, commissionEnabled: true, printUpcharges: {} };
+      return { _id: 'svc-cartoonify', title: 'Cartoonify Me', digitalPrice: 14.99, styleOptions: [{ key: 'a', label: 'A' }], artworkFee: 5, commissionEnabled: true, printUpcharges: { poster: { small: 20, medium: 25, large: 30 } } };
     }
     if (q.includes('_type == "commission"') && q.includes('legacyId')) return commission;
     return null;
@@ -82,7 +83,18 @@ say('\n1. CHECKOUT\n');
   ok(g.status === 200 && sessions.length === 1 && doc?.deliveryType === 'digital', 'with the consent → order created, Stripe session made');
   ok(doc?.digitalSupplyConsent?.wording === DIGITAL_CONSENT_LABEL && doc.digitalSupplyConsent.version === DIGITAL_CONSENT_VERSION && Date.parse(doc.digitalSupplyConsent.consentedAt) > 0,
     'the commission records what was agreed: wording, version, time');
-  ok(!needsDigitalConsent('print') && !needsDigitalConsent('both') && needsDigitalConsent('digital'), 'only digital-only orders need it (print and both do not)');
+  ok(!needsDigitalConsent('print') && needsDigitalConsent('both') && needsDigitalConsent('digital'), 'every order with digital files needs it (digital and both); print-only does not');
+  // Digital files + a print (bundle → deliveryType 'both'): same rule.
+  const print = [{ styleKey: 'a', format: 'poster', size: 'small' }];
+  const nb = created.length;
+  const b0 = await quiet(() => order({ orderType: 'bundle', prints: print }));
+  ok(b0.status === 400 && (await b0.json()).digitalConsent === true && created.length === nb, 'digital files + a print, without the consent → 400, nothing created');
+  const b1 = await quiet(() => order({ orderType: 'bundle', prints: print, digitalSupplyConsent: true }));
+  const bdoc = created.at(-1);
+  ok(b1.status === 200 && bdoc.deliveryType === 'both' && bdoc.digitalSupplyConsent?.wording === DIGITAL_CONSENT_LABEL, 'with it → created (deliveryType both), consent recorded');
+  const p0 = await quiet(() => order({ orderType: 'singlePrint', prints: print }));
+  const pdoc = created.at(-1);
+  ok(p0.status === 200 && pdoc.deliveryType === 'print' && !('digitalSupplyConsent' in pdoc), 'a print-only order needs no consent and records none');
   commission = { _id: doc._id, status: 'pending', orderRef: doc.orderRef, customerName: 'Test Customer', customerEmail: 'customer@example.com', amount: 14.99, deliveryType: 'digital', digitalSupplyConsent: doc.digitalSupplyConsent, serviceTitle: 'Cartoonify Me' };
 }
 
@@ -93,20 +105,26 @@ say('\n2. CONFIRMATION EMAIL\n');
   const mail = emails.find((e) => e.to === 'customer@example.com');
   ok(mail && mail.html.includes(DIGITAL_CONSENT_CONFIRMATION) && /Your right to cancel:/.test(mail.html), 'digital-only: the confirmation email states the consent and acknowledgement', mail?.subject);
   emails.length = 0;
-  commission = { ...commission, deliveryType: 'both', digitalSupplyConsent: undefined };
+  commission = { ...commission, deliveryType: 'both' };
   await quiet(() => webhook(new Request('https://x/.netlify/functions/stripe-webhook-commission', { method: 'POST', headers: { 'stripe-signature': 't=1,v1=x' }, body: evt(commission) }), {}));
   const both = emails.find((e) => e.to === 'customer@example.com');
-  ok(both && !both.html.includes('Your right to cancel:'), 'orders with prints: no such statement');
+  ok(both && both.html.includes(DIGITAL_CONSENT_CONFIRMATION), 'digital files + prints: the email states it too');
+  emails.length = 0;
+  commission = { ...commission, deliveryType: 'print', digitalSupplyConsent: undefined };
+  await quiet(() => webhook(new Request('https://x/.netlify/functions/stripe-webhook-commission', { method: 'POST', headers: { 'stripe-signature': 't=1,v1=x' }, body: evt(commission) }), {}));
+  const print = emails.find((e) => e.to === 'customer@example.com');
+  ok(print && !print.html.includes('Your right to cancel:'), 'print-only: no such statement');
 }
 
 say('\n3. THE FORM\n');
 {
   const src = readFileSync(new URL('../../src/components/CommissionWorkflow.jsx', import.meta.url), 'utf8');
-  ok(/const digitalOnly = !orderInvolvesPrints;/.test(src) && /\{DIGITAL_CONSENT_LABEL\}/.test(src) && /digitalSupplyConsent: digitalConsent === true/.test(src),
-    'the form shows the same wording as a required checkbox for digital-only orders and sends it');
-  ok(/if \(digitalOnly && !digitalConsent\)/.test(src), 'and won\'t submit a digital-only order until it is ticked');
+  ok(/const includesDigital = orderType !== 'singlePrint';/.test(src) && /\{DIGITAL_CONSENT_LABEL\}/.test(src) && /digitalSupplyConsent: digitalConsent === true/.test(src),
+    'the form shows the same wording as a required checkbox whenever the order includes digital files, and sends it');
+  ok(/if \(includesDigital && !digitalConsent\)/.test(src), 'and won\'t submit such an order until it is ticked');
   const terms = readFileSync(new URL('../../src/pages/terms-and-conditions.astro', import.meta.url), 'utf8');
-  ok(/Digital-only commissions/.test(terms) && /lose your right to cancel once they have been supplied/.test(terms), 'the terms describe it before payment');
+  ok(/Commissions that include digital files/.test(terms) && /on their own or with prints/.test(terms) && /lose your right to cancel once they have been supplied/.test(terms), 'the terms describe it before payment');
+  ok(!/faster delivery/.test(terms), 'the terms no longer mention faster delivery (checkout has no such option)');
 }
 
 say(`\n${pass} passed, ${fail} failed.`);
