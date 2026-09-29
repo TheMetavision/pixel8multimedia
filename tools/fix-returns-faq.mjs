@@ -10,8 +10,8 @@
  *     Photo, Your Style" / commissions excluded for change of mind, and
  *     faulty-item rights
  *   - FAQ "Do you offer free shipping?" and "Do you ship internationally?":
- *     free UK P&P on orders of £50 AND OVER (checkout's rule), prints to UK
- *     mainland addresses only
+ *     free UK P&P on orders of £50 AND OVER (checkout's rule), prints to UK addresses
+ *     only
  *   - siteSettings.announcementBar: "£50 and over" (no page shows it yet)
  *
  * Each field is replaced only if it is still exactly the known previous text
@@ -50,13 +50,13 @@ export const TARGETS = [
     id: 'pqsf8ly4J5ZHPrl9Dk3iht', // "Do you offer free shipping?"
     field: 'answer',
     old: "Yes — free UK P&P on orders over £50. Otherwise, UK standard P&P is a flat £4.95.\n\nWe currently ship to the UK only. International shipping is coming soon — drop us a line via the contact page if you'd like us to let you know when it's live.",
-    new: "Yes — free UK P&P on orders of £50 and over. Otherwise, UK standard P&P is a flat £4.95.\n\nWe currently ship prints to UK mainland addresses only. International shipping is coming soon — drop us a line via the contact page if you'd like us to let you know when it's live.",
+    new: "Yes — free UK P&P on orders of £50 and over. Otherwise, UK standard P&P is a flat £4.95.\n\nWe currently ship prints to UK addresses only. International shipping is coming soon — drop us a line via the contact page if you'd like us to let you know when it's live.",
   },
   {
     id: 'zOkJuNZVmyYz76wu4mZsA1', // "Do you ship internationally?"
     field: 'answer',
     old: "Not yet — we currently ship to the UK only.\n\nInternational shipping is coming soon. If you're outside the UK and want to be notified when we launch international delivery, drop us a line via the contact page and we'll let you know as soon as it's live.\n\nNote: digital products (digital downloads, digital collages, animated stories without prints) are deliverable anywhere in the world — only physical prints are UK-only at the moment.",
-    new: "Not yet — we currently ship prints to UK mainland addresses only.\n\nInternational shipping is coming soon. If you're outside the UK and want to be notified when we launch international delivery, drop us a line via the contact page and we'll let you know as soon as it's live.\n\nNote: digital products (digital downloads, digital collages, animated stories without prints) are deliverable anywhere in the world — only physical prints are limited to the UK mainland at the moment.",
+    new: "Not yet — we currently ship prints to UK addresses only.\n\nInternational shipping is coming soon. If you're outside the UK and want to be notified when we launch international delivery, drop us a line via the contact page and we'll let you know as soon as it's live.\n\nNote: digital products (digital downloads, digital collages, animated stories without prints) are deliverable anywhere in the world — only physical prints are limited to the UK at the moment.",
   },
   {
     id: 'siteSettings',
