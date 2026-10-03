@@ -15,7 +15,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <span class="text-off-white">Privacy Policy</span>
       </nav>
       <h1 class="font-montserrat font-bold text-5xl text-off-white tracking-wide mb-4" style="text-shadow: 3px 3px 0 rgba(0,0,0,0.4);">PRIVACY POLICY</h1>
-      <p class="font-dm text-gray-400 text-sm">Last updated: September 2026</p>
+      <p class="font-dm text-gray-400 text-sm">Last updated: October 2026</p>
     </div>
   </section>
 
@@ -29,7 +29,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       <div>
         <h2 class="font-montserrat font-semibold text-off-white text-lg uppercase tracking-wide mb-3">What Data We Collect</h2>
         <p class="mb-3">When you place an order or contact us, we may collect the following information:</p>
-        <p>Your name, email address, shipping address, phone number (if provided), payment information (processed securely by Stripe — we do not store card details), photographs you upload for personalised orders, and any messages or instructions you provide. We also collect basic analytics data through cookies to understand how visitors use our site.</p>
+        <p>Your name, email address, shipping address, phone number (if provided), payment information (processed securely by Stripe — we do not store card details), photographs you upload for personalised orders, and any messages or instructions you provide.</p>
       </div>
 
       <div>
@@ -76,7 +76,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
       <div>
         <h2 class="font-montserrat font-semibold text-off-white text-lg uppercase tracking-wide mb-3">Cookies</h2>
-        <p>Our website uses cookies to maintain your shopping cart, remember your preferences, and analyse site traffic. You can control cookie settings through your browser preferences.</p>
+        <p class="mb-3">We do not use analytics or advertising cookies, and nothing on this site tracks you for marketing. We only store what the site needs to work:</p>
+        <ul class="list-disc pl-5 space-y-2">
+          <li><strong class="text-off-white">Your shopping cart</strong> — kept in your browser's local storage (<code>pixel8-cart-v1</code>) so it survives moving between pages. It never leaves your device until you check out.</li>
+          <li><strong class="text-off-white">Groupon voucher claim</strong> — if you redeem a Groupon voucher, a cookie (<code>p8_groupon_claim</code>) holds the claim until checkout so the credit is applied, and is deleted once your order is complete.</li>
+          <li><strong class="text-off-white">Spam protection</strong> — our contact, newsletter and upload forms use Cloudflare Turnstile to check you are not a bot. Cloudflare may set a strictly necessary cookie when the check runs.</li>
+          <li><strong class="text-off-white">Payments</strong> — checkout happens on Stripe's own pages, which set their own cookies for fraud prevention under <a href="https://stripe.com/privacy" class="text-pixel-cyan hover:text-pop-orange transition-colors">Stripe's privacy policy</a>.</li>
+        </ul>
+        <p class="mt-3">These are all strictly necessary, so they don't need your consent. Videos on our service pages load from YouTube only when you press play; YouTube may set cookies once a video is playing.</p>
       </div>
 
       <div>

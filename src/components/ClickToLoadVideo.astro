@@ -1,0 +1,134 @@
+---
+// src/components/ClickToLoadVideo.astro
+//
+// Click-to-load YouTube video. Until the visitor presses play this shows a
+// self-hosted thumbnail (public/video-thumbs/<id>.jpg, from
+// tools/fetch-video-thumbs.mjs) and makes NO request to YouTube or ytimg.com.
+// On click it swaps in a youtube-nocookie.com player with autoplay, so one
+// click plays. If a thumbnail is missing it falls back to a plain poster with
+// the title, never to YouTube's image server. No dependencies.
+interface Props {
+  videoId: string;
+  title: string;
+  /** Override the self-hosted thumbnail path. */
+  thumbnail?: string;
+}
+const { videoId, title, thumbnail } = Astro.props;
+---
+
+<div class="ctl-video">
+  <div class="ctl-video__frame" data-ctl-video={videoId} data-ctl-title={title}>
+    <button type="button" class="ctl-video__btn" aria-label={`Play video: ${title} (loads from YouTube)`}>
+      <img
+        src={thumbnail || `/video-thumbs/${videoId}.jpg`}
+        alt=""
+        class="ctl-video__thumb"
+        loading="lazy"
+        decoding="async"
+        onerror="this.remove()"
+      />
+      <span class="ctl-video__fallback">{title}</span>
+      <span class="ctl-video__overlay" aria-hidden="true">
+        <span class="ctl-video__play">
+          <svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
+        </span>
+      </span>
+    </button>
+  </div>
+  <p class="ctl-video__note">Plays from YouTube, which may set cookies.</p>
+</div>
+
+<script>
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as Element | null)?.closest?.('.ctl-video__btn');
+    if (!btn) return;
+    const frame = btn.parentElement as HTMLElement;
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(frame.dataset.ctlVideo || '')}?autoplay=1&rel=0`;
+    iframe.title = frame.dataset.ctlTitle || 'Video';
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+    iframe.allowFullscreen = true;
+    btn.replaceWith(iframe);
+    // Keep keyboard focus on the video after the button is replaced.
+    iframe.focus();
+  });
+</script>
+
+<style>
+  .ctl-video__frame {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #000;
+    border: 1px solid var(--border, #27272a);
+  }
+  .ctl-video__frame :global(iframe),
+  .ctl-video__btn {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  .ctl-video__btn {
+    display: block;
+    padding: 0;
+    background: #111;
+    cursor: pointer;
+  }
+  .ctl-video__btn:focus-visible {
+    outline: 3px solid #F07828;
+    outline-offset: 3px;
+  }
+  .ctl-video__thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+  }
+  .ctl-video__fallback {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 1rem;
+    text-align: left;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+  .ctl-video__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    transition: background 0.2s;
+  }
+  .ctl-video__btn:hover .ctl-video__overlay { background: rgba(0, 0, 0, 0.4); }
+  .ctl-video__play {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 4px;
+    transition: transform 0.2s;
+  }
+  .ctl-video__btn:hover .ctl-video__play { transform: scale(1.1); }
+  .ctl-video__note {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-muted, #a1a1aa);
+    text-align: center;
+  }
+</style>

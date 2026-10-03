@@ -9,6 +9,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import CommissionWorkflow from '../../components/CommissionWorkflow.jsx';
 import PricingStrip from '../../components/PricingStrip.astro';
 import PrintPricingTable from '../../components/PrintPricingTable.astro';
+import ClickToLoadVideo from '../../components/ClickToLoadVideo.astro';
 import '../../styles/commission-workflow.css';
 
 const { slug } = Astro.params;
@@ -622,15 +623,10 @@ const serviceForWizard = {
                 <div class="example-block__videos">
                   {example.videos.map((vid) => (
                     <div class="example-block__video-wrap">
-                      <div class="example-block__video-container">
-                        <iframe
-                          src={`https://www.youtube.com/embed/${vid.youtubeId}`}
-                          title={vid.title || `${example.label} video`}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowfullscreen
-                          loading="lazy"
-                        ></iframe>
-                      </div>
+                      <ClickToLoadVideo
+                        videoId={vid.youtubeId}
+                        title={vid.title || `${example.label || service.title} video`}
+                      />
                       {vid.tag && (
                         <p class="example-block__video-tag">{vid.tag}</p>
                       )}
@@ -1072,25 +1068,6 @@ const serviceForWizard = {
 
   .example-block__video-wrap {
     text-align: center;
-  }
-
-  .example-block__video-container {
-    position: relative;
-    padding-bottom: 56.25%;
-    height: 0;
-    overflow: hidden;
-    border-radius: 12px;
-    background: #000;
-    border: 1px solid var(--border, #27272a);
-  }
-
-  .example-block__video-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
   }
 
   .example-block__video-tag {
