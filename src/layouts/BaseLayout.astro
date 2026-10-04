@@ -2,6 +2,8 @@
 import Navbar from '../components/Navbar.astro';
 import CartPanel from '../components/CartPanel.astro';
 import Footer from '../components/Footer.astro';
+import { organizationSchema, websiteSchema } from '../lib/schema';
+import { SITE, canonicalUrl } from '../lib/url';
 import '../styles/global.css';
 interface Props {
   title?: string;
@@ -9,21 +11,42 @@ interface Props {
   ogImage?: string;
   ogType?: string;
   jsonLd?: Record<string, any> | Record<string, any>[];
+  /** Transactional pages (order confirmation, checkout success): kept out of search. */
+  noindex?: boolean;
 }
 const {
   title = 'Pixel8 Multimedia — Premium Pop Culture Wall Art',
-  description = 'Premium pop culture wall art prints and bespoke photo transformations. UK-based studio; prints delivered to UK addresses. Shop iconic pop art, photo restoration, and custom commissions.',
+  description,
   ogImage = '/og-image.jpg',
   ogType = 'website',
   jsonLd,
+  noindex = false,
 } = Astro.props;
-const fullTitle = title.includes('Pixel8') ? title : `${title} | Pixel8 Multimedia`;
-// Build canonical/og URLs against the production domain (Astro.site in astro.config.mjs).
-// Falls back to Astro.url.origin if site isn't set, but it IS set for this project.
-const siteOrigin = (Astro.site?.toString() || Astro.url.origin).replace(/\/$/, '');
-const canonicalURL = `${siteOrigin}${Astro.url.pathname}`;
+// Titles stay within 60 characters: the brand suffix shrinks (" | Pixel8
+// Multimedia" → " | Pixel8" → none) rather than the page's own words.
+const DEFAULT_DESCRIPTION = 'Pop culture wall art and bespoke photo transformations: poster and canvas prints, photo restoration and custom commissions. Delivered to UK addresses.';
+const TITLE_MAX = 60;
+const DESC_MAX = 155;
+function fitTitle(t: string): string {
+  if (t.includes('Pixel8') && t.length <= TITLE_MAX) return t;
+  const bare = t.replace(/\s*[|—–-]\s*Pixel8(?: Multimedia)?\s*$/, '');
+  if (bare.includes('Pixel8')) return bare;
+  return [' | Pixel8 Multimedia', ' | Pixel8', ''].map((sfx) => bare + sfx).find((x) => x.length <= TITLE_MAX) ?? bare;
+}
+// Safety net only: descriptions should be written to fit. Never cut mid-word.
+function fitDescription(d: string): string {
+  const clean = d.replace(/\s+/g, ' ').trim();
+  if (clean.length <= DESC_MAX) return clean;
+  const cut = clean.slice(0, DESC_MAX - 1);
+  return cut.slice(0, cut.lastIndexOf(' ')).replace(/[\s,;:—–-]+$/, '') + '…';
+}
+const fullTitle = fitTitle(title);
+const metaDescription = fitDescription(description || DEFAULT_DESCRIPTION);
+const canonicalURL = canonicalUrl(Astro.url.pathname);
 // Resolve og:image to an absolute URL — Facebook/Twitter ignore relative paths.
-const ogImageAbsolute = ogImage.startsWith('http') ? ogImage : `${siteOrigin}${ogImage.startsWith('/') ? ogImage : '/' + ogImage}`;
+const ogImageAbsolute = ogImage.startsWith('http') ? ogImage : `${SITE}${ogImage.startsWith('/') ? ogImage : '/' + ogImage}`;
+// Every page names the trader; pages add their own schema via jsonLd.
+const schemas = [organizationSchema(), websiteSchema(), ...(jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [])];
 ---
 <!doctype html>
 <html lang="en-GB">
@@ -32,10 +55,10 @@ const ogImageAbsolute = ogImage.startsWith('http') ? ogImage : `${siteOrigin}${o
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="generator" content={Astro.generator} />
     <title>{fullTitle}</title>
-    <meta name="description" content={description} />
+    <meta name="description" content={metaDescription} />
     <link rel="canonical" href={canonicalURL} />
     <meta property="og:title" content={fullTitle} />
-    <meta property="og:description" content={description} />
+    <meta property="og:description" content={metaDescription} />
     <meta property="og:image" content={ogImageAbsolute} />
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonicalURL} />
@@ -43,18 +66,15 @@ const ogImageAbsolute = ogImage.startsWith('http') ? ogImage : `${siteOrigin}${o
     <meta property="og:locale" content="en_GB" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:description" content={metaDescription} />
     <meta name="twitter:image" content={ogImageAbsolute} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="theme-color" content="#0D0D0D" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow'} />
     <meta name="author" content="Pixel8 Multimedia" />
     <meta name="geo.region" content="GB" />
-    {jsonLd && (
-      Array.isArray(jsonLd)
-        ? jsonLd.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} />)
-        : <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
-    )}
+    <slot name="head" />
+    {schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} />)}
   </head>
   <body>
     <Navbar />

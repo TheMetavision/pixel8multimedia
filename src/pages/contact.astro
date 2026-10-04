@@ -1,4 +1,5 @@
 ---
+import { localImg } from '../lib/sanityImage';
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
 
@@ -33,7 +34,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       <div class="lg:col-span-2">
         <div class="flex justify-center mb-8">
           <img
-            src="/Pixel8_Logo.png"
+            src={localImg('/Pixel8_Logo.png', 280)}
+            width="140"
+            height="140"
             alt="Pixel8 Multimedia"
             class="block"
             style="max-width: 140px; width: 100%; height: auto;"

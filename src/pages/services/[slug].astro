@@ -5,6 +5,7 @@
 export const prerender = false;
 
 import { sanityClient } from '../../lib/sanity';
+import { sanityImg, sanitySrcset, sanityDims } from '../../lib/sanityImage';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import CommissionWorkflow from '../../components/CommissionWorkflow.jsx';
 import PricingStrip from '../../components/PricingStrip.astro';
@@ -268,6 +269,14 @@ const serviceForWizard = {
   printUpcharges: service.printUpcharges,
   briefingFields: service.briefingFields,
 };
+
+// Display images: sized src, srcset up to 2x the rendered width, and the
+// intrinsic ratio as width/height so the layout doesn't shift.
+const pic = (url: string | undefined | null, w: number) => ({
+  src: sanityImg(url, w),
+  srcset: sanitySrcset(url, w),
+  ...sanityDims(url, w),
+});
 ---
 
 <BaseLayout title={seoTitle} description={seoDesc}>
@@ -277,10 +286,12 @@ const serviceForWizard = {
       {service.heroImage && (
         <div class="service-page__hero-frame">
           <img
-            src={service.heroImage}
+            {...pic(service.heroImage, 1012)}
+            sizes="(min-width: 1060px) 1012px, 100vw"
             alt={service.title}
             class="service-page__hero-image"
             loading="eager"
+            fetchpriority="high"
           />
         </div>
       )}
@@ -336,7 +347,8 @@ const serviceForWizard = {
                         {categorised.sourcePhotos.map((img) => (
                           <figure class="example-block__source-figure">
                             <img
-                              src={img.url}
+                              {...pic(img.url, 330)}
+                              sizes="(min-width: 1060px) 330px, 33vw"
                               alt={`${example.label || service.title} — source photo`}
                               loading="lazy"
                               class="example-block__source-image"
@@ -362,7 +374,8 @@ const serviceForWizard = {
                       {categorised.portraitUrl && (
                         <figure class="example-block__figure example-block__figure--portrait">
                           <img
-                            src={categorised.portraitUrl}
+                            {...pic(categorised.portraitUrl, 340)}
+                            sizes="(min-width: 1060px) 340px, 33vw"
                             alt={`${example.label || service.title} — Digital Still (Portrait)`}
                             loading="lazy"
                             class="example-block__image"
@@ -373,7 +386,8 @@ const serviceForWizard = {
                       {categorised.landscapeUrl && (
                         <figure class="example-block__figure example-block__figure--landscape">
                           <img
-                            src={categorised.landscapeUrl}
+                            {...pic(categorised.landscapeUrl, 680)}
+                            sizes="(min-width: 1060px) 680px, 66vw"
                             alt={`${example.label || service.title} — Digital Still (Landscape)`}
                             loading="lazy"
                             class="example-block__image"
@@ -386,7 +400,8 @@ const serviceForWizard = {
                     <div class="example-block__original">
                       <figure class="example-block__figure">
                         <img
-                          src={categorised.collage.url}
+                          {...pic(categorised.collage.url, 340)}
+                          sizes="340px"
                           alt={`${example.label || service.title} — Digital Still`}
                           loading="lazy"
                           class="example-block__image"
@@ -408,7 +423,8 @@ const serviceForWizard = {
                     {categorised.photo && (
                       <figure class="example-block__figure">
                         <img
-                          src={categorised.photo.url}
+                          {...pic(categorised.photo.url, 500)}
+                          sizes="(min-width: 1060px) 500px, 50vw"
                           alt={`${example.label || service.title} — the child`}
                           loading="lazy"
                           class="example-block__image"
@@ -421,7 +437,8 @@ const serviceForWizard = {
                     {categorised.drawing && (
                       <figure class="example-block__figure">
                         <img
-                          src={categorised.drawing.url}
+                          {...pic(categorised.drawing.url, 500)}
+                          sizes="(min-width: 1060px) 500px, 50vw"
                           alt={`${example.label || service.title} — the child's drawing`}
                           loading="lazy"
                           class="example-block__image"
@@ -444,7 +461,8 @@ const serviceForWizard = {
                       <div class="example-block__images example-block__crayon-result">
                         <figure class="example-block__figure">
                           <img
-                            src={categorised.result.url}
+                            {...pic(categorised.result.url, 1012)}
+                            sizes="(min-width: 1060px) 506px, 100vw"
                             alt={`${example.label || service.title} — finished creation`}
                             loading="lazy"
                             class="example-block__image"
@@ -462,7 +480,8 @@ const serviceForWizard = {
                       {categorised.extras.map((img) => (
                         <figure class="example-block__figure">
                           <img
-                            src={img.url}
+                            {...pic(img.url, 1012)}
+                            sizes="(min-width: 1060px) 506px, 100vw"
                             alt={`${example.label || service.title} — ${img.tag || ''}`}
                             loading="lazy"
                             class="example-block__image"
@@ -484,7 +503,8 @@ const serviceForWizard = {
                     <div class="example-block__original">
                       <figure class="example-block__figure">
                         <img
-                          src={categorised.original.url}
+                          {...pic(categorised.original.url, 340)}
+                          sizes="340px"
                           alt={`${example.label || service.title} — ${categorised.original.tag || ''}`}
                           loading="lazy"
                           class="example-block__image"
@@ -506,7 +526,8 @@ const serviceForWizard = {
                       {categorised.primary.map((img) => (
                         <figure class="example-block__figure">
                           <img
-                            src={img.url}
+                            {...pic(img.url, 1012)}
+                            sizes="(min-width: 1060px) 506px, 100vw"
                             alt={`${example.label || service.title} — ${img.tag || ''}`}
                             loading="lazy"
                             class="example-block__image"
@@ -529,7 +550,8 @@ const serviceForWizard = {
                       {categorised.secondary.map((img) => (
                         <figure class="example-block__figure">
                           <img
-                            src={img.url}
+                            {...pic(img.url, 1012)}
+                            sizes="(min-width: 1060px) 506px, 100vw"
                             alt={`${example.label || service.title} — ${img.tag || ''}`}
                             loading="lazy"
                             class="example-block__image"
@@ -550,7 +572,8 @@ const serviceForWizard = {
                       {categorised.other.map((img) => (
                         <figure class="example-block__figure">
                           <img
-                            src={img.url}
+                            {...pic(img.url, 1012)}
+                            sizes="(min-width: 1060px) 506px, 100vw"
                             alt={`${example.label || service.title} — ${img.tag || ''}`}
                             loading="lazy"
                             class="example-block__image"
@@ -571,7 +594,8 @@ const serviceForWizard = {
                   {categorised.images.map((img) => (
                     <figure class="example-block__source-figure">
                       <img
-                        src={img.url}
+                        {...pic(img.url, 330)}
+                        sizes="(min-width: 1060px) 330px, 33vw"
                         alt={`${example.label || service.title} — ${img.tag || ''}`}
                         loading="lazy"
                         class="example-block__source-image"
@@ -589,7 +613,8 @@ const serviceForWizard = {
                 <div class="example-block__original">
                   <figure class="example-block__figure">
                     <img
-                      src={categorised.original.url}
+                      {...pic(categorised.original.url, 340)}
+                      sizes="340px"
                       alt={`${example.label || service.title} — ${categorised.original.tag || ''}`}
                       loading="lazy"
                       class="example-block__image"
@@ -606,7 +631,8 @@ const serviceForWizard = {
                   {categorised.rest.map((img) => (
                     <figure class="example-block__figure">
                       <img
-                        src={img.url}
+                        {...pic(img.url, 1012)}
+                        sizes="(min-width: 1060px) 506px, 100vw"
                         alt={`${example.label || service.title} — ${img.tag || ''}`}
                         loading="lazy"
                         class="example-block__image"
@@ -641,7 +667,8 @@ const serviceForWizard = {
                     <div class="example-block__audio-item">
                       {track.coverUrl && (
                         <img
-                          src={track.coverUrl}
+                          {...pic(track.coverUrl, 48)}
+                          sizes="48px"
                           alt={track.title}
                           class="example-block__audio-cover"
                           loading="lazy"
@@ -716,7 +743,7 @@ const serviceForWizard = {
           })}
         </div>
         <p class="service-faqs__more">
-          <a href={`/faqs#service-${service.slug.current}`}>See all FAQs →</a>
+          <a href={`/faqs/#service-${service.slug.current}`}>See all FAQs →</a>
         </p>
       </section>
     )}
@@ -729,7 +756,7 @@ const serviceForWizard = {
           and start ordering at full price. This is the last point at which we
           can catch them. Hidden once a voucher is already applied.
         -->
-        <a href="/groupon" class="groupon-prompt" data-groupon-prompt>
+        <a href="/groupon/" class="groupon-prompt" data-groupon-prompt>
           <span class="groupon-prompt__tag">Groupon</span>
           <span>
             <strong>Bought this as a Groupon deal?</strong>
@@ -745,7 +772,7 @@ const serviceForWizard = {
           <h2>Commissions paused</h2>
           <p>
             We're not currently accepting new <strong>{service.title}</strong> commissions.
-            Please <a href="/contact">get in touch</a> if you'd like to be notified when bookings reopen.
+            Please <a href="/contact/">get in touch</a> if you'd like to be notified when bookings reopen.
           </p>
         </div>
       </section>

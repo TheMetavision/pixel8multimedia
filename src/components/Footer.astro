@@ -1,4 +1,5 @@
 ---
+import { localImg } from '../lib/sanityImage';
 const currentYear = new Date().getFullYear();
 ---
 
@@ -8,7 +9,7 @@ const currentYear = new Date().getFullYear();
     <!-- Centred Logo -->
     <div class="flex flex-col items-center mb-12">
       <a href="/">
-        <img src="/Pixel8_Logo.png" alt="Pixel8 Multimedia — Pop. Art. Motion." class="h-[7.5rem] w-auto" />
+        <img src={localImg('/Pixel8_Logo.png', 120)} srcset={`${localImg('/Pixel8_Logo.png', 120)} 1x, ${localImg('/Pixel8_Logo.png', 240)} 2x`} width="120" height="120" alt="Pixel8 Multimedia — Pop. Art. Motion." class="h-[7.5rem] w-auto" />
       </a>
       <p class="font-dm text-sm text-mid-grey leading-relaxed mt-4 text-center max-w-md">
         Premium pop culture wall art and bespoke photo transformations. UK-based; prints delivered to UK addresses.
@@ -36,12 +37,12 @@ const currentYear = new Date().getFullYear();
         <h4 class="font-montserrat font-bold text-sm text-off-white uppercase tracking-wider mb-4">Navigation</h4>
         <ul class="space-y-2">
           <li><a href="/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Home</a></li>
-          <li><a href="/about" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">About Us</a></li>
-          <li><a href="/store" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Shop Collections</a></li>
-          <li><a href="/blog" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Blog</a></li>
-          <li><a href="/faqs" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">FAQs</a></li>
-          <li><a href="/groupon" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Redeem a Groupon voucher</a></li>
-          <li><a href="/contact" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Contact Us</a></li>
+          <li><a href="/about/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">About Us</a></li>
+          <li><a href="/store/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Shop Collections</a></li>
+          <li><a href="/blog/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Blog</a></li>
+          <li><a href="/faqs/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">FAQs</a></li>
+          <li><a href="/groupon/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Redeem a Groupon voucher</a></li>
+          <li><a href="/contact/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Contact Us</a></li>
         </ul>
       </div>
 
@@ -49,11 +50,11 @@ const currentYear = new Date().getFullYear();
       <div>
         <h4 class="font-montserrat font-bold text-sm text-off-white uppercase tracking-wider mb-4">Services</h4>
         <ul class="space-y-2">
-          <li><a href="/services/cartoonify-me" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Cartoonify Me!</a></li>
-          <li><a href="/services/stills-to-reels" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Stills to Reels</a></li>
-          <li><a href="/services/the-missing-moment" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">The Missing Moment</a></li>
-          <li><a href="/services/past-perfect" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Past Perfect</a></li>
-          <li><a href="/services" class="font-dm text-sm text-pop-orange hover:underline transition-colors">View All Services →</a></li>
+          <li><a href="/services/cartoonify-me/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Cartoonify Me!</a></li>
+          <li><a href="/services/stills-to-reels/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Stills to Reels</a></li>
+          <li><a href="/services/the-missing-moment/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">The Missing Moment</a></li>
+          <li><a href="/services/past-perfect/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Past Perfect</a></li>
+          <li><a href="/services/" class="font-dm text-sm text-pop-orange hover:underline transition-colors">View All Services →</a></li>
         </ul>
       </div>
 
@@ -61,10 +62,10 @@ const currentYear = new Date().getFullYear();
       <div>
         <h4 class="font-montserrat font-bold text-sm text-off-white uppercase tracking-wider mb-4">Legal</h4>
         <ul class="space-y-2">
-          <li><a href="/shipping-policy" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Shipping Info</a></li>
-          <li><a href="/refund-policy" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Returns Policy</a></li>
-          <li><a href="/terms-and-conditions" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Terms & Conditions</a></li>
-          <li><a href="/privacy-policy" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Privacy Policy</a></li>
+          <li><a href="/shipping-policy/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Shipping Info</a></li>
+          <li><a href="/refund-policy/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Returns Policy</a></li>
+          <li><a href="/terms-and-conditions/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Terms & Conditions</a></li>
+          <li><a href="/privacy-policy/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Privacy Policy</a></li>
         </ul>
       </div>
 
@@ -95,7 +96,13 @@ const currentYear = new Date().getFullYear();
     <!-- Bottom Bar -->
     <div class="border-t border-edge-line mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="text-center md:text-left">
-        <p class="font-dm text-xs text-deep-grey">&copy; {currentYear} Pixel8 Multimedia. All rights reserved.</p>
+        <p class="font-dm text-xs text-deep-grey leading-relaxed max-w-3xl">
+          &copy; {currentYear} Pixel8 Multimedia is a trading name of The Metavision Multimedia Limited.
+          Registered in England &amp; Wales, company no. 16282479.
+          Registered office: 167-169 Great Portland Street, 5th Floor, London, W1W 5PF.
+          VAT no. GB 503 7530 17.
+          <a href="mailto:hello@pixel8multimedia.co.uk" class="hover:text-pop-orange transition-colors">hello@pixel8multimedia.co.uk</a>
+        </p>
       </div>
       <div class="flex items-center gap-4">
         <span class="font-mono text-[0.65rem] text-deep-grey border border-edge-line px-3 py-1 rounded uppercase tracking-wider">UK Made</span>

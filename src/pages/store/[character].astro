@@ -20,21 +20,20 @@ import {
 import { offersFor, SITE_URL } from '../../lib/shopping-feed.mjs';
 
 export async function getStaticPaths() {
-  try {
-    const variantSlugs: string[] = await sanityClient.fetch(allCharacterSlugsQuery);
-    if (!variantSlugs || variantSlugs.length === 0) return [];
-
-    // Collapse "<character>-style-<a..j>" → unique character slugs.
-    const characters = new Set<string>();
-    for (const slug of variantSlugs) {
-      const characterSlug = slug.replace(/-style-[a-j]$/, '');
-      if (characterSlug && characterSlug !== slug) characters.add(characterSlug);
-    }
-    return Array.from(characters).map((character) => ({ params: { character } }));
-  } catch (e) {
-    console.warn('Sanity fetch failed in getStaticPaths for store/[character]');
-    return [];
+  // Fail the build, rather than ship a shop with no product pages, if Sanity
+  // is unreachable or returns nothing. Netlify keeps the previous deploy live.
+  const variantSlugs: string[] = await sanityClient.fetch(allCharacterSlugsQuery);
+  if (!variantSlugs || variantSlugs.length === 0) {
+    throw new Error('[store/[character]] Sanity returned no product slugs');
   }
+
+  // Collapse "<character>-style-<a..j>" → unique character slugs.
+  const characters = new Set<string>();
+  for (const slug of variantSlugs) {
+    const characterSlug = slug.replace(/-style-[a-j]$/, '');
+    if (characterSlug && characterSlug !== slug) characters.add(characterSlug);
+  }
+  return Array.from(characters).map((character) => ({ params: { character } }));
 }
 
 const { character } = Astro.params;
@@ -69,16 +68,33 @@ const characterDisplayName =
   (activeVariant.title || '').split(' — ')[0] || activeVariant.title || character;
 
 // SEO uses the character-level URL as canonical so Google sees one page per character.
-const seoTitle =
-  activeVariant.seo?.metaTitle ||
-  `${characterDisplayName} Wall Art — 10 Original Designs | Pixel8 Multimedia`;
+// The page covers every Option, so the title names the character, not the
+// Option A variant's own metaTitle. BaseLayout fits the brand suffix to 60.
+const designCount = variants.filter((v) => /^style-[a-j]$/.test(v.style || '')).length;
+const seoTitle = [
+  `${characterDisplayName} Wall Art — ${designCount} Designs | Pixel8 Multimedia`,
+  `${characterDisplayName} Wall Art — ${designCount} Designs | Pixel8`,
+  `${characterDisplayName} Wall Art | Pixel8`,
+].find((t) => t.length <= 60) ?? `${characterDisplayName} Wall Art`;
 const seoDesc =
   activeVariant.seo?.metaDescription ||
   `${characterDisplayName} reimagined in 10 exclusive Pixel8 designs. Poster prints and canvas, made to order in the UK.`;
 
+// Display copies of the artwork (WebP/AVIF where supported). The cart keeps
+// heroUrl below, unchanged.
+const displayAt = (img: any, w: number) => urlFor(img).width(w).height(w).auto('format').quality(80).url();
+const displaySrcset = (img: any) => [480, 640, 800, 1024].map((w) => `${displayAt(img, w)} ${w}w`).join(', ');
+const MAIN_SIZES = '(min-width: 1280px) 600px, (min-width: 1024px) 48vw, 100vw';
+
 const mainImageUrl = activeVariant.images?.[0]?.asset
   ? urlFor(activeVariant.images[0]).width(800).url()
   : null;
+// Social cards need a plain JPEG.
+const ogImageUrl = activeVariant.images?.[0]?.asset
+  ? urlFor(activeVariant.images[0]).width(1024).height(1024).format('jpg').quality(85).url()
+  : undefined;
+const mainDisplayUrl = activeVariant.images?.[0]?.asset ? displayAt(activeVariant.images[0], 800) : null;
+const mainDisplaySrcset = activeVariant.images?.[0]?.asset ? displaySrcset(activeVariant.images[0]) : undefined;
 
 // Related characters (same category, excludes this character's variants).
 const relatedCharacters: any[] = await sanityClient.fetch(relatedCharactersQuery, {
@@ -93,8 +109,10 @@ const variantPayloads = variants
     const letter = v.style.replace('style-', '');
     const heroUrl = v.images?.[0]?.asset ? urlFor(v.images[0]).width(800).url() : '';
     const thumbUrl = v.images?.[0]?.asset
-      ? urlFor(v.images[0]).width(160).height(160).url()
+      ? urlFor(v.images[0]).width(160).height(160).auto('format').quality(70).url()
       : '';
+    const displayUrl = v.images?.[0]?.asset ? displayAt(v.images[0], 800) : '';
+    const displaySet = v.images?.[0]?.asset ? displaySrcset(v.images[0]) : '';
     const descText = Array.isArray(v.description)
       ? v.description
           .map((b: any) => b.children?.map((c: any) => c.text).join('') || '')
@@ -112,6 +130,8 @@ const variantPayloads = variants
       accentColor: v.accentColor || '#F07828',
       prices: v.prices || PRICES,
       heroUrl,
+      displayUrl,
+      displaySrcset: displaySet,
       thumbUrl,
     };
   })
@@ -134,16 +154,16 @@ const jsonLd = {
 };
 ---
 
-<BaseLayout title={seoTitle} description={seoDesc} ogType="product" jsonLd={jsonLd}>
+<BaseLayout title={seoTitle} description={seoDesc} ogType="product" ogImage={ogImageUrl} jsonLd={jsonLd}>
   <section class="bg-bg-primary py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- Breadcrumbs -->
       <nav class="flex items-center gap-2 font-dm text-sm text-deep-grey mb-8">
         <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
         <span>/</span>
-        <a href="/store" class="hover:text-pop-orange transition-colors">Shop</a>
+        <a href="/store/" class="hover:text-pop-orange transition-colors">Shop</a>
         <span>/</span>
-        <a href={`/store?category=${activeVariant.category}`} class="hover:text-pop-orange transition-colors">{categoryLabel}</a>
+        <a href={`/store/?category=${activeVariant.category}`} class="hover:text-pop-orange transition-colors">{categoryLabel}</a>
         <span>/</span>
         <span class="text-off-white" id="bc-character">{characterDisplayName}</span>
       </nav>
@@ -154,7 +174,7 @@ const jsonLd = {
         <div>
           <div class="aspect-square bg-bg-secondary rounded-lg overflow-hidden border border-edge-line" id="main-image-container">
             {mainImageUrl ? (
-              <img id="main-image" src={mainImageUrl} alt={`${characterDisplayName} — ${optionBadge}`} class="w-full h-full object-cover" />
+              <img id="main-image" src={mainDisplayUrl} srcset={mainDisplaySrcset} sizes={MAIN_SIZES} width="800" height="800" fetchpriority="high" alt={`${characterDisplayName} — ${optionBadge}`} class="w-full h-full object-cover" />
             ) : (
               <div class="img-placeholder w-full h-full">
                 <span class="font-montserrat text-sm uppercase tracking-widest">{characterDisplayName}</span>
@@ -175,7 +195,7 @@ const jsonLd = {
                   aria-label={`View Option ${v.letter.toUpperCase()}`}
                 >
                   {v.thumbUrl ? (
-                    <img src={v.thumbUrl} alt={`${characterDisplayName} Option ${v.letter.toUpperCase()}`} class="w-full h-full object-cover" loading="lazy" />
+                    <img src={v.thumbUrl} width="160" height="160" alt={`${characterDisplayName} Option ${v.letter.toUpperCase()}`} class="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <div class="w-full h-full flex items-center justify-center text-xs font-montserrat text-deep-grey">{v.letter.toUpperCase()}</div>
                   )}
@@ -250,7 +270,7 @@ const jsonLd = {
               <span>
                 <strong class="text-off-white font-medium">Full design preserved.</strong>
                 {WRAP_COPY.short}
-                <a href="/faqs#canvas-wrap" class="text-pixel-cyan underline hover:no-underline">Learn more</a>
+                <a href="/faqs/#canvas-wrap" class="text-pixel-cyan underline hover:no-underline">Learn more</a>
               </span>
             </div>
           </div>
@@ -340,6 +360,8 @@ const jsonLd = {
     accentColor: string;
     prices: any;
     heroUrl: string;
+    displayUrl: string;
+    displaySrcset: string;
     thumbUrl: string;
   };
 
@@ -388,8 +410,9 @@ const jsonLd = {
 
     // Hero image
     const mainImg = document.getElementById('main-image') as HTMLImageElement | null;
-    if (mainImg && v.heroUrl) {
-      mainImg.src = v.heroUrl;
+    if (mainImg && v.displayUrl) {
+      mainImg.srcset = v.displaySrcset;
+      mainImg.src = v.displayUrl;
       mainImg.alt = `${characterName} — Option ${v.letter.toUpperCase()}`;
     }
 

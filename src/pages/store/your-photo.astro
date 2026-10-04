@@ -58,7 +58,7 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
       <nav class="flex items-center gap-2 font-dm text-sm text-deep-grey mb-8">
         <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
         <span>/</span>
-        <a href="/store" class="hover:text-pop-orange transition-colors">Shop</a>
+        <a href="/store/" class="hover:text-pop-orange transition-colors">Shop</a>
         <span>/</span>
         <span class="text-off-white">Your Photo</span>
       </nav>
@@ -120,7 +120,7 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
             <span>
               I own this photo and I'm happy for Pixel8 to send it to Google's image model to create my design.
               Unpaid photos are deleted after 48 hours.
-              <a href="/privacy-policy#your-photo" class="text-pixel-cyan underline hover:no-underline">How this works</a>
+              <a href="/privacy-policy/#your-photo" class="text-pixel-cyan underline hover:no-underline">How this works</a>
             </span>
           </label>
           {turnstileSiteKey && (
@@ -163,7 +163,7 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
                 >
                   <span class="block aspect-square bg-bg-secondary relative">
                     {s.exampleUrl ? (
-                      <img src={`${s.exampleUrl}?w=240&h=240&fit=crop&auto=format`} alt="" class="w-full h-full object-cover pill-thumb" loading="lazy" />
+                      <img src={`${s.exampleUrl}?w=240&h=240&fit=crop&auto=format`} width="240" height="240" alt="" class="w-full h-full object-cover pill-thumb" loading="lazy" />
                     ) : (
                       <span class="w-full h-full flex items-center justify-center font-montserrat text-lg text-deep-grey pill-thumb">{s.letter}</span>
                     )}
@@ -190,7 +190,7 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
             <div id="canvas-wrap-notice" class="hidden mt-3 px-3 py-2.5 bg-pixel-cyan/5 border border-pixel-cyan/20 rounded text-xs text-mid-grey font-dm leading-relaxed">
               <strong class="text-off-white font-medium">Full design preserved.</strong>
               {WRAP_COPY.short}
-              <a href="/faqs#canvas-wrap" class="text-pixel-cyan underline hover:no-underline">Learn more</a>
+              <a href="/faqs/#canvas-wrap" class="text-pixel-cyan underline hover:no-underline">Learn more</a>
             </div>
           </div>
 

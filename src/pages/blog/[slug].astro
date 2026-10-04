@@ -1,4 +1,6 @@
 ---
+import { canonicalUrl } from '../../lib/url';
+import { sanityImg, sanitySrcset, sanityDims } from '../../lib/sanityImage';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { sanityClient, urlFor } from '../../lib/sanity';
 import { allBlogPostsQuery, blogPostBySlugQuery } from '../../lib/queries';
@@ -24,7 +26,9 @@ if (!post) {
 }
 
 const relatedPosts = post.relatedPosts || [];
-const mainImageUrl = post.mainImage?.asset ? urlFor(post.mainImage).width(1200).height(675).url() : null;
+const heroAt = (w: number) => urlFor(post.mainImage).width(w).height(Math.round(w * 675 / 1200)).auto('format').quality(75).url();
+const mainImageUrl = post.mainImage?.asset ? heroAt(1200) : null;
+const mainImageSrcset = post.mainImage?.asset ? [640, 960, 1200, 1600].map((w) => `${heroAt(w)} ${w}w`).join(', ') : undefined;
 const seoTitle = post.seo?.metaTitle || post.title;
 const seoDesc = post.seo?.metaDescription || post.excerpt;
 
@@ -33,10 +37,12 @@ function renderBody(blocks: any[]): string {
   if (!blocks) return '';
   return blocks.map((block: any) => {
     if (block._type === 'image') {
-      const imgUrl = block.asset?.url || '';
+      const imgUrl = sanityImg(block.asset?.url, 832);
+      const srcset = sanitySrcset(block.asset?.url, 832) || '';
+      const dims = sanityDims(block.asset?.url, 832) as { width?: number; height?: number };
       const alt = block.alt || '';
       const caption = block.caption || '';
-      return `<figure class="my-8"><img src="${imgUrl}" alt="${alt}" class="w-full border-4 border-edge-line" style="box-shadow: 4px 4px 0 #000;" loading="lazy" />${caption ? `<figcaption class="font-dm text-gray-500 text-sm mt-2 text-center">${caption}</figcaption>` : ''}</figure>`;
+      return `<figure class="my-8"><img src="${imgUrl}" srcset="${srcset}" sizes="(min-width: 896px) 832px, 100vw"${dims.width ? ` width="${dims.width}" height="${dims.height}"` : ''} alt="${alt}" class="w-full border-4 border-edge-line" style="box-shadow: 4px 4px 0 #000;" loading="lazy" />${caption ? `<figcaption class="font-dm text-gray-500 text-sm mt-2 text-center">${caption}</figcaption>` : ''}</figure>`;
     }
 
     if (block._type !== 'block') return '';
@@ -89,7 +95,7 @@ const bodyHtml = renderBody(post.body);
       <nav class="flex items-center gap-2 font-dm text-sm text-gray-500 mb-8">
         <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
         <span>/</span>
-        <a href="/blog" class="hover:text-pop-orange transition-colors">Blog</a>
+        <a href="/blog/" class="hover:text-pop-orange transition-colors">Blog</a>
         <span>/</span>
         <span class="text-off-white truncate">{post.title}</span>
       </nav>
@@ -120,6 +126,11 @@ const bodyHtml = renderBody(post.body);
       <div class="mb-10">
         <img
           src={mainImageUrl}
+          srcset={mainImageSrcset}
+          sizes="(min-width: 896px) 832px, 100vw"
+          width="1200"
+          height="675"
+          fetchpriority="high"
           alt={post.mainImage?.alt || post.title}
           class="w-full border-4 border-edge-line"
           style=""
@@ -130,7 +141,7 @@ const bodyHtml = renderBody(post.body);
     <div class="prose-pixel8" set:html={bodyHtml} />
 
     <div class="mt-12 pt-8 border-t-2 border-gray-700">
-      <a href="/blog"
+      <a href="/blog/"
          class="inline-flex items-center gap-2 font-montserrat font-semibold text-sm text-pixel-cyan hover:text-pop-orange transition-colors uppercase tracking-wide">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -146,12 +157,12 @@ const bodyHtml = renderBody(post.body);
         <h2 class="section-heading mb-8">MORE FROM THE BLOG</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {relatedPosts.map((rp: any) => {
-            const rpImgUrl = rp.mainImage?.asset ? urlFor(rp.mainImage).width(600).height(338).url() : null;
+            const rpImgUrl = rp.mainImage?.asset ? urlFor(rp.mainImage).width(600).height(338).auto('format').quality(75).url() : null;
             return (
-              <a href={`/blog/${rp.slug}`} class="product-card group block overflow-hidden">
+              <a href={`/blog/${rp.slug}/`} class="product-card group block overflow-hidden">
                 <div class="aspect-video overflow-hidden">
                   {rpImgUrl ? (
-                    <img src={rpImgUrl} alt={rp.mainImage?.alt || rp.title} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                    <img src={rpImgUrl} width="600" height="338" alt={rp.mainImage?.alt || rp.title} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
                   ) : (
                     <div class="w-full h-full img-placeholder flex items-center justify-center">
                       <span class="text-gray-500 font-montserrat font-semibold tracking-widest text-xs uppercase">IMAGE</span>
@@ -184,14 +195,11 @@ const bodyHtml = renderBody(post.body);
       "@type": "Person",
       "name": post.author,
     },
-    "publisher": {
-      "@type": "Organization",
-      "name": "Pixel8 Multimedia",
-    },
+    "publisher": { "@id": canonicalUrl('/') + '#organization' },
     "datePublished": post.publishedAt,
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://pixel8multimedia.co.uk/blog/${post.slug}`,
+      "@id": canonicalUrl(`/blog/${post.slug}/`),
     },
   })}></script>
 </BaseLayout>

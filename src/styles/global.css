@@ -127,6 +127,19 @@
   .stagger-3 { transition-delay: 0.3s; }
   .stagger-4 { transition-delay: 0.4s; }
 
+  @media (prefers-reduced-motion: reduce) {
+    .reveal,
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+    .animate-pulse,
+    .animate-spin {
+      animation-duration: 2s;
+    }
+  }
+
   .img-placeholder {
     @apply bg-bg-tertiary flex items-center justify-center text-deep-grey font-montserrat tracking-widest text-sm;
     border: 1px dashed rgba(255,255,255,0.1);
