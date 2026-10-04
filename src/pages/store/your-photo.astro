@@ -163,7 +163,7 @@ const seoDesc = `Upload a photo and see it redrawn in one of ${styles.length} Pi
                 >
                   <span class="block aspect-square bg-bg-secondary relative">
                     {s.exampleUrl ? (
-                      <img src={`${s.exampleUrl}?w=240&h=240&fit=crop&auto=format`} alt="" class="w-full h-full object-cover pill-thumb" loading="lazy" />
+                      <img src={`${s.exampleUrl}?w=240&h=240&fit=crop&auto=format`} width="240" height="240" alt="" class="w-full h-full object-cover pill-thumb" loading="lazy" />
                     ) : (
                       <span class="w-full h-full flex items-center justify-center font-montserrat text-lg text-deep-grey pill-thumb">{s.letter}</span>
                     )}

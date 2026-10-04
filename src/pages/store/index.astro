@@ -3,6 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
 import FeaturedDrop from '../../components/FeaturedDrop.astro';
 import { sanityClient } from '../../lib/sanity';
+import { sanityImg } from '../../lib/sanityImage';
 import { allCharactersForListingQuery, allCategoriesQuery } from '../../lib/queries';
 import { CATEGORIES, STYLES } from '../../data/products';
 
@@ -169,7 +170,9 @@ const optionPills = STYLES.map((s: any, i: number) => ({
             <div class="flex gap-2">
               {personalisationSamples.map((s, i) => (
                 <img
-                  src={`${s.url}?w=220&h=220&fit=crop&auto=format`}
+                  src={sanityImg(s.url, 192, { h: 192 })}
+                  width="96"
+                  height="96"
                   alt={`Example of the ${s.label} style`}
                   class={`w-20 h-20 sm:w-24 sm:h-24 object-cover rounded border border-edge-line ${i > 1 ? 'hidden sm:block' : ''}`}
                   loading="lazy"

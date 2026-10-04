@@ -54,6 +54,7 @@ const schemas = [organizationSchema(), websiteSchema(), ...(jsonLd ? (Array.isAr
     <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow'} />
     <meta name="author" content="Pixel8 Multimedia" />
     <meta name="geo.region" content="GB" />
+    <slot name="head" />
     {schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} />)}
   </head>
   <body>

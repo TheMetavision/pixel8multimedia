@@ -4,6 +4,7 @@
 export const prerender = false;
 
 import { sanityClient } from '../../lib/sanity';
+import { sanityImg, sanitySrcset, sanityDims } from '../../lib/sanityImage';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const services = await sanityClient.fetch(`
@@ -35,7 +36,10 @@ const services = await sanityClient.fetch(`
         <a href={`/services/${svc.slug.current}`} class="service-card">
           {svc.heroImage ? (
             <img
-              src={svc.heroImage}
+              src={sanityImg(svc.heroImage, 480)}
+              srcset={sanitySrcset(svc.heroImage, 400)}
+              sizes="(min-width: 1200px) 370px, (min-width: 700px) 50vw, 100vw"
+              {...sanityDims(svc.heroImage, 480)}
               alt={svc.title}
               class="service-card__image"
               loading="lazy"

@@ -5,6 +5,7 @@ import FAQAccordion from '../components/FAQAccordion.astro';
 import TestimonialCarousel from '../components/TestimonialCarousel.astro';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
 import { sanityClient, urlFor } from '../lib/sanity';
+import { sanityImg, localImg, localSrcset } from '../lib/sanityImage';
 import { featuredProductsQuery, allCategoriesQuery, testimonialsQuery, homepageFaqsQuery } from '../lib/queries';
 import { PRICES, CATEGORIES, STYLES } from '../data/products';
 
@@ -42,6 +43,11 @@ try {
   title="Pixel8 Multimedia — Premium Pop Culture Wall Art"
   description="Premium pop culture wall art and bespoke photo transformations. Canvas prints, poster prints, and custom commissions across 10 options. Made in the UK; prints delivered to UK addresses."
 >
+  <!-- The hero artwork only shows from lg up, so only preload it there. -->
+  <link slot="head" rel="preload" as="image" fetchpriority="high" media="(min-width: 1024px)"
+        href={localImg('/mockups/hero-artwork.png', 800)}
+        imagesrcset={localSrcset('/mockups/hero-artwork.png', 800, 1024)}
+        imagesizes="(min-width: 1280px) 800px, 62vw" />
 
   <!-- ===== HERO ===== -->
   <section class="relative min-h-[90vh] flex items-center bg-bg-primary overflow-hidden">
@@ -77,7 +83,7 @@ try {
       </div>
       <div class="hidden lg:block reveal stagger-2">
         <div class="w-full aspect-[3/4] rounded-lg overflow-hidden border border-edge-line">
-          <img src="/mockups/hero-artwork.png" alt="Pikachu Noir style wall art by Pixel8 Multimedia" class="w-full h-full object-cover" />
+          <img src={localImg('/mockups/hero-artwork.png', 800)} srcset={localSrcset('/mockups/hero-artwork.png', 800, 1024)} sizes="(min-width: 1280px) 800px, (min-width: 1024px) 62vw, 1px" width="1024" height="1024" fetchpriority="high" alt="Pikachu Noir style wall art by Pixel8 Multimedia" class="w-full h-full object-cover" />
         </div>
       </div>
     </div>
@@ -88,7 +94,7 @@ try {
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-8">
       <a href="/store" class="group bg-bg-secondary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange hover:shadow-glow-orange transition-all duration-300 reveal">
         <div class="aspect-[16/9] bg-bg-tertiary flex items-center justify-center overflow-hidden">
-          <img src="/mockups/our-way-hero.png" alt="Pop culture wall art collection preview" class="w-full h-full object-cover" loading="lazy" />
+          <img src={localImg('/mockups/our-way-hero.png', 600)} srcset={localSrcset('/mockups/our-way-hero.png', 600, 2752)} sizes="(min-width: 768px) 600px, 100vw" width="2752" height="1536" alt="Pop culture wall art collection preview" class="w-full h-full object-cover" loading="lazy" />
         </div>
         <div class="p-6">
           <h2 class="font-montserrat text-2xl font-bold text-off-white mb-2">Our Way</h2>
@@ -98,7 +104,7 @@ try {
       </a>
       <a href="/services" class="group bg-bg-secondary border border-edge-line rounded-lg overflow-hidden hover:border-pixel-cyan hover:shadow-glow-cyan transition-all duration-300 reveal stagger-1">
         <div class="aspect-[16/9] bg-bg-tertiary flex items-center justify-center overflow-hidden">
-          <img src="/mockups/your-way-hero.jpeg" alt="Custom personalised services preview" class="w-full h-full object-cover" loading="lazy" />
+          <img src={localImg('/mockups/your-way-hero.jpeg', 600)} srcset={localSrcset('/mockups/your-way-hero.jpeg', 600, 2752)} sizes="(min-width: 768px) 600px, 100vw" width="2752" height="1536" alt="Custom personalised services preview" class="w-full h-full object-cover" loading="lazy" />
         </div>
         <div class="p-6">
           <h2 class="font-montserrat text-2xl font-bold text-off-white mb-2">Your Way</h2>
@@ -126,7 +132,7 @@ try {
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mb-10 reveal stagger-1">
           {photoStyles[0].before && (
             <figure class="relative">
-              <img src={`${photoStyles[0].before}?w=400&h=400&fit=crop&auto=format`}
+              <img src={sanityImg(photoStyles[0].before, 400, { h: 400 })} width="400" height="400"
                    alt="An ordinary photo before styling"
                    class="w-full aspect-square object-cover rounded-lg border border-edge-line" loading="lazy" />
               <figcaption class="absolute top-2 left-2 font-mono text-[0.6rem] uppercase tracking-wider bg-black/75 text-off-white px-2 py-1 rounded">
@@ -136,7 +142,7 @@ try {
           )}
           {photoStyles.map((s) => (
             <figure class="relative">
-              <img src={`${s.after}?w=400&h=400&fit=crop&auto=format`}
+              <img src={sanityImg(s.after, 400, { h: 400 })} width="400" height="400"
                    alt={`The same photo in the ${s.label} style`}
                    class="w-full aspect-square object-cover rounded-lg border border-edge-line" loading="lazy" />
               <figcaption class="absolute bottom-2 left-2 font-montserrat text-[0.65rem] font-semibold bg-black/75 text-off-white px-2 py-1 rounded">
@@ -185,7 +191,7 @@ try {
              class={`bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange transition-all duration-300 reveal stagger-${Math.min(i + 1, 4)}`}>
             <div class="aspect-[4/3] bg-bg-tertiary flex items-center justify-center">
               {cat.coverImage?.asset ? (
-                <img src={urlFor(cat.coverImage).width(400).height(300).url()} alt={cat.name} class="w-full h-full object-cover" loading="lazy" />
+                <img src={urlFor(cat.coverImage).width(400).height(300).auto('format').quality(75).url()} width="400" height="300" alt={cat.name} class="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <span class="font-montserrat text-[0.6rem] text-deep-grey uppercase tracking-widest text-center px-2">{cat.name}</span>
               )}
@@ -218,10 +224,10 @@ try {
           <a href="/store" class="inline-block mt-8 bg-black text-pop-orange font-montserrat font-bold text-sm uppercase tracking-wider px-8 py-3 hover:bg-bg-secondary transition-colors">Shop Now</a>
         </div>
         <div class="grid grid-cols-2 gap-4 reveal stagger-2">
-          <div class="aspect-square rounded-lg overflow-hidden"><img src="/mockups/mockup-1.jpg" alt="Pop culture wall art in a gaming room" class="w-full h-full object-cover" loading="lazy" /></div>
-          <div class="aspect-square rounded-lg overflow-hidden"><img src="/mockups/mockup-2.jpg" alt="Bob Marley wall art in a bedroom" class="w-full h-full object-cover" loading="lazy" /></div>
-          <div class="aspect-square rounded-lg overflow-hidden"><img src="/mockups/mockup-3.jpg" alt="Pink Panther wall art in an office" class="w-full h-full object-cover" loading="lazy" /></div>
-          <div class="aspect-square rounded-lg overflow-hidden"><img src="/mockups/mockup-4.jpg" alt="Hulk wall art in a living room" class="w-full h-full object-cover" loading="lazy" /></div>
+          <div class="aspect-square rounded-lg overflow-hidden"><img src={localImg('/mockups/mockup-1.jpg', 290)} srcset={localSrcset('/mockups/mockup-1.jpg', 290, 1024)} sizes="(min-width: 1024px) 290px, 50vw" width="1024" height="1024" alt="Pop culture wall art in a gaming room" class="w-full h-full object-cover" loading="lazy" /></div>
+          <div class="aspect-square rounded-lg overflow-hidden"><img src={localImg('/mockups/mockup-2.jpg', 290)} srcset={localSrcset('/mockups/mockup-2.jpg', 290, 1024)} sizes="(min-width: 1024px) 290px, 50vw" width="1024" height="1024" alt="Bob Marley wall art in a bedroom" class="w-full h-full object-cover" loading="lazy" /></div>
+          <div class="aspect-square rounded-lg overflow-hidden"><img src={localImg('/mockups/mockup-3.jpg', 290)} srcset={localSrcset('/mockups/mockup-3.jpg', 290, 1024)} sizes="(min-width: 1024px) 290px, 50vw" width="1024" height="1024" alt="Pink Panther wall art in an office" class="w-full h-full object-cover" loading="lazy" /></div>
+          <div class="aspect-square rounded-lg overflow-hidden"><img src={localImg('/mockups/mockup-4.jpg', 290)} srcset={localSrcset('/mockups/mockup-4.jpg', 290, 1024)} sizes="(min-width: 1024px) 290px, 50vw" width="1024" height="1024" alt="Hulk wall art in a living room" class="w-full h-full object-cover" loading="lazy" /></div>
         </div>
       </div>
     </div>
@@ -233,7 +239,7 @@ try {
       <div class="grid lg:grid-cols-2 gap-12 items-center">
         <div class="reveal">
           <div class="aspect-[4/3] rounded-lg overflow-hidden">
-            <img src="/mockups/studio.png" alt="Pixel8 Multimedia print studio" class="w-full h-full object-cover" loading="lazy" />
+            <img src={localImg('/mockups/studio.png', 600)} srcset={localSrcset('/mockups/studio.png', 600, 2752)} sizes="(min-width: 1024px) 600px, 100vw" width="2752" height="1536" alt="Pixel8 Multimedia print studio" class="w-full h-full object-cover" loading="lazy" />
           </div>
         </div>
         <div class="reveal stagger-1">
@@ -290,7 +296,7 @@ try {
       </div>
       <div class="grid md:grid-cols-3 gap-6">
         <a href="/services/cartoonify-me" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-hot-magenta hover:shadow-glow-magenta transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/cartoonify-me.png" alt="Cartoonify Me service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/cartoonify-me.png', 400)} srcset={localSrcset('/services/cartoonify-me.png', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Cartoonify Me service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-hot-magenta transition-colors">Cartoonify Me!</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Turn your photo into a cartoon masterpiece — Simpsons, Anime, Pixar, and more.</p>
@@ -298,7 +304,7 @@ try {
           </div>
         </a>
         <a href="/services/stills-to-reels" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pixel-cyan hover:shadow-glow-cyan transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/stills-to-reels.png" alt="Stills to Reels service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/stills-to-reels.png', 400)} srcset={localSrcset('/services/stills-to-reels.png', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Stills to Reels service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-pixel-cyan transition-colors">Stills to Reels</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Transform static images into dynamic animations you can share, showcase, or keep forever.</p>
@@ -306,7 +312,7 @@ try {
           </div>
         </a>
         <a href="/services/the-missing-moment" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange hover:shadow-glow-orange transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/the-missing-moment.jpeg" alt="The Missing Moment service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/the-missing-moment.jpeg', 400)} srcset={localSrcset('/services/the-missing-moment.jpeg', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="The Missing Moment service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-pop-orange transition-colors">The Missing Moment</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Add someone special into an existing photo — a loved one who has passed, or a friend who missed your wedding.</p>
@@ -314,7 +320,7 @@ try {
           </div>
         </a>
         <a href="/services/past-perfect" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange hover:shadow-glow-orange transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/past-perfect.png" alt="Past Perfect service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/past-perfect.png', 400)} srcset={localSrcset('/services/past-perfect.png', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Past Perfect service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-pop-orange transition-colors">Past Perfect</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Restore treasured memories with professional photo repair and colourisation.</p>
@@ -322,7 +328,7 @@ try {
           </div>
         </a>
         <a href="/services/your-song-your-story" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pixel-cyan hover:shadow-glow-cyan transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/your-song-your-story.png" alt="Your Song Your Story service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/your-song-your-story.png', 400)} srcset={localSrcset('/services/your-song-your-story.png', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Your Song Your Story service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-pixel-cyan transition-colors">Your Song Your Story</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Turn memories, milestones, or inside jokes into an original song composed just for you.</p>
@@ -330,7 +336,7 @@ try {
           </div>
         </a>
         <a href="/services/story-of-your-life" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pixel-cyan hover:shadow-glow-cyan transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/story-of-your-life.jpeg" alt="Story Of Your Life service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/story-of-your-life.jpeg', 400)} srcset={localSrcset('/services/story-of-your-life.jpeg', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Story Of Your Life service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-pixel-cyan transition-colors">Story Of Your Life</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Transform a lifetime of photographs into one beautifully crafted cinematic story.</p>
@@ -338,7 +344,7 @@ try {
           </div>
         </a>
         <a href="/services/back-in-time" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-hot-magenta hover:shadow-glow-magenta transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/back-in-time.png" alt="Back in Time service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/back-in-time.png', 400)} srcset={localSrcset('/services/back-in-time.png', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Back in Time service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-hot-magenta transition-colors">Back in Time</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">See yourself evolve across eras — from the 1950s through to the 2000s.</p>
@@ -346,7 +352,7 @@ try {
           </div>
         </a>
         <a href="/services/the-day-i-met" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange hover:shadow-glow-orange transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/the-day-i-met.jpeg" alt="The Day I Met service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/the-day-i-met.jpeg', 400)} srcset={localSrcset('/services/the-day-i-met.jpeg', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="The Day I Met service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-pop-orange transition-colors">The Day I Met...</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">A cinematic image of you alongside your favourite celebrity or sports hero.</p>
@@ -354,7 +360,7 @@ try {
           </div>
         </a>
         <a href="/services/scene-stealer" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-hot-magenta hover:shadow-glow-magenta transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/scene-stealer.jpeg" alt="Scene Stealer service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/scene-stealer.jpeg', 400)} srcset={localSrcset('/services/scene-stealer.jpeg', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Scene Stealer service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-hot-magenta transition-colors">Scene Stealer</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Become the star of cinema's most iconic scenes with photorealistic precision.</p>
@@ -362,7 +368,7 @@ try {
           </div>
         </a>
         <a href="/services/crayon-to-creation" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pop-orange hover:shadow-glow-orange transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/crayon-to-creation.png" alt="Crayon To Creation service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/crayon-to-creation.png', 400)} srcset={localSrcset('/services/crayon-to-creation.png', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Crayon To Creation service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-pop-orange transition-colors">Crayon To Creation</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Turn your child's drawings into polished, professional-quality artwork.</p>
@@ -370,7 +376,7 @@ try {
           </div>
         </a>
         <a href="/services/star-power" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-hot-magenta hover:shadow-glow-magenta transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/star-power.png" alt="Star Power service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/star-power.png', 400)} srcset={localSrcset('/services/star-power.png', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Star Power service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-hot-magenta transition-colors">Star Power</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Turn your child or pet into the star of their very own blockbuster poster.</p>
@@ -378,7 +384,7 @@ try {
           </div>
         </a>
         <a href="/services/prankz" class="bg-bg-primary border border-edge-line rounded-lg overflow-hidden hover:border-pixel-cyan hover:shadow-glow-cyan transition-all duration-300 group reveal">
-          <div class="aspect-[16/9] overflow-hidden"><img src="/services/prankz.png" alt="Prankz service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
+          <div class="aspect-[16/9] overflow-hidden"><img src={localImg('/services/prankz.png', 400)} srcset={localSrcset('/services/prankz.png', 400, 2752)} sizes="(min-width: 768px) 400px, 100vw" width="2752" height="1536" alt="Prankz service example" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /></div>
           <div class="p-5">
             <h3 class="font-montserrat text-lg font-bold text-off-white mb-1 group-hover:text-pixel-cyan transition-colors">Prankz!</h3>
             <p class="font-dm text-sm text-mid-grey leading-relaxed mb-3">Prank your friends with images that look way too real to ignore. All in good fun.</p>

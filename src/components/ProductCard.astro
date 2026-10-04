@@ -42,13 +42,11 @@ const href = (activeLetter && variantForLetter)
   : `/store/${characterSlug}`;
 
 // Image: square crop at the CDN — preserves the 1:1 source art exactly.
-const variantImageUrl = displayVariant?.images?.asset
-  ? urlFor(displayVariant.images).width(800).height(800).url()
-  : null;
-const productImageUrl = product.images?.[0]?.asset
-  ? urlFor(product.images[0]).width(800).height(800).url()
-  : null;
-const imageUrl = variantImageUrl || productImageUrl || null;
+// Cards render at most ~300px wide (2 / 3 / 4 columns), so 320–640w covers 2x.
+const imageSource = (displayVariant?.images?.asset && displayVariant.images) || (product.images?.[0]?.asset && product.images[0]) || null;
+const squareUrl = (w: number) => urlFor(imageSource).width(w).height(w).auto('format').quality(75).url();
+const imageUrl = imageSource ? squareUrl(480) : null;
+const imageSrcset = imageSource ? [320, 480, 640].map((w) => `${squareUrl(w)} ${w}w`).join(', ') : undefined;
 
 const lowestPrice = product.prices?.poster?.small || PRICES.poster.small;
 const accent = product.accentColor || '#F07828';
@@ -65,14 +63,14 @@ const variantStrip = (product.variants || [])
   .filter((v) => /^style-[a-j]$/.test(v.style || ''))
   .map((v) => ({
     letter: v.style.replace('style-', ''),
-    thumbUrl: v.images?.asset ? urlFor(v.images).width(80).height(80).url() : '',
+    thumbUrl: v.images?.asset ? urlFor(v.images).width(80).height(80).auto('format').quality(70).url() : '',
   }));
 ---
 
 <a href={href} class="product-card group block" data-category={product.category} data-character={characterSlug} data-title={displayTitle?.toLowerCase()} data-variants={(product.variants || []).map((v) => v.style).join(',')}>
   <div class="aspect-square relative overflow-hidden">
     {imageUrl ? (
-      <img src={imageUrl} alt={displayTitle} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+      <img src={imageUrl} srcset={imageSrcset} sizes="(min-width: 1024px) 300px, (min-width: 768px) 33vw, 50vw" width="480" height="480" alt={displayTitle} class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
     ) : (
       <div class="img-placeholder w-full h-full">
         <span class="font-montserrat text-xs uppercase tracking-widest">{displayTitle}</span>
@@ -92,7 +90,7 @@ const variantStrip = (product.variants || [])
           {variantStrip.map((v) => (
             <div class="aspect-square rounded-sm overflow-hidden bg-bg-tertiary border border-off-white/20" title={`Option ${v.letter.toUpperCase()}`}>
               {v.thumbUrl ? (
-                <img src={v.thumbUrl} alt="" class="w-full h-full object-cover" loading="lazy" />
+                <img src={v.thumbUrl} width="80" height="80" alt="" class="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <div class="w-full h-full flex items-center justify-center text-[0.55rem] font-montserrat text-off-white/60">{v.letter.toUpperCase()}</div>
               )}

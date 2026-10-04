@@ -1,4 +1,5 @@
 ---
+import { localImg, localSrcset } from '../lib/sanityImage';
 // src/components/ClickToLoadVideo.astro
 //
 // Click-to-load YouTube video. Until the visitor presses play this shows a
@@ -20,7 +21,15 @@ const { videoId, title, thumbnail } = Astro.props;
   <div class="ctl-video__frame" data-ctl-video={videoId} data-ctl-title={title}>
     <button type="button" class="ctl-video__btn" aria-label={`Play video: ${title} (loads from YouTube)`}>
       <img
-        src={thumbnail || `/video-thumbs/${videoId}.jpg`}
+        {...(thumbnail
+          ? { src: thumbnail }
+          : {
+              src: localImg(`/video-thumbs/${videoId}.jpg`, 800),
+              srcset: localSrcset(`/video-thumbs/${videoId}.jpg`, 1012, 1280),
+              sizes: '(min-width: 1060px) 1012px, 100vw',
+              width: 1280,
+              height: 720,
+            })}
         alt=""
         class="ctl-video__thumb"
         loading="lazy"

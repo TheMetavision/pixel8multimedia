@@ -1,4 +1,5 @@
 ---
+import { sanityImg } from '../lib/sanityImage';
 /**
  * FeaturedDrop.astro
  * Hero strip for the shop page. Shows a rotating set of products marked
@@ -94,10 +95,11 @@ const rotates = drops.length > 1;
               <div class="order-1 md:order-2 flex-shrink-0">
                 {d.imageUrl ? (
                   <img
-                    src={d.imageUrl}
+                    src={sanityImg(d.imageUrl, 192, { h: 192 })}
+                    srcset={`${sanityImg(d.imageUrl, 192, { h: 192 })} 1x, ${sanityImg(d.imageUrl, 384, { h: 384 })} 2x`}
                     alt={d.title}
-                    width="200"
-                    height="200"
+                    width="192"
+                    height="192"
                     loading="eager"
                     decoding="async"
                     class="featured-drop__image w-32 h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 object-cover rounded-md border border-edge-line"

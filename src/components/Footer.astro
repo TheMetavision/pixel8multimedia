@@ -1,4 +1,5 @@
 ---
+import { localImg } from '../lib/sanityImage';
 const currentYear = new Date().getFullYear();
 ---
 
@@ -8,7 +9,7 @@ const currentYear = new Date().getFullYear();
     <!-- Centred Logo -->
     <div class="flex flex-col items-center mb-12">
       <a href="/">
-        <img src="/Pixel8_Logo.png" alt="Pixel8 Multimedia — Pop. Art. Motion." class="h-[7.5rem] w-auto" />
+        <img src={localImg('/Pixel8_Logo.png', 120)} srcset={`${localImg('/Pixel8_Logo.png', 120)} 1x, ${localImg('/Pixel8_Logo.png', 240)} 2x`} width="120" height="120" alt="Pixel8 Multimedia — Pop. Art. Motion." class="h-[7.5rem] w-auto" />
       </a>
       <p class="font-dm text-sm text-mid-grey leading-relaxed mt-4 text-center max-w-md">
         Premium pop culture wall art and bespoke photo transformations. UK-based; prints delivered to UK addresses.
