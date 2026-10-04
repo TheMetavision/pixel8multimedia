@@ -122,6 +122,11 @@ const rotates = drops.length > 1;
                 aria-label={`Show featured drop ${i + 1}`}
               />
             ))}
+            <button
+              type="button"
+              class="featured-drop__pause ml-2 font-mono text-[0.65rem] uppercase tracking-wider text-mid-grey hover:text-off-white"
+              aria-pressed="false"
+            >Pause</button>
           </div>
         )}
       </div>
@@ -177,6 +182,9 @@ const rotates = drops.length > 1;
     .featured-drop__image {
       transition: none;
     }
+    .featured-drop__slide:hover .featured-drop__image {
+      transform: none;
+    }
   }
 </style>
 
@@ -188,7 +196,12 @@ const rotates = drops.length > 1;
     const dots = Array.from(carousel.querySelectorAll<HTMLButtonElement>('.featured-drop__dot'));
     let idx = 0;
     let timer: ReturnType<typeof setInterval> | null = null;
-    let paused = false;
+    let hovered = false;
+    // The pause button stops rotation for good (WCAG 2.2.2); reduced motion
+    // never starts it.
+    const motionOK = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let stopped = !motionOK;
+    const pauseBtn = carousel.querySelector<HTMLButtonElement>('.featured-drop__pause');
 
     function go(next: number) {
       slides.forEach((s, i) => s.dataset.active = i === next ? 'true' : 'false');
@@ -197,13 +210,20 @@ const rotates = drops.length > 1;
     }
     function start() {
       stop();
+      if (stopped) return;
       timer = setInterval(() => {
-        if (paused) return;
+        if (hovered) return;
         go((idx + 1) % slides.length);
       }, 7000);
     }
     function stop() {
       if (timer) { clearInterval(timer); timer = null; }
+    }
+    function paintPause() {
+      if (!pauseBtn) return;
+      pauseBtn.textContent = stopped ? 'Play' : 'Pause';
+      pauseBtn.setAttribute('aria-pressed', String(stopped));
+      pauseBtn.setAttribute('aria-label', stopped ? 'Start rotating featured drops' : 'Stop rotating featured drops');
     }
 
     dots.forEach((d, i) => d.addEventListener('click', (e) => {
@@ -211,14 +231,21 @@ const rotates = drops.length > 1;
       go(i);
       start();
     }));
-    carousel.addEventListener('mouseenter', () => { paused = true; });
-    carousel.addEventListener('mouseleave', () => { paused = false; });
+    pauseBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      stopped = !stopped;
+      paintPause();
+      start();
+    });
+    carousel.addEventListener('mouseenter', () => { hovered = true; });
+    carousel.addEventListener('mouseleave', () => { hovered = false; });
+    carousel.addEventListener('focusin', () => { hovered = true; });
+    carousel.addEventListener('focusout', () => { hovered = false; });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) stop(); else start();
     });
 
-    // Respect prefers-reduced-motion: don't auto-rotate.
-    const motionOK = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (motionOK) start();
+    paintPause();
+    start();
   }
 </script>
