@@ -1,4 +1,5 @@
 ---
+import { canonicalUrl } from '../../lib/url';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { sanityClient, urlFor } from '../../lib/sanity';
 import { allBlogPostsQuery, blogPostBySlugQuery } from '../../lib/queries';
@@ -184,14 +185,11 @@ const bodyHtml = renderBody(post.body);
       "@type": "Person",
       "name": post.author,
     },
-    "publisher": {
-      "@type": "Organization",
-      "name": "Pixel8 Multimedia",
-    },
+    "publisher": { "@id": canonicalUrl('/') + '#organization' },
     "datePublished": post.publishedAt,
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://pixel8multimedia.co.uk/blog/${post.slug}`,
+      "@id": canonicalUrl(`/blog/${post.slug}/`),
     },
   })}></script>
 </BaseLayout>
