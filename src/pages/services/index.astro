@@ -33,7 +33,7 @@ const services = await sanityClient.fetch(`
 
     <div class="services-index__grid">
       {services.map((svc) => (
-        <a href={`/services/${svc.slug.current}`} class="service-card">
+        <a href={`/services/${svc.slug.current}/`} class="service-card">
           {svc.heroImage ? (
             <img
               src={sanityImg(svc.heroImage, 480)}

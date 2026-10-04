@@ -11,37 +11,35 @@ let characters: any[] = [];
 let categories: any[] = [];
 let featuredDrops: any[] = [];
 
-try {
-  const [
-    charactersResult,
-    categoriesResult,
-    featuredResult,
-  ] = await Promise.all([
-    sanityClient.fetch(allCharactersForListingQuery),
-    sanityClient.fetch(allCategoriesQuery),
-    // Featured products for the hero strip. Order by sortOrder so editors
-    // can control which one shows first.
-    sanityClient.fetch(`
-      *[_type == "product" && featured == true]
-        | order(sortOrder asc, title asc)[0...5] {
-          _id,
-          title,
-          "slug": slug.current,
-          category,
-          accentColor,
-          prices,
-          images[] { asset-> { _id, url }, alt }
-        }
-    `),
-  ]);
+// No try/catch: an unreachable or empty Sanity fails the build (the live
+// site stays as it was) instead of publishing an empty shop.
+const [
+  charactersResult,
+  categoriesResult,
+  featuredResult,
+] = await Promise.all([
+  sanityClient.fetch(allCharactersForListingQuery),
+  sanityClient.fetch(allCategoriesQuery),
+  // Featured products for the hero strip. Order by sortOrder so editors
+  // can control which one shows first.
+  sanityClient.fetch(`
+    *[_type == "product" && featured == true]
+      | order(sortOrder asc, title asc)[0...5] {
+        _id,
+        title,
+        "slug": slug.current,
+        category,
+        accentColor,
+        prices,
+        images[] { asset-> { _id, url }, alt }
+      }
+  `),
+]);
 
-  characters = charactersResult || [];
-  categories = categoriesResult || [];
-  featuredDrops = featuredResult || [];
-} catch (e) {
-  console.warn('Sanity fetch failed for store page', e);
-  categories = CATEGORIES.map((c) => ({ ...c, productCount: 0 }));
-}
+characters = charactersResult || [];
+categories = categoriesResult || [];
+featuredDrops = featuredResult || [];
+if (!characters.length) throw new Error('[store] Sanity returned no products');
 
 // Personalised products are no longer listed in the store. They're handled by
 // the commission workflow at /services/[slug]. Filter them out at the listing
@@ -163,7 +161,7 @@ const optionPills = STYLES.map((s: any, i: number) => ({
   <!-- Your Photo — self-serve personalisation -->
   <section class="pt-10 sm:pt-12 bg-bg-primary">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <a href="/store/your-photo"
+      <a href="/store/your-photo/"
          class="group block rounded-lg border border-edge-line hover:border-pop-orange bg-bg-secondary overflow-hidden transition-colors">
         <div class="grid md:grid-cols-[auto_1fr] items-center gap-6 p-5 sm:p-6">
           {personalisationSamples.length > 0 && (

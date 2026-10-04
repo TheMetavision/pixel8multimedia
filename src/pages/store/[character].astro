@@ -20,21 +20,20 @@ import {
 import { offersFor, SITE_URL } from '../../lib/shopping-feed.mjs';
 
 export async function getStaticPaths() {
-  try {
-    const variantSlugs: string[] = await sanityClient.fetch(allCharacterSlugsQuery);
-    if (!variantSlugs || variantSlugs.length === 0) return [];
-
-    // Collapse "<character>-style-<a..j>" → unique character slugs.
-    const characters = new Set<string>();
-    for (const slug of variantSlugs) {
-      const characterSlug = slug.replace(/-style-[a-j]$/, '');
-      if (characterSlug && characterSlug !== slug) characters.add(characterSlug);
-    }
-    return Array.from(characters).map((character) => ({ params: { character } }));
-  } catch (e) {
-    console.warn('Sanity fetch failed in getStaticPaths for store/[character]');
-    return [];
+  // Fail the build, rather than ship a shop with no product pages, if Sanity
+  // is unreachable or returns nothing. Netlify keeps the previous deploy live.
+  const variantSlugs: string[] = await sanityClient.fetch(allCharacterSlugsQuery);
+  if (!variantSlugs || variantSlugs.length === 0) {
+    throw new Error('[store/[character]] Sanity returned no product slugs');
   }
+
+  // Collapse "<character>-style-<a..j>" → unique character slugs.
+  const characters = new Set<string>();
+  for (const slug of variantSlugs) {
+    const characterSlug = slug.replace(/-style-[a-j]$/, '');
+    if (characterSlug && characterSlug !== slug) characters.add(characterSlug);
+  }
+  return Array.from(characters).map((character) => ({ params: { character } }));
 }
 
 const { character } = Astro.params;
@@ -90,6 +89,10 @@ const MAIN_SIZES = '(min-width: 1280px) 600px, (min-width: 1024px) 48vw, 100vw';
 const mainImageUrl = activeVariant.images?.[0]?.asset
   ? urlFor(activeVariant.images[0]).width(800).url()
   : null;
+// Social cards need a plain JPEG.
+const ogImageUrl = activeVariant.images?.[0]?.asset
+  ? urlFor(activeVariant.images[0]).width(1024).height(1024).format('jpg').quality(85).url()
+  : undefined;
 const mainDisplayUrl = activeVariant.images?.[0]?.asset ? displayAt(activeVariant.images[0], 800) : null;
 const mainDisplaySrcset = activeVariant.images?.[0]?.asset ? displaySrcset(activeVariant.images[0]) : undefined;
 
@@ -151,16 +154,16 @@ const jsonLd = {
 };
 ---
 
-<BaseLayout title={seoTitle} description={seoDesc} ogType="product" jsonLd={jsonLd}>
+<BaseLayout title={seoTitle} description={seoDesc} ogType="product" ogImage={ogImageUrl} jsonLd={jsonLd}>
   <section class="bg-bg-primary py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- Breadcrumbs -->
       <nav class="flex items-center gap-2 font-dm text-sm text-deep-grey mb-8">
         <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
         <span>/</span>
-        <a href="/store" class="hover:text-pop-orange transition-colors">Shop</a>
+        <a href="/store/" class="hover:text-pop-orange transition-colors">Shop</a>
         <span>/</span>
-        <a href={`/store?category=${activeVariant.category}`} class="hover:text-pop-orange transition-colors">{categoryLabel}</a>
+        <a href={`/store/?category=${activeVariant.category}`} class="hover:text-pop-orange transition-colors">{categoryLabel}</a>
         <span>/</span>
         <span class="text-off-white" id="bc-character">{characterDisplayName}</span>
       </nav>
@@ -267,7 +270,7 @@ const jsonLd = {
               <span>
                 <strong class="text-off-white font-medium">Full design preserved.</strong>
                 {WRAP_COPY.short}
-                <a href="/faqs#canvas-wrap" class="text-pixel-cyan underline hover:no-underline">Learn more</a>
+                <a href="/faqs/#canvas-wrap" class="text-pixel-cyan underline hover:no-underline">Learn more</a>
               </span>
             </div>
           </div>

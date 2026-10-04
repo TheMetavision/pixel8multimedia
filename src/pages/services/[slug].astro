@@ -743,7 +743,7 @@ const pic = (url: string | undefined | null, w: number) => ({
           })}
         </div>
         <p class="service-faqs__more">
-          <a href={`/faqs#service-${service.slug.current}`}>See all FAQs →</a>
+          <a href={`/faqs/#service-${service.slug.current}`}>See all FAQs →</a>
         </p>
       </section>
     )}
@@ -756,7 +756,7 @@ const pic = (url: string | undefined | null, w: number) => ({
           and start ordering at full price. This is the last point at which we
           can catch them. Hidden once a voucher is already applied.
         -->
-        <a href="/groupon" class="groupon-prompt" data-groupon-prompt>
+        <a href="/groupon/" class="groupon-prompt" data-groupon-prompt>
           <span class="groupon-prompt__tag">Groupon</span>
           <span>
             <strong>Bought this as a Groupon deal?</strong>
@@ -772,7 +772,7 @@ const pic = (url: string | undefined | null, w: number) => ({
           <h2>Commissions paused</h2>
           <p>
             We're not currently accepting new <strong>{service.title}</strong> commissions.
-            Please <a href="/contact">get in touch</a> if you'd like to be notified when bookings reopen.
+            Please <a href="/contact/">get in touch</a> if you'd like to be notified when bookings reopen.
           </p>
         </div>
       </section>

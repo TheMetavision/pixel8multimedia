@@ -38,8 +38,8 @@ const displayVariant = variantForLetter || (product.variants?.[0]) || null;
 
 // Build the card link
 const href = (activeLetter && variantForLetter)
-  ? `/store/${characterSlug}?option=${activeLetter}`
-  : `/store/${characterSlug}`;
+  ? `/store/${characterSlug}/?option=${activeLetter}`
+  : `/store/${characterSlug}/`;
 
 // Image: square crop at the CDN — preserves the 1:1 source art exactly.
 // Cards render at most ~300px wide (2 / 3 / 4 columns), so 320–640w covers 2x.

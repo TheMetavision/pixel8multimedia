@@ -1,6 +1,7 @@
 // scripts/generate-redirects.mjs
 // Patch #3: generates public/_redirects with 301s mapping
-//   /store/<character>-style-<letter>  →  /store/<character>?option=<letter>
+//   /store/<character>-style-<letter>  →  /store/<character>/?option=<letter>
+// (with the trailing slash, so it is one hop: Netlify serves the page there)
 //
 // Fetches character-variant slugs from Sanity (live source of truth, no hardcoded list).
 // Safe to re-run: if public/_redirects exists and lacks our sentinel comment,
@@ -51,7 +52,7 @@ console.log(`  Found ${characterVariants.length} character variants.`);
 const lines = characterVariants.map((slug) => {
   const character = slug.replace(/-style-[a-j]$/, '');
   const letter = slug.match(/-style-([a-j])$/)[1];
-  return `/store/${slug}  /store/${character}?option=${letter}  301`;
+  return `/store/${slug}  /store/${character}/?option=${letter}  301`;
 });
 
 const header = [

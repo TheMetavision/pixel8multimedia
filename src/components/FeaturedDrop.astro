@@ -48,6 +48,11 @@ const drops = source.map((p) => {
     id: p._id,
     title: cleanTitle || p.title || 'Featured drop',
     slug: p.slug,
+    // Featured products are variants ("hulk-style-c"); link to the character
+    // page with that Option selected, not the retired variant URL (a 301).
+    href: /-style-[a-j]$/.test(p.slug || '')
+      ? `/store/${p.slug.replace(/-style-([a-j])$/, '')}/?option=${p.slug.slice(-1)}`
+      : '/store/',
     category: p.category,
     accent,
     imageUrl,
@@ -68,7 +73,7 @@ const rotates = drops.length > 1;
       <div class="featured-drop__carousel relative" data-rotates={rotates ? 'true' : 'false'}>
         {drops.map((d, i) => (
           <a
-            href={d.slug ? `/store/${d.slug}` : '/store'}
+            href={d.href}
             class="featured-drop__slide group"
             data-slide={i}
             data-active={i === 0 ? 'true' : 'false'}
