@@ -26,8 +26,10 @@
  *         that can; others are asked for a JPG — see FRIENDLY_HEIC.)
  */
 
-export const FRIENDLY_HEIC =
-  'HEIC photos (the iPhone default) can’t be uploaded here. Please choose "Most Compatible" in iPhone Settings › Camera › Formats, or export the photo as JPG, and try again.';
+// Defined in a browser-safe module (this file uses Buffer at import time, so
+// the commission form must not import it); re-exported for existing callers.
+import { FRIENDLY_HEIC } from './upload-messages.mjs';
+export { FRIENDLY_HEIC };
 
 /** `customerMessage` is safe to show; `message` may be technical (for the log). */
 export class MetadataError extends Error {

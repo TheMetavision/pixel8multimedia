@@ -33,7 +33,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SIZE_LABELS } from '../../netlify/functions/_shared/print-spec.mjs';
 import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
-import { FRIENDLY_HEIC } from '../../netlify/functions/_shared/strip-metadata.mjs';
+import { FRIENDLY_HEIC } from '../../netlify/functions/_shared/upload-messages.mjs';
 import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION } from '../../netlify/functions/_shared/digital-consent.mjs';
 
 // ─── Bot check ──────────────────────────────────────────────────────────────
