@@ -69,9 +69,14 @@ const characterDisplayName =
   (activeVariant.title || '').split(' — ')[0] || activeVariant.title || character;
 
 // SEO uses the character-level URL as canonical so Google sees one page per character.
-const seoTitle =
-  activeVariant.seo?.metaTitle ||
-  `${characterDisplayName} Wall Art — 10 Original Designs | Pixel8 Multimedia`;
+// The page covers every Option, so the title names the character, not the
+// Option A variant's own metaTitle. BaseLayout fits the brand suffix to 60.
+const designCount = variants.filter((v) => /^style-[a-j]$/.test(v.style || '')).length;
+const seoTitle = [
+  `${characterDisplayName} Wall Art — ${designCount} Designs | Pixel8 Multimedia`,
+  `${characterDisplayName} Wall Art — ${designCount} Designs | Pixel8`,
+  `${characterDisplayName} Wall Art | Pixel8`,
+].find((t) => t.length <= 60) ?? `${characterDisplayName} Wall Art`;
 const seoDesc =
   activeVariant.seo?.metaDescription ||
   `${characterDisplayName} reimagined in 10 exclusive Pixel8 designs. Poster prints and canvas, made to order in the UK.`;
