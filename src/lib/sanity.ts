@@ -28,7 +28,9 @@ export const sanityClient = createClient({
   projectId: 'bqb4w421',
   dataset: 'production',
   apiVersion: '2024-12-01',
-  useCdn: import.meta.env.PROD, // CDN in prod, fresh data in dev
+  // Never the CDN: builds triggered by a Sanity publish must read what was just
+  // published, and the CDN can lag behind it. SSR pages read live too.
+  useCdn: false,
   token,
   // With a token the default ('raw') perspective also returns drafts and
   // release versions. Pin to published so the site shows exactly what the old
