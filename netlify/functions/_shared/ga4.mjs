@@ -8,20 +8,35 @@
  * Only sessions whose buyer accepted analytics cookies carry ga_client_id
  * (set by checkout.mjs / commission-checkout.mts), so a session without one
  * is skipped. So is everything when GA4_MEASUREMENT_ID or GA4_API_SECRET is
- * unset. This never throws: a GA problem must not fail or slow the webhook
- * beyond its timeout.
+ * unset. ga_session_id, when present, ties the purchase to the buyer's GA
+ * session; without it (or with a bad one) the purchase is still sent. This
+ * never throws: a GA problem must not fail or slow the webhook beyond its
+ * timeout.
  */
 
 /** GA client ids look like "<random>.<timestamp>". */
 export const GA_CLIENT_ID_RE = /^\d{1,20}\.\d{1,20}$/;
 
+/** GA session ids are a timestamp in seconds: digits only. */
+export const GA_SESSION_ID_RE = /^\d{1,20}$/;
+
+const validClientId = (id) => typeof id === 'string' && GA_CLIENT_ID_RE.test(id);
+const validSessionId = (id) => typeof id === 'string' && GA_SESSION_ID_RE.test(id);
+
 /**
- * Session metadata for a client id sent by the browser: { ga_client_id } or {}.
+ * Session metadata for the ids sent by the browser: { ga_client_id,
+ * ga_session_id? } or {}. A session id is kept only alongside a valid client
+ * id, and a bad one is dropped without affecting the client id.
  * @param {unknown} gaClientId
+ * @param {unknown} [gaSessionId]
  * @returns {Record<string, string>}
  */
-export const gaClientIdMetadata = (gaClientId) =>
-  typeof gaClientId === 'string' && GA_CLIENT_ID_RE.test(gaClientId) ? { ga_client_id: gaClientId } : {};
+export function gaClientIdMetadata(gaClientId, gaSessionId) {
+  if (!validClientId(gaClientId)) return {};
+  return validSessionId(gaSessionId)
+    ? { ga_client_id: gaClientId, ga_session_id: gaSessionId }
+    : { ga_client_id: gaClientId };
+}
 
 const pounds = (pence) => Math.round(pence || 0) / 100;
 const money = (n) => Math.round(Number(n || 0) * 100) / 100;
@@ -73,7 +88,8 @@ export const chargedExShipping = (session) =>
  */
 export function purchasePayload(session, items, value) {
   const clientId = session?.metadata?.ga_client_id;
-  if (!clientId || !GA_CLIENT_ID_RE.test(clientId)) return null;
+  if (!validClientId(clientId)) return null;
+  const sessionId = session.metadata.ga_session_id;
   const itemsValue = money((items || []).reduce((sum, i) => sum + i.price * i.quantity, 0));
   const shipping = pounds(session.total_details?.amount_shipping);
   return {
@@ -86,6 +102,10 @@ export function purchasePayload(session, items, value) {
         currency: (session.currency || 'gbp').toUpperCase(),
         ...(shipping ? { shipping } : {}),
         items: items || [],
+        // session_id puts the purchase in the buyer's GA session (and its
+        // traffic source); engagement_time_msec lets GA count it as active.
+        ...(validSessionId(sessionId) ? { session_id: sessionId } : {}),
+        engagement_time_msec: 1,
       },
     }],
   };
@@ -103,7 +123,7 @@ export async function sendPurchase(session, items, { value, timeoutMs = 2000, fe
   const measurementId = process.env.GA4_MEASUREMENT_ID;
   const apiSecret = process.env.GA4_API_SECRET;
   if (!measurementId || !apiSecret) return;
-  if (!GA_CLIENT_ID_RE.test(session?.metadata?.ga_client_id || '')) return;
+  if (!validClientId(session?.metadata?.ga_client_id)) return;
   // One deadline for the whole thing, including any Stripe lookup in items().
   // A plain timer rather than AbortSignal.timeout(), whose timer is unref'd
   // and so can't be relied on to fire while this await is all that's pending.

@@ -79,7 +79,7 @@ export default async (req, context) => {
   }
 
   try {
-    const { items, gaClientId } = await req.json();
+    const { items, gaClientId, gaSessionId } = await req.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return new Response(JSON.stringify({ error: 'Cart is empty' }), {
@@ -192,8 +192,8 @@ export default async (req, context) => {
         lines: String(priced.lines.length),
         personalised: hasPersonalised ? 'yes' : 'no',
         // Sent by the browser only when the buyer accepted analytics cookies;
-        // the webhook reports the GA4 purchase against it (_shared/ga4.mjs).
-        ...gaClientIdMetadata(gaClientId),
+        // the webhook reports the GA4 purchase against them (_shared/ga4.mjs).
+        ...gaClientIdMetadata(gaClientId, gaSessionId),
       },
       success_url: `${siteUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/store`,

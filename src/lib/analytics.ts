@@ -6,8 +6,8 @@
  * ("granted" | "denied"); no key means they haven't chosen yet and the banner
  * shows (src/components/ConsentBanner.astro).
  *
- * Purchases are not sent from here. checkout passes the GA client id to
- * Stripe and the webhook reports the purchase server-side (see
+ * Purchases are not sent from here. checkout passes the GA client and session
+ * ids to Stripe and the webhook reports the purchase server-side (see
  * netlify/functions/_shared/ga4.mjs), so it's counted even if the buyer never
  * comes back from Stripe.
  */
@@ -121,26 +121,58 @@ export function trackThen(name: string, params: Record<string, unknown>, timeout
   });
 }
 
+export type GaIds = { clientId: string | null; sessionId: string | null };
+
 /**
- * The GA client id, from gtag itself, or null without consent or if gtag
- * hasn't answered within `timeoutMs`. Asking gtag (rather than reading the
- * `_ga` cookie) waits for gtag.js to load and set the id, so a buyer who
- * accepts and checks out on their first page view is still tracked.
+ * The GA client and session ids, from gtag itself. Both lookups share one
+ * `timeoutMs`; whatever hasn't answered by then is null, and both are null
+ * without consent. Asking gtag (rather than reading the `_ga` cookies) waits
+ * for gtag.js to load and set the ids, so a buyer who accepts and checks out
+ * on their first page view is still tracked.
  */
-export function gaClientId(timeoutMs = 800): Promise<string | null> {
+export function gaIds(timeoutMs = 800): Promise<GaIds> {
   return new Promise((resolve) => {
+    const ids: GaIds = { clientId: null, sessionId: null };
+    let pending = 2;
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const done = () => {
+      settled = true;
+      clearTimeout(timer);
+      resolve({ ...ids });
+    };
+    const answered = () => {
+      if (--pending === 0) done();
+    };
     try {
-      if (!hasConsent()) return resolve(null);
+      if (!hasConsent()) return done();
       loadAnalytics();
-      const timer = setTimeout(() => resolve(null), timeoutMs);
+      timer = setTimeout(done, timeoutMs);
       window.gtag!('get', GA_MEASUREMENT_ID, 'client_id', (id: unknown) => {
-        clearTimeout(timer);
-        resolve(typeof id === 'string' && id ? id : null);
+        if (settled) return;
+        if (typeof id === 'string' && id) ids.clientId = id;
+        answered();
+      });
+      window.gtag!('get', GA_MEASUREMENT_ID, 'session_id', (id: unknown) => {
+        if (settled) return;
+        // gtag gives the session id as a number or a numeric string.
+        if ((typeof id === 'string' || typeof id === 'number') && String(id)) ids.sessionId = String(id);
+        answered();
       });
     } catch {
-      resolve(null);
+      done();
     }
   });
+}
+
+/**
+ * The GA ids for a checkout request body: { gaClientId, gaSessionId? }, or {}
+ * with no client id (a session id is no use without one).
+ */
+export async function gaCheckoutIds(timeoutMs = 800): Promise<{ gaClientId?: string; gaSessionId?: string }> {
+  const { clientId, sessionId } = await gaIds(timeoutMs);
+  if (!clientId) return {};
+  return sessionId ? { gaClientId: clientId, gaSessionId: sessionId } : { gaClientId: clientId };
 }
 
 function clearGaCookies() {

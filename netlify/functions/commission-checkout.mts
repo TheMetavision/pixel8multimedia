@@ -835,8 +835,8 @@ export default async function handler(req: Request, _context: Context) {
         orderType: breakdown.orderType,
         printCount: String(breakdown.prints.length),
         // Sent by the browser only when the buyer accepted analytics cookies;
-        // stripe-webhook-commission reports the GA4 purchase against it.
-        ...gaClientIdMetadata(body.gaClientId),
+        // stripe-webhook-commission reports the GA4 purchase against them.
+        ...gaClientIdMetadata(body.gaClientId, body.gaSessionId),
       },
       line_items: stripeLineItems,
       success_url: `${SITE_URL}/commission/success?ref=${orderRef}`,
