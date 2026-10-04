@@ -378,7 +378,7 @@ export default function CommissionForm({ service }) {
 
       <p className="commission-form__terms">
         By submitting, you agree to our{' '}
-        <a href="/terms" target="_blank" rel="noopener noreferrer">
+        <a href="/terms-and-conditions/" target="_blank" rel="noopener noreferrer">
           Terms of Service
         </a>
         . Payment is handled securely via Stripe.
