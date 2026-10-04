@@ -35,6 +35,7 @@ import { SIZE_LABELS } from '../../netlify/functions/_shared/print-spec.mjs';
 import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
 import { FRIENDLY_HEIC } from '../../netlify/functions/_shared/upload-messages.mjs';
 import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION } from '../../netlify/functions/_shared/digital-consent.mjs';
+import { gaClientId } from '../lib/analytics';
 
 // ─── Bot check ──────────────────────────────────────────────────────────────
 // One Cloudflare Turnstile check per visit. The first photo upload spends a
@@ -1190,6 +1191,11 @@ export default function CommissionWorkflow({ service }) {
         ...(grouponClaim ? { grouponClaimToken: grouponClaim.token } : {}),
         ...(includesDigital ? { digitalSupplyConsent: digitalConsent === true, digitalConsentVersion: DIGITAL_CONSENT_VERSION } : {}),
       };
+
+      // With analytics consent, the GA client id rides to Stripe so the
+      // webhook can report the purchase (netlify/functions/_shared/ga4.mjs).
+      const gaClient = await gaClientId();
+      if (gaClient) payload.gaClientId = gaClient;
 
       const proof = await botProof();
       if (proof.grant) payload.uploadGrant = proof.grant;

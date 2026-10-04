@@ -349,6 +349,7 @@ const jsonLd = {
 
 <script>
   import { addToCart } from '../../stores/cart';
+  import { gaItem, track } from '../../lib/analytics';
 
   type Variant = {
     letter: string;
@@ -461,6 +462,20 @@ const jsonLd = {
     syncUrl();
 
     paintPrice();
+    trackView(v);
+  }
+
+  // GA4 view_item, once per variant shown (each Option is its own product).
+  let viewedLetter = '';
+  function trackView(v: Variant) {
+    if (v.letter === viewedLetter) return;
+    viewedLetter = v.letter;
+    const price = getPrice();
+    track('view_item', {
+      currency: 'GBP',
+      value: price,
+      items: [gaItem({ slug: v.slug, title: v.title, format: selectedFormat, size: selectedSize, unitPrice: price, quantity: 1 })],
+    });
   }
 
   // Keep the address bar naming what's selected, so a copied link opens the

@@ -3,6 +3,7 @@ import { createClient } from '@sanity/client';
 import {
   FORMAT_LABELS, SIZE_LABELS, YOUR_PHOTO_PRODUCT_ID, priceCart, shippingPenceFor,
 } from './_shared/pricing.mjs';
+import { gaClientIdMetadata } from './_shared/ga4.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -78,7 +79,7 @@ export default async (req, context) => {
   }
 
   try {
-    const { items } = await req.json();
+    const { items, gaClientId } = await req.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return new Response(JSON.stringify({ error: 'Cart is empty' }), {
@@ -190,6 +191,9 @@ export default async (req, context) => {
         source: 'shop',
         lines: String(priced.lines.length),
         personalised: hasPersonalised ? 'yes' : 'no',
+        // Sent by the browser only when the buyer accepted analytics cookies;
+        // the webhook reports the GA4 purchase against it (_shared/ga4.mjs).
+        ...gaClientIdMetadata(gaClientId),
       },
       success_url: `${siteUrl}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/store`,

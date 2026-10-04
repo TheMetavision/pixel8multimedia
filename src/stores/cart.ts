@@ -2,6 +2,7 @@ import { atom, computed } from 'nanostores';
 import { persistentAtom } from '@nanostores/persistent';
 import type { ProductFormat, ProductSize } from '../data/products';
 import { PRICES } from '../data/products';
+import { gaItem, track } from '../lib/analytics';
 
 export interface CartItem {
   id: string;
@@ -63,6 +64,12 @@ export function addToCart(item: Omit<CartItem, 'id'>) {
     cartItems.set([...current, { ...item, id: `${stem}-${item.format}-${item.size}-${Date.now()}` }]);
   }
   cartOpen.set(true);
+  // GA4, only with consent (track checks). The quantity added, not the line total.
+  track('add_to_cart', {
+    currency: 'GBP',
+    value: Number((item.unitPrice * item.quantity).toFixed(2)),
+    items: [gaItem(item)],
+  });
 }
 
 export function removeFromCart(id: string) {

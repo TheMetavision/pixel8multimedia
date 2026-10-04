@@ -34,6 +34,7 @@ import { UPLOADS_STORE, photosForCommission } from './_shared/commission-uploads
 import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
 import { verifyGrant } from './_shared/commission-grant.mjs';
 import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION, needsDigitalConsent } from './_shared/digital-consent.mjs';
+import { gaClientIdMetadata } from './_shared/ga4.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 
@@ -833,6 +834,9 @@ export default async function handler(req: Request, _context: Context) {
         serviceSlug,
         orderType: breakdown.orderType,
         printCount: String(breakdown.prints.length),
+        // Sent by the browser only when the buyer accepted analytics cookies;
+        // stripe-webhook-commission reports the GA4 purchase against it.
+        ...gaClientIdMetadata(body.gaClientId),
       },
       line_items: stripeLineItems,
       success_url: `${SITE_URL}/commission/success?ref=${orderRef}`,

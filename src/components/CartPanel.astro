@@ -94,6 +94,7 @@
   import { cartItems, cartOpen, cartTotal, removeFromCart, updateQuantity, clearCart } from '../stores/cart';
   import { FORMAT_LABELS, SIZE_LABELS } from '../data/products';
   import type { ProductFormat, ProductSize } from '../data/products';
+  import { gaClientId, gaItem, trackThen } from '../lib/analytics';
 
   // Shipping configuration — must mirror netlify/functions/checkout.mjs
   const FREE_SHIPPING_THRESHOLD = 50;
@@ -263,15 +264,23 @@
     checkoutError?.classList.add('hidden');
 
     try {
+      // With analytics consent, the GA client id rides to Stripe so the
+      // webhook can report the purchase (netlify/functions/_shared/ga4.mjs).
+      const gaClient = await gaClientId();
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify(gaClient ? { items, gaClientId: gaClient } : { items }),
       });
 
       const data = await res.json();
 
       if (data.url) {
+        await trackThen('begin_checkout', {
+          currency: 'GBP',
+          value: Number(cartTotal.get().toFixed(2)),
+          items: items.map(gaItem),
+        });
         // IMPORTANT: don't clear the cart here. If the user hits Back from
         // Stripe's checkout, they need to find their cart intact. The cart is
         // cleared on /order-confirmation only after a successful session_id

@@ -1,0 +1,55 @@
+---
+// Cookie banner (UK PECR). Hidden until the script finds no stored choice,
+// or the footer's "Cookie settings" asks for it. Accept and Reject are styled
+// identically so neither is the easier click. See src/lib/analytics.ts.
+---
+
+<div
+  id="consent-banner"
+  class="fixed bottom-0 left-0 right-0 z-[65] bg-bg-secondary border-t-2 border-pop-orange shadow-xl hidden"
+  role="region"
+  aria-label="Cookie consent"
+>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row md:items-center gap-4">
+    <p class="font-dm text-sm text-gray-300 leading-relaxed flex-1">
+      We'd like to use Google Analytics cookies to see how people find and use our site, so we can improve it.
+      They're only set if you accept. You can change your mind at any time from "Cookie settings" at the bottom of every page.
+      <a href="/privacy-policy/#analytics-cookies" class="text-pixel-cyan hover:text-pop-orange transition-colors">More about cookies</a>
+    </p>
+    <div class="flex gap-3 shrink-0">
+      <button type="button" data-consent="denied" class="consent-btn">Reject</button>
+      <button type="button" data-consent="granted" class="consent-btn">Accept</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .consent-btn {
+    @apply border-2 border-pop-orange text-off-white font-montserrat font-bold text-sm tracking-wider uppercase px-6 py-2.5 min-w-[7rem] transition-colors duration-200;
+  }
+  .consent-btn:hover,
+  .consent-btn:focus-visible {
+    @apply bg-pop-orange text-black;
+  }
+</style>
+
+<script>
+  import { CONSENT_OPEN_EVENT, getConsent, loadAnalytics, setConsent, type Consent } from '../lib/analytics';
+
+  const banner = document.getElementById('consent-banner');
+  const show = () => banner?.classList.remove('hidden');
+  const hide = () => banner?.classList.add('hidden');
+
+  banner?.querySelectorAll<HTMLButtonElement>('[data-consent]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setConsent(btn.dataset.consent as Consent);
+      hide();
+    });
+  });
+
+  document.addEventListener(CONSENT_OPEN_EVENT, show);
+
+  const choice = getConsent();
+  if (choice === 'granted') loadAnalytics();
+  else if (choice === null) show();
+</script>

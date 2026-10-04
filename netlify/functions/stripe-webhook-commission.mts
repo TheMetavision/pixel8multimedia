@@ -11,6 +11,7 @@ import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
 import { DIGITAL_CONSENT_CONFIRMATION, needsDigitalConsent } from './_shared/digital-consent.mjs';
+import { chargedExShipping, commissionGaItems, sendPurchase } from './_shared/ga4.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 const endpointSecret = process.env.STRIPE_COMMISSION_WEBHOOK_SECRET!;
@@ -450,6 +451,21 @@ export default async function handler(req: Request, _context: Context) {
         console.error('Failed to record notifyError on commission:', e);
       }
     }
+
+    // GA4 purchase, only if the buyer accepted analytics cookies (the session
+    // then carries ga_client_id). value is what Stripe charged less shipping,
+    // so a Groupon order counts the cash taken, not the full price; the item
+    // prices are the charged amounts too. ≤ 2 s including the line-item
+    // lookup, and never throws. A retry after paidAt is set returned above,
+    // so it's sent once per order.
+    await sendPurchase(
+      session,
+      async () => {
+        const { data } = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
+        return commissionGaItems(data, session.metadata?.serviceSlug);
+      },
+      { value: chargedExShipping(session) },
+    );
 
     return new Response('OK', { status: 200 });
   } catch (err) {

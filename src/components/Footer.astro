@@ -66,6 +66,7 @@ const currentYear = new Date().getFullYear();
           <li><a href="/refund-policy/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Returns Policy</a></li>
           <li><a href="/terms-and-conditions/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Terms & Conditions</a></li>
           <li><a href="/privacy-policy/" class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Privacy Policy</a></li>
+          <li><button type="button" data-cookie-settings class="font-dm text-sm text-mid-grey hover:text-pop-orange transition-colors">Cookie settings</button></li>
         </ul>
       </div>
 
@@ -114,6 +115,9 @@ const currentYear = new Date().getFullYear();
 
 <script>
   import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
+  import { openConsentSettings } from '../lib/analytics';
+
+  document.querySelectorAll('[data-cookie-settings]').forEach((el) => el.addEventListener('click', openConsentSettings));
 
   // Shared newsletter signup handler — wires up every form with class
   // "newsletter-form" anywhere on the page. The form's data-source attribute

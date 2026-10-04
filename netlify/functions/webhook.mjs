@@ -10,6 +10,7 @@ import { triggerInternal, TRIGGER_BUDGETS } from './_shared/origin.mjs';
 import { getStore } from '@netlify/blobs';
 import { flagMissingPrintFiles, teamSubject, missingBlockHtml } from './_shared/print-alerts.mjs';
 import { stockLineKeys } from './_shared/print-job.mjs';
+import { sendPurchase, shopGaItems } from './_shared/ga4.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -320,6 +321,11 @@ export default async (req, context) => {
       } catch (emailErr) {
         console.error('Failed to send team notification:', emailErr);
       }
+
+      // GA4 purchase, only if the buyer accepted analytics cookies (the session
+      // then carries ga_client_id). ≤ 2 s and never throws. Duplicate
+      // deliveries returned above, so it's sent once per order.
+      await sendPurchase(session, shopGaItems(cartItems));
 
       // Proofs last, after the order and both emails are safe. AWAITED: the
       // old fire-and-forget fetch could be frozen with the function once it

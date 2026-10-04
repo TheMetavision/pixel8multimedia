@@ -2,6 +2,7 @@
 import Navbar from '../components/Navbar.astro';
 import CartPanel from '../components/CartPanel.astro';
 import Footer from '../components/Footer.astro';
+import ConsentBanner from '../components/ConsentBanner.astro';
 import { organizationSchema, websiteSchema } from '../lib/schema';
 import { SITE, canonicalUrl } from '../lib/url';
 import '../styles/global.css';
@@ -83,6 +84,7 @@ const schemas = [organizationSchema(), websiteSchema(), ...(jsonLd ? (Array.isAr
       <slot />
     </main>
     <Footer />
+    <ConsentBanner />
     <script>
       // Reveal-on-scroll
       const observer = new IntersectionObserver((entries) => {
