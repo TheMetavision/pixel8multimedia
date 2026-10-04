@@ -80,7 +80,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <ul class="list-disc pl-5 space-y-2">
           <li><strong class="text-off-white">Your shopping cart</strong> — kept in your browser's local storage (<code>pixel8-cart-v1</code>) so it survives moving between pages. It never leaves your device until you check out.</li>
           <li><strong class="text-off-white">Groupon voucher claim</strong> — if you redeem a Groupon voucher, a cookie (<code>p8_groupon_claim</code>) holds the claim until checkout so the credit is applied, and is deleted once your order is complete.</li>
-          <li><strong class="text-off-white">Spam protection</strong> — our contact, newsletter and upload forms use Cloudflare Turnstile to check you are not a bot. Cloudflare may set a strictly necessary cookie when the check runs.</li>
+          <li><strong class="text-off-white">Spam protection</strong> — our contact, newsletter, photo upload and commission forms use Cloudflare Turnstile to check you are not a bot. It loads only on pages with one of those forms, and for the newsletter signup only once you start filling it in. Cloudflare may set a strictly necessary cookie when the check runs.</li>
           <li><strong class="text-off-white">Payments</strong> — checkout happens on Stripe's own pages, which set their own cookies for fraud prevention under <a href="https://stripe.com/privacy" class="text-pixel-cyan hover:text-pop-orange transition-colors">Stripe's privacy policy</a>.</li>
         </ul>
         <p class="mt-3">These are all strictly necessary, so they don't need your consent. Videos on our service pages load from YouTube only when you press play; YouTube may set cookies once a video is playing.</p>

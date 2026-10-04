@@ -140,10 +140,19 @@ const currentYear = new Date().getFullYear();
     // Bot check: one compact, interaction-only Turnstile widget per form. It
     // solves in the background and only shows itself if Cloudflare needs a
     // click, so the inline form keeps its layout. It sits just after the form.
-    const box = document.createElement('div');
-    box.className = 'newsletter-turnstile mt-2';
-    form.insertAdjacentElement('afterend', box);
-    const turnstile = mountTurnstile(box, { size: 'compact', appearance: 'interaction-only' });
+    // This form is on every page, so the widget (and Cloudflare's script) is
+    // only mounted once the visitor starts using the form, not on page load.
+    let turnstile: ReturnType<typeof mountTurnstile> | null = null;
+    const ensureTurnstile = () => {
+      if (turnstile) return turnstile;
+      const box = document.createElement('div');
+      box.className = 'newsletter-turnstile mt-2';
+      form.insertAdjacentElement('afterend', box);
+      turnstile = mountTurnstile(box, { size: 'compact', appearance: 'interaction-only' });
+      return turnstile;
+    };
+    form.addEventListener('focusin', ensureTurnstile, { once: true });
+    form.addEventListener('pointerdown', ensureTurnstile, { once: true });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -159,6 +168,7 @@ const currentYear = new Date().getFullYear();
 
       lockForm(form, true);
       // A token is required; the background check usually has one ready.
+      const turnstile = ensureTurnstile();
       const token = turnstile.enabled ? await turnstile.waitForToken(8000) : '';
       if (turnstile.enabled && !token) {
         lockForm(form, false);
