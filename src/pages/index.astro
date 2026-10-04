@@ -36,31 +36,11 @@ try {
   console.warn('Sanity fetch failed, using fallback data');
   categories = CATEGORIES.map((c) => ({ ...c, productCount: 0 }));
 }
-
-const jsonLd = [
-  {
-    "@context": "https://schema.org",
-    "@type": ["Organization", "LocalBusiness"],
-    "name": "Pixel8 Multimedia",
-    "url": "https://pixel8multimedia.co.uk",
-    "description": "UK-based pop culture wall art. Premium canvas prints, poster prints, photo restoration, and custom commissions.",
-    "address": { "@type": "PostalAddress", "addressLocality": "Southend-on-Sea", "addressRegion": "Essex", "addressCountry": "GB" },
-    "sameAs": ["https://www.facebook.com/pixel8mm/", "https://www.instagram.com/pixel8mm", "https://x.com/pixel8mm", "https://www.tiktok.com/@pixel8multimedia"],
-    "priceRange": "£9.99 - £200+"
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Pixel8 Multimedia",
-    "url": "https://pixel8multimedia.co.uk"
-  }
-];
 ---
 
 <BaseLayout
   title="Pixel8 Multimedia — Premium Pop Culture Wall Art"
   description="Premium pop culture wall art and bespoke photo transformations. Canvas prints, poster prints, and custom commissions across 10 options. Made in the UK; prints delivered to UK addresses."
-  jsonLd={jsonLd}
 >
 
   <!-- ===== HERO ===== -->
