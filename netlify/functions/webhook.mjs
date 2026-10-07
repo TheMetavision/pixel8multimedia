@@ -11,7 +11,7 @@ import { getStore } from '@netlify/blobs';
 import { flagMissingPrintFiles, teamSubject, missingBlockHtml } from './_shared/print-alerts.mjs';
 import { stockLineKeys } from './_shared/print-job.mjs';
 import { sendPurchase, shopGaItems } from './_shared/ga4.mjs';
-import { readDiscount, discountLabel, GROUPON_MISUSE } from './_shared/discount.mjs';
+import { readDiscount, discountLabel, GROUPON_MISUSE, repeatWelcomeNote } from './_shared/discount.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -114,6 +114,27 @@ export default async (req, context) => {
         return new Response('OK — duplicate, already processed', { status: 200 });
       }
 
+      // A welcome code (PIX10) is meant for a first order, but Stripe judges
+      // "first-time" per Customer and a shop checkout is a guest, so it can't
+      // refuse a repeat buyer. Look for an earlier order from the same email
+      // instead and flag this one for the team. Never blocks the order; a
+      // failed lookup just means no flag.
+      let repeatWelcomeCode = null;
+      if (discount.welcomeCodes.length && customerEmail) {
+        try {
+          const earlier = await sanity.fetch(
+            `*[_type == "order" && lower(customerEmail) == $email && stripeSessionId != $sessionId] | order(createdAt asc)[0]{ _id, createdAt }`,
+            { email: customerEmail.trim().toLowerCase(), sessionId: session.id }
+          );
+          if (earlier?._id) {
+            repeatWelcomeCode = repeatWelcomeNote(discount.welcomeCodes, earlier);
+            console.warn(`webhook: REPEAT WELCOME CODE ${discount.welcomeCodes.join(', ')} on ${orderId} — earlier order ${earlier._id}`);
+          }
+        } catch (err) {
+          console.error(`webhook: repeat-welcome-code check failed for ${orderId}:`, err?.message);
+        }
+      }
+
       // Labels as before, plus keys (productRef, formatKey, sizeKey, …) on
       // lines from the server-priced checkout. See _shared/order-lines.mjs.
       const stamp = Date.now();
@@ -154,6 +175,7 @@ export default async (req, context) => {
               discountAmount,
               ...(discount.codes.length ? { discountCode: discount.codes.join(', ') } : {}),
               ...(discountWarning ? { discountWarning } : {}),
+              ...(repeatWelcomeCode ? { repeatWelcomeCode } : {}),
             }
             : {}),
           totalAmount,
@@ -314,7 +336,7 @@ export default async (req, context) => {
         await resend.emails.send({
           from: process.env.EMAIL_FROM || 'Pixel8 Multimedia <orders@pixel8multimedia.co.uk>',
           to: [teamEmail],
-          subject: `${discountWarning ? '⚠ GROUPON CODE — ' : ''}${teamSubject({ total: totalAmount, customerName, missingCount: printCheck.missing.length })}`,
+          subject: `${discountWarning ? '⚠ GROUPON CODE — ' : ''}${repeatWelcomeCode ? '⚠ REPEAT WELCOME CODE — ' : ''}${teamSubject({ total: totalAmount, customerName, missingCount: printCheck.missing.length })}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1a1a1a;">
               <div style="background: #F07828; padding: 16px; text-align: center;">
@@ -324,6 +346,9 @@ export default async (req, context) => {
                 ${missingBlockHtml(printCheck.missing)}
                 ${discountWarning ? `<div style="margin: 0 0 20px; padding: 14px 16px; background: #fdecea; border-left: 4px solid #d32f2f; border-radius: 4px; color: #b71c1c;">
                   <strong>⚠ GROUPON CODE USED ON A SHOP ORDER (${discount.codes.join(', ')})</strong><br/>${GROUPON_MISUSE}
+                </div>` : ''}
+                ${repeatWelcomeCode ? `<div style="margin: 0 0 20px; padding: 14px 16px; background: #fff4e5; border-left: 4px solid #F07828; border-radius: 4px; color: #8a4b00;">
+                  <strong>⚠ REPEAT WELCOME CODE</strong><br/>${repeatWelcomeCode}
                 </div>` : ''}
                 <h2 style="margin: 0 0 4px;">${customerName}</h2>
                 <p style="color: #666; margin: 0 0 20px;">${customerEmail}</p>

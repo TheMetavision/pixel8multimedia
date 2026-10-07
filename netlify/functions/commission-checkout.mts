@@ -35,6 +35,7 @@ import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
 import { verifyGrant } from './_shared/commission-grant.mjs';
 import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 import { gaClientIdMetadata } from './_shared/ga4.mjs';
+import { customerForEmail } from './_shared/stripe-customer.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 
@@ -828,9 +829,15 @@ export default async function handler(req: Request, _context: Context) {
 
     const commission = await sanity.create(commissionDoc);
 
+    // One Stripe Customer per email, so a "first-time order only" promotion
+    // code (PIX10) is refused for someone who has paid before — on a guest
+    // session every buyer looks first-time. Voucher checkouts use it too.
+    // If the lookup fails, fall back to customer_email (no first-time check).
+    const customerId = await customerForEmail(stripe, email, { name });
+
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment',
-      customer_email: email,
+      ...(customerId ? { customer: customerId } : { customer_email: email }),
       metadata: {
         commissionId: commission._id,
         orderRef,

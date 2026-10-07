@@ -18,6 +18,10 @@
  *    the promo box is flagged.
  * 5. _shared/discount.mjs and deleteVoucherCoupon: a voucher is recognised by
  *    its coupon's metadata, not a code; only minted coupons are deleted.
+ * 6. commission-checkout passes one Stripe Customer per (lower-cased) email,
+ *    so "first-time order only" is enforced; falls back to customer_email.
+ * 7. webhook.mjs (shop): a welcome code from an email with an earlier order
+ *    is flagged ⚠ REPEAT WELCOME CODE for the team; the customer sees nothing.
  * Stripe, Sanity, Resend and Blobs are faked; nothing touches the network.
  */
 import { registerHooks } from 'node:module';
@@ -54,10 +58,11 @@ process.env.TEAM_EMAIL = 'team@test.local';
 delete process.env.TURNSTILE_SECRET_KEY;
 
 // ── State the fakes read and write ──
-let created, sessions, promos, coupons, deletedCoupons, docs, patches, sent, fetchQueries;
+let created, sessions, promos, coupons, deletedCoupons, customers, docs, patches, sent, fetchQueries;
 const M = (globalThis.__mocks = {});
 function reset() {
-  created = []; sessions = new Map(); promos = new Map(); coupons = new Map(); deletedCoupons = [];
+  created = []; sessions = new Map(); promos = new Map(); coupons = new Map(); deletedCoupons = []; customers = [];
+  M.failCustomers = false;
   docs = new Map(); patches = []; sent = []; fetchQueries = [];
 }
 reset();
@@ -73,6 +78,10 @@ M.stripe = {
       retrieve: async (id) => { const s = sessions.get(id); if (!s) throw new Error(`no session ${id}`); return s; },
       listLineItems: async (id) => ({ data: sessions.get(id)?.lines || [] }),
     },
+  },
+  customers: {
+    list: async ({ email }) => { if (M.failCustomers) throw new Error('stub: Stripe down'); return { data: customers.filter((c) => c.email === email) }; },
+    create: async (c) => { if (M.failCustomers) throw new Error('stub: Stripe down'); const cu = { id: `cus_${customers.length + 1}`, ...c }; customers.push(cu); return cu; },
   },
   promotionCodes: {
     retrieve: async (id) => { const p = promos.get(id); if (!p) throw new Error(`no promo ${id}`); return p; },
@@ -371,6 +380,91 @@ say('\n5. A VOUCHER IS KNOWN BY ITS COUPON METADATA, NOT A CODE\n');
   await deleteVoucherCoupon(M.stripe, 'co_mine');
   await deleteVoucherCoupon(M.stripe, 'co_already_gone');
   ok(deletedCoupons.join() === 'co_mine', 'only a minted coupon is ever deleted; the shared legacy one is left', deletedCoupons.join());
+}
+
+/* ================================================================ 6 */
+say('\n6. COMMISSION CHECKOUT: ONE STRIPE CUSTOMER PER EMAIL (FIRST-TIME ONLY)\n');
+{
+  reset();
+  fetchImpl = async (q) => (q.includes('_type == "service"') ? SERVICE : null);
+  await post(commissionCheckout, '/.netlify/functions/commission-checkout', commissionBody({ email: 'Repeat@Test.Local' }));
+  const first = created[0] || {};
+  ok(first.customer === 'cus_1' && !('customer_email' in first), 'a new email gets a Customer, passed as `customer` (not customer_email)', first.customer);
+  ok(customers[0]?.email === 'repeat@test.local', 'stored lower-cased', customers[0]?.email);
+  await post(commissionCheckout, '/.netlify/functions/commission-checkout', commissionBody({ email: 'repeat@test.local', brief: 'second' }));
+  ok(created[1]?.customer === 'cus_1' && customers.length === 1, 'the same email (any case) reuses that Customer', `${created[1]?.customer}, ${customers.length} customer(s)`);
+}
+{
+  reset();
+  const token = 'claim-token-789';
+  const voucher = {
+    _id: 'grouponVoucher.v3', _rev: 'r1', code: 'GRPN-REAL-3', status: 'claimed', serviceSlug: 'your-song-your-story',
+    valuePence: 2999, claimTokenHash: createHash('sha256').update(token).digest('hex'),
+    claimExpiresAt: new Date(Date.now() + 3600e3).toISOString(), verificationStatus: 'verified',
+  };
+  fetchImpl = async (q) => (q.includes('_type == "service"') ? SERVICE : q.includes('claimTokenHash') ? voucher : null);
+  await post(commissionCheckout, '/.netlify/functions/commission-checkout', commissionBody({ grouponClaimToken: token }));
+  ok(created[0]?.customer && created[0]?.discounts?.[0]?.coupon, 'a voucher checkout uses the Customer too, with its coupon');
+}
+{
+  reset();
+  M.failCustomers = true;
+  fetchImpl = async (q) => (q.includes('_type == "service"') ? SERVICE : null);
+  const res = await post(commissionCheckout, '/.netlify/functions/commission-checkout', commissionBody());
+  ok(res.status === 200 && created[0]?.customer_email === 'promo@test.local' && !('customer' in created[0]),
+    'if Stripe cannot find or create the Customer, the order still goes ahead with customer_email', String(res.status));
+}
+
+/* ================================================================ 7 */
+say('\n7. SHOP WEBHOOK: A WELCOME CODE FROM A REPEAT EMAIL IS FLAGGED, NOT BLOCKED\n');
+const repeatFetch = (earlier) => async (q, params) => {
+  if (q.includes('lower(customerEmail)')) { fetchQueries.push(params); return params.email === 'buyer@test.local' ? earlier : null; }
+  return null;
+};
+{
+  reset();
+  fetchImpl = repeatFetch({ _id: 'order.cs_earlier', createdAt: '2026-10-01T10:00:00Z' });
+  promos.set('promo_pix10', { id: 'promo_pix10', code: 'PIX10', restrictions: { first_time_transaction: true }, metadata: {} });
+  const s = shopSession('cs_shop_repeat', { discount: 100, promo: 'promo_pix10' });
+  s.customer_details.email = 'Buyer@Test.Local';
+  const res = await post(shopWebhook, '/api/webhook', event(s), { 'stripe-signature': 'good' });
+  const o = docs.get('order.cs_shop_repeat');
+  ok(res.status === 200 && !!o, 'the order is created, not blocked', String(res.status));
+  ok(/order\.cs_earlier/.test(o?.repeatWelcomeCode || ''), 'flagged repeatWelcomeCode, naming the earlier order', o?.repeatWelcomeCode);
+  ok(fetchQueries.some((p) => p?.email === 'buyer@test.local' && p?.sessionId === 'cs_shop_repeat'),
+    'matched case-insensitively, excluding this session');
+  ok(o?.discountCode === 'PIX10' && o?.totalAmount === 13.94, 'the discount is still recorded as charged');
+  ok(/^⚠ REPEAT WELCOME CODE — /.test(team()?.subject || '') && strip(team()?.html).includes('⚠ REPEAT WELCOME CODE'),
+    'the team email subject and banner say ⚠ REPEAT WELCOME CODE', team()?.subject);
+  ok(!/REPEAT|WELCOME CODE|earlier order/i.test(customer()?.subject + strip(customer()?.html)), 'the customer email says nothing about it');
+}
+{
+  reset();
+  fetchImpl = repeatFetch(null);
+  promos.set('promo_pix10', { id: 'promo_pix10', code: 'PIX10', restrictions: { first_time_transaction: true }, metadata: {} });
+  await post(shopWebhook, '/api/webhook', event(shopSession('cs_shop_first', { discount: 100, promo: 'promo_pix10' })), { 'stripe-signature': 'good' });
+  ok(!('repeatWelcomeCode' in (docs.get('order.cs_shop_first') || {})) && !/REPEAT/.test(team()?.subject || ''), 'a genuine first order: no flag');
+}
+{
+  reset();
+  fetchImpl = repeatFetch({ _id: 'order.cs_earlier' });
+  promos.set('promo_other', { id: 'promo_other', code: 'SUMMER5', restrictions: { first_time_transaction: false }, metadata: {} });
+  await post(shopWebhook, '/api/webhook', event(shopSession('cs_shop_other', { discount: 100, promo: 'promo_other' })), { 'stripe-signature': 'good' });
+  ok(!('repeatWelcomeCode' in (docs.get('order.cs_shop_other') || {})), 'a repeat buyer with a non-welcome code: no flag');
+  ok(!fetchQueries.some((p) => p?.email), 'and no lookup is made');
+}
+{
+  reset();
+  fetchImpl = repeatFetch({ _id: 'order.cs_earlier' });
+  await post(shopWebhook, '/api/webhook', event(shopSession('cs_shop_nocode')), { 'stripe-signature': 'good' });
+  ok(!('repeatWelcomeCode' in (docs.get('order.cs_shop_nocode') || {})), 'a repeat buyer with no code: no flag');
+}
+{
+  reset();
+  fetchImpl = async (q) => { if (q.includes('lower(customerEmail)')) throw new Error('stub: Sanity down'); return null; };
+  promos.set('promo_pix10', { id: 'promo_pix10', code: 'PIX10', restrictions: { first_time_transaction: true }, metadata: {} });
+  const res = await post(shopWebhook, '/api/webhook', event(shopSession('cs_shop_lookupdown', { discount: 100, promo: 'promo_pix10' })), { 'stripe-signature': 'good' });
+  ok(res.status === 200 && docs.has('order.cs_shop_lookupdown'), 'a failed lookup never fails the order');
 }
 
 say(`\n${pass} passed, ${fail} failed.`);

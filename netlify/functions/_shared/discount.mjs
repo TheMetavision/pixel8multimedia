@@ -17,6 +17,8 @@
  * the voucher is identified by metadata (source = 'groupon',
  * grouponVoucherId), never by the code's text:
  *
+ *   welcomeCodes — codes from `codes` that are welcome offers (see
+ *             isWelcomeCode), for the webhook's repeat-customer check.
  *   groupon — a Groupon discount that does NOT belong to the voucher this
  *             session claimed (session.metadata.grouponVoucherId). Kept as a
  *             backstop: it means a legacy GRPN code was typed into another
@@ -30,7 +32,7 @@
  */
 export async function readDiscount(stripe, session) {
   const amountPence = session?.total_details?.amount_discount || 0;
-  const out = { amountPence, codes: [], groupon: false };
+  const out = { amountPence, codes: [], welcomeCodes: [], groupon: false };
   if (!amountPence) return out;
   const claimed = session?.metadata?.grouponVoucherId || null;
 
@@ -65,6 +67,7 @@ export async function readDiscount(stripe, session) {
          the coupon's own name. */
       const code = promo?.code || coupon?.name || coupon?.id || null;
       if (code && !out.codes.includes(code)) out.codes.push(code);
+      if (code && isWelcomeCode(promo) && !out.welcomeCodes.includes(code)) out.welcomeCodes.push(code);
     }
   } catch (err) {
     console.error(`discount: could not read the discount breakdown for ${session.id}:`, err?.message);
@@ -80,3 +83,22 @@ export const discountLabel = (codes) =>
 export const GROUPON_MISUSE =
   'A Groupon voucher discount was applied to a checkout that did not claim that voucher. ' +
   'Check the voucher in Studio before working this order: its value may have been spent twice.';
+
+/**
+ * The welcome offer from the newsletter (PIX10), which is meant to be used
+ * once per customer. Recognised by the promotion code's own "first-time
+ * order only" restriction, so a future welcome code needs no change here;
+ * WELCOME_CODES is the fallback for one created without it.
+ */
+export const WELCOME_CODES = ['PIX10'];
+export function isWelcomeCode(promo) {
+  if (!promo || typeof promo !== 'object') return false;
+  return promo.restrictions?.first_time_transaction === true
+    || WELCOME_CODES.includes(String(promo.code || '').toUpperCase());
+}
+
+/** The warning stored on a shop order when a welcome code was used by an email that has ordered before. */
+export const repeatWelcomeNote = (codes, earlier) =>
+  `${codes.join(', ')} is a first-order welcome code, and this email already has a paid order ` +
+  `(${earlier._id}${earlier.createdAt ? `, ${String(earlier.createdAt).slice(0, 10)}` : ''}). ` +
+  'Stripe cannot refuse it on a guest checkout. The order stands; decide whether to follow up.';
