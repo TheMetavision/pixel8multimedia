@@ -1,6 +1,6 @@
 /**
  * The discount on a paid Checkout Session: how much, which code, and whether
- * that code was one of our own Groupon promotion codes.
+ * any of it came from a Groupon voucher.
  *
  * The shop checkout and a voucher-less commission checkout let the customer
  * type a promotion code on Stripe's page (allow_promotion_codes), so the
@@ -9,11 +9,21 @@
  * the promotion code looked up. Shipping is a shipping_options rate, which
  * coupons do not touch, so the discount is goods only.
  *
- * `groupon` is true when a code minted for a Groupon voucher
- * (_shared/groupon.mts mintPromotionCode, metadata.source = 'groupon') was
- * applied. On a voucher checkout that is expected; anywhere else it means a
- * GRPN… code seen on a voucher checkout was typed into the promo box, and the
- * order needs a human before it is worked.
+ * Groupon vouchers are applied by commission-checkout as a single-use coupon
+ * (`discounts: [{ coupon }]`, _shared/groupon.mts mintVoucherCoupon) whose
+ * metadata names the voucher. Nothing about one can be typed into the promo
+ * box. Voucher checkouts begun before that change applied a single-use GRPN
+ * promotion code instead, whose metadata also names the voucher. Either way
+ * the voucher is identified by metadata (source = 'groupon',
+ * grouponVoucherId), never by the code's text:
+ *
+ *   groupon — a Groupon discount that does NOT belong to the voucher this
+ *             session claimed (session.metadata.grouponVoucherId). Kept as a
+ *             backstop: it means a legacy GRPN code was typed into another
+ *             checkout, and the order needs a human before it is worked.
+ *
+ * The session's own voucher is not a promotion code and gets no
+ * "Discount (CODE)" line; stripe-webhook-commission records it as before.
  *
  * Never throws. The payment is taken whatever this finds, so a failed lookup
  * costs the order its code and keeps the amount, which is on the event itself.
@@ -22,6 +32,7 @@ export async function readDiscount(stripe, session) {
   const amountPence = session?.total_details?.amount_discount || 0;
   const out = { amountPence, codes: [], groupon: false };
   if (!amountPence) return out;
+  const claimed = session?.metadata?.grouponVoucherId || null;
 
   try {
     const full = await stripe.checkout.sessions.retrieve(session.id, {
@@ -29,6 +40,7 @@ export async function readDiscount(stripe, session) {
     });
     for (const d of full?.total_details?.breakdown?.discounts || []) {
       const disc = d.discount || {};
+      const coupon = typeof disc.coupon === 'object' && disc.coupon ? disc.coupon : null;
       let promo = disc.promotion_code;
       if (typeof promo === 'string') {
         try {
@@ -38,12 +50,20 @@ export async function readDiscount(stripe, session) {
           promo = null;
         }
       }
-      if (promo?.metadata?.source === 'groupon' || disc.coupon?.metadata?.source === 'groupon') {
-        out.groupon = true;
+
+      const meta = { ...(coupon?.metadata || {}), ...(promo?.metadata || {}) };
+      if (meta.source === 'groupon') {
+        // Ours only if it is the voucher this checkout claimed. A shared
+        // legacy coupon carries no voucher id, so a typed code on it is
+        // matched through the promotion code's own metadata instead.
+        const voucherId = meta.grouponVoucherId || null;
+        if (voucherId && voucherId === claimed) continue;
+        out.groupon = true; // and named below, so the flag says which code
       }
+
       /* A coupon applied without a customer-facing code still gets named, by
          the coupon's own name. */
-      const code = promo?.code || disc.coupon?.name || disc.coupon?.id || null;
+      const code = promo?.code || coupon?.name || coupon?.id || null;
       if (code && !out.codes.includes(code)) out.codes.push(code);
     }
   } catch (err) {
@@ -56,7 +76,7 @@ export async function readDiscount(stripe, session) {
 export const discountLabel = (codes) =>
   (codes && codes.length ? `Discount (${codes.join(', ')})` : 'Discount');
 
-/** The warning stored on an order/commission when a Groupon code turns up where no voucher was claimed. */
+/** The warning stored on an order/commission when a Groupon discount turns up where its voucher was not claimed. */
 export const GROUPON_MISUSE =
-  'A Groupon voucher promotion code was typed into the promo box on a checkout that did not claim that voucher. ' +
+  'A Groupon voucher discount was applied to a checkout that did not claim that voucher. ' +
   'Check the voucher in Studio before working this order: its value may have been spent twice.';

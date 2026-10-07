@@ -147,7 +147,7 @@ function teamEmailHtml(args: {
   shippingAddress?: string;
   commissionId: string;
   discount?: { label: string; amount: number };
-  /** Set when a Groupon voucher's promotion code was typed into the promo box. */
+  /** Set when another voucher's Groupon discount turned up on this checkout (_shared/discount.mjs). */
   warning?: string;
 }): string {
   const {
@@ -333,7 +333,7 @@ export default async function handler(req: Request, _context: Context) {
       if (promo.codes.length) patch.discountCode = promo.codes.join(', ');
       if (promoWarning) {
         patch.discountWarning = promoWarning;
-        console.error(`[GROUPON] Groupon promotion code typed into the promo box on commission ${commissionId} (${promo.codes.join(', ')})`);
+        console.error(`[GROUPON] Another voucher's Groupon discount on commission ${commissionId} (${promo.codes.join(', ') || 'no code'})`);
       }
     }
     // shippingAddress on the commission schema is a TEXT field — write a string.

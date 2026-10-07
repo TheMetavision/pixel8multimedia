@@ -194,18 +194,6 @@ export const REJECTION_MESSAGE: Record<VoucherRejection, string> = {
   void: 'That voucher is no longer valid. Please email hello@pixel8multimedia.co.uk.',
 };
 
-/**
- * One Stripe coupon per (service, value) pair, reused across every voucher of
- * that shape. `amount_off` — never `percent_off` — so the discount is capped at
- * what the customer actually bought and upgrades stay chargeable.
- *
- * Deterministic id means this is safe to call on every redemption: we look it
- * up first and only create when missing.
- */
-export function couponIdFor(serviceSlug: string, valuePence: number): string {
-  return `groupon-${serviceSlug}-${valuePence}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-}
-
 /** Stripe caps a coupon name at 40 characters and rejects the whole request
  *  over it. Service titles vary in length, so build the name to fit rather
  *  than hoping: the amount is what identifies the coupon in the dashboard, so
@@ -222,38 +210,6 @@ export function couponNameFor(serviceTitle: string | undefined, serviceSlug: str
     ? title
     : `${title.slice(0, Math.max(1, room - 1)).trimEnd()}…`;
   return `${prefix}${fitted}`.slice(0, COUPON_NAME_MAX);
-}
-
-export async function ensureCoupon(
-  stripe: Stripe,
-  serviceSlug: string,
-  valuePence: number,
-  serviceTitle?: string
-): Promise<Stripe.Coupon> {
-  const id = couponIdFor(serviceSlug, valuePence);
-  try {
-    const existing = await stripe.coupons.retrieve(id);
-    if (!existing.deleted) return existing as Stripe.Coupon;
-  } catch (err: any) {
-    if (err?.statusCode !== 404 && err?.raw?.code !== 'resource_missing') throw err;
-  }
-  try {
-    return await stripe.coupons.create({
-      id,
-      amount_off: valuePence,
-      currency: 'gbp',
-      duration: 'once',
-      name: couponNameFor(serviceTitle, serviceSlug, valuePence),
-      metadata: { source: 'groupon', serviceSlug, valuePence: String(valuePence) },
-    });
-  } catch (err: any) {
-    // Two first-ever redemptions of the same shape can race here. The id is
-    // deterministic, so the loser just reads what the winner created.
-    if (err?.raw?.code === 'resource_already_exists') {
-      return (await stripe.coupons.retrieve(id)) as Stripe.Coupon;
-    }
-    throw err;
-  }
 }
 
 /**
@@ -309,35 +265,71 @@ export function clearClaimCookie(): string {
 }
 
 /**
- * A single-use promotion code bound to one voucher. Stripe enforcing
- * max_redemptions = 1 is the second lock: even if our own state machine were
- * raced, Stripe refuses the second application.
+ * A single-use COUPON minted for one voucher checkout, applied by
+ * commission-checkout as `discounts: [{ coupon }]`.
  *
- * The generated code is NOT the Groupon code — Groupon codes never leave our
- * database, and a Stripe promotion code is visible on receipts.
+ * A coupon, not a promotion code, because a promotion code is something a
+ * customer can TYPE: it is shown on the Stripe page, and once the promo box
+ * is on (allow_promotion_codes, for welcome codes like PIX10) a GRPN code
+ * copied from an abandoned voucher checkout could be typed into a shop or
+ * ordinary commission checkout and spend the voucher twice. Checkout's promo
+ * box accepts promotion codes only, never a coupon id, so there is nothing
+ * here to type.
+ *
+ * The same two locks as before: max_redemptions = 1 (Stripe refuses a second
+ * use even if our own state machine were raced) and redeem_by at the end of
+ * the checkout window. amount_off — never percent_off — so the discount is
+ * capped at what the customer bought and upgrades stay chargeable.
+ *
+ * metadata.grouponVoucherId is how a session's discount is traced back to
+ * its voucher (_shared/discount.mjs, the sweep), and what marks a coupon as
+ * one of these: deleteVoucherCoupon refuses anything without it. The Groupon
+ * code itself is not put on the coupon; it never leaves our database.
  */
-export async function mintPromotionCode(
+export async function mintVoucherCoupon(
   stripe: Stripe,
-  coupon: Stripe.Coupon,
   voucher: VoucherDoc,
+  discountPence: number,
+  serviceTitle?: string,
   ttlMinutes = CHECKOUT_TTL_MINUTES
-): Promise<Stripe.PromotionCode> {
-  const suffix = randomBytes(5).toString('hex').toUpperCase();
-  return stripe.promotionCodes.create({
-    coupon: coupon.id,
-    code: `GRPN${suffix}`,
+): Promise<Stripe.Coupon> {
+  return stripe.coupons.create({
+    amount_off: discountPence,
+    currency: 'gbp',
+    duration: 'once',
     max_redemptions: 1,
-    expires_at: Math.floor(Date.now() / 1000) + ttlMinutes * 60,
+    redeem_by: Math.floor(Date.now() / 1000) + ttlMinutes * 60,
+    name: couponNameFor(serviceTitle, voucher.serviceSlug, discountPence),
     metadata: {
       source: 'groupon',
       grouponVoucherId: voucher._id,
-      grouponCode: voucher.code,
       serviceSlug: voucher.serviceSlug,
+      valuePence: String(voucher.valuePence),
     },
   });
 }
 
-/** Best-effort teardown of an unused promotion code (abandoned checkout). */
+/**
+ * Best-effort teardown of a voucher's unused coupon (abandoned or failed
+ * checkout). Only a coupon minted by mintVoucherCoupon is ever deleted: older
+ * vouchers recorded the SHARED per-service coupon (groupon-<slug>-<pence>)
+ * in stripeCouponId, and deleting that would break nothing already paid but
+ * is not ours to remove.
+ */
+export async function deleteVoucherCoupon(stripe: Stripe, id?: string): Promise<void> {
+  if (!id) return;
+  try {
+    const coupon = await stripe.coupons.retrieve(id);
+    if ((coupon as any).deleted || !coupon.metadata?.grouponVoucherId) return;
+    await stripe.coupons.del(id);
+  } catch (err: any) {
+    if (err?.statusCode === 404 || err?.raw?.code === 'resource_missing') return;
+    console.warn('groupon: could not delete voucher coupon', id, err);
+  }
+}
+
+/** Legacy: vouchers checked out before the switch to coupons hold a
+ *  promotion code. Best-effort teardown when one is abandoned. */
 export async function deactivatePromotionCode(stripe: Stripe, id?: string): Promise<void> {
   if (!id) return;
   try {

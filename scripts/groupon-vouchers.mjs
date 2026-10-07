@@ -13,7 +13,8 @@
 //   lookup <code>              Everything we know about one voucher.
 //   reconcile <file.csv>       Match a Groupon redemption report against us.
 //   sweep                      Expire stale vouchers, release lapsed claims,
-//                              deactivate orphaned Stripe promotion codes.
+//                              delete orphaned single-use voucher coupons
+//                              (and deactivate legacy promotion codes).
 //   set-status <code> <status> Force a status by hand (audited in notes).
 //
 // Global options
@@ -524,7 +525,7 @@ async function cmdSweep() {
     `*[_type == "grouponVoucher" && status in ["claimed","checkout"]
         && defined(claimExpiresAt) && claimExpiresAt < $now
         && !defined(commission->paidAt)]{
-      _id, code, status, stripePromotionCodeId
+      _id, code, status, stripeCouponId, stripePromotionCodeId
     }`,
     { now }
   );
@@ -573,26 +574,41 @@ async function cmdSweep() {
     for (const v of stale) {
       await sanity.patch(v._id)
         .set({ status: 'imported' })
-        .unset(['claimTokenHash', 'claimExpiresAt', 'stripePromotionCodeId', 'stripeSessionId'])
+        .unset(['claimTokenHash', 'claimExpiresAt', 'stripeCouponId', 'stripePromotionCodeId', 'stripeSessionId'])
         .commit();
     }
 
-    // Orphaned single-use promotion codes are harmless once expired, but
-    // deactivating them keeps the Stripe dashboard readable and removes any
-    // chance of one being applied by hand.
+    // Each voucher checkout mints its own single-use coupon (max_redemptions 1,
+    // redeem_by at the end of the window — see mintVoucherCoupon). An
+    // abandoned one is harmless once past redeem_by, but deleting it keeps the
+    // dashboard readable. Identified by the coupon's own metadata, never by
+    // id shape: vouchers from before the switch recorded the SHARED
+    // per-service coupon (groupon-<slug>-<pence>), which must not be deleted.
+    // Those older checkouts also hold a promotion code, deactivated as before.
+    const withCoupon = stale.filter((v) => v.stripeCouponId);
     const withPromo = stale.filter((v) => v.stripePromotionCodeId);
-    if (withPromo.length) {
+    if (withCoupon.length || withPromo.length) {
       if (!process.env.STRIPE_SECRET_KEY) {
-        log(`  ⚠ ${withPromo.length} promotion code(s) left active — STRIPE_SECRET_KEY not set.`);
+        log(`  ⚠ ${withCoupon.length} coupon(s) / ${withPromo.length} promotion code(s) left in Stripe — STRIPE_SECRET_KEY not set.`);
       } else {
         const { default: Stripe } = await import('stripe');
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-        let done = 0;
+        let deleted = 0, done = 0;
+        for (const v of withCoupon) {
+          try {
+            const c = await stripe.coupons.retrieve(v.stripeCouponId);
+            if (c.deleted || c.metadata?.grouponVoucherId !== v._id) continue;
+            await stripe.coupons.del(v.stripeCouponId);
+            deleted++;
+          } catch (e) {
+            if (e?.statusCode !== 404) log(`    could not delete coupon ${v.stripeCouponId}: ${e.message}`);
+          }
+        }
         for (const v of withPromo) {
           try { await stripe.promotionCodes.update(v.stripePromotionCodeId, { active: false }); done++; }
           catch (e) { log(`    could not deactivate ${v.stripePromotionCodeId}: ${e.message}`); }
         }
-        log(`  Deactivated ${done} orphaned promotion code(s).`);
+        log(`  Deleted ${deleted} orphaned voucher coupon(s); deactivated ${done} legacy promotion code(s).`);
       }
     }
 

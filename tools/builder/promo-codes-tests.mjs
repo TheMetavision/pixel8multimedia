@@ -6,8 +6,9 @@
  * 1. checkout.mjs (shop) turns the promo box on; P&P is a shipping rate, not
  *    a line, so a code can never discount it.
  * 2. commission-checkout.mts: no voucher → promo box on, no `discounts`;
- *    Groupon voucher → `discounts`, promo box off. Never both (Stripe
- *    refuses the pair).
+ *    Groupon voucher → a single-use coupon minted for that voucher in
+ *    `discounts`, promo box off, and NO promotion code anywhere (nothing a
+ *    customer could type elsewhere). A failed checkout deletes the coupon.
  * 3. webhook.mjs (shop): a code is recorded on the order (amount + code) and
  *    shown as "Discount (CODE) −£x.xx" above P&P and the charged total in
  *    both emails; no code → nothing; a minted Groupon code → flagged.
@@ -15,6 +16,8 @@
  *    show what was PAID with the discount as its own line; the Groupon path
  *    is unchanged (order value, voucher finalised); a Groupon code typed into
  *    the promo box is flagged.
+ * 5. _shared/discount.mjs and deleteVoucherCoupon: a voucher is recognised by
+ *    its coupon's metadata, not a code; only minted coupons are deleted.
  * Stripe, Sanity, Resend and Blobs are faked; nothing touches the network.
  */
 import { registerHooks } from 'node:module';
@@ -51,17 +54,22 @@ process.env.TEAM_EMAIL = 'team@test.local';
 delete process.env.TURNSTILE_SECRET_KEY;
 
 // ── State the fakes read and write ──
-let created, sessions, promos, docs, patches, sent, fetchQueries;
+let created, sessions, promos, coupons, deletedCoupons, docs, patches, sent, fetchQueries;
 const M = (globalThis.__mocks = {});
 function reset() {
-  created = []; sessions = new Map(); promos = new Map(); docs = new Map(); patches = []; sent = []; fetchQueries = [];
+  created = []; sessions = new Map(); promos = new Map(); coupons = new Map(); deletedCoupons = [];
+  docs = new Map(); patches = []; sent = []; fetchQueries = [];
 }
 reset();
 
 M.stripe = {
   checkout: {
     sessions: {
-      create: async (p) => { const s = { id: `cs_test_${created.length + 1}`, url: 'https://checkout.stripe.test', ...p }; created.push(p); return s; },
+      create: async (p) => {
+        created.push(p);
+        if (M.failCreate) throw new Error('stub: Stripe refused the session');
+        return { id: `cs_test_${created.length}`, url: 'https://checkout.stripe.test', ...p };
+      },
       retrieve: async (id) => { const s = sessions.get(id); if (!s) throw new Error(`no session ${id}`); return s; },
       listLineItems: async (id) => ({ data: sessions.get(id)?.lines || [] }),
     },
@@ -72,8 +80,9 @@ M.stripe = {
     update: async () => ({}),
   },
   coupons: {
-    retrieve: async (id) => ({ id, amount_off: 2999, metadata: { source: 'groupon' } }),
-    create: async (c) => c,
+    retrieve: async (id) => { const c = coupons.get(id); if (!c) { const e = new Error('no coupon'); e.statusCode = 404; throw e; } return c; },
+    create: async (c) => { const coupon = { id: `co_minted_${coupons.size + 1}`, ...c }; coupons.set(coupon.id, coupon); return coupon; },
+    del: async (id) => { deletedCoupons.push(id); coupons.delete(id); return { id, deleted: true }; },
   },
   webhooks: {
     constructEvent: (body, sig) => { if (sig !== 'good') throw new Error('bad signature'); return JSON.parse(body); },
@@ -161,8 +170,41 @@ const commissionBody = (extra = {}) => ({
   const res = await post(commissionCheckout, '/.netlify/functions/commission-checkout', commissionBody({ grouponClaimToken: token }));
   ok(res.status === 200, 'a voucher commission gets a session', `${res.status} ${res.status !== 200 ? await res.text() : ''}`);
   const p = created[0] || {};
-  ok(Array.isArray(p.discounts) && p.discounts.length === 1, 'voucher: the minted promotion code is applied via discounts');
+  const applied = p.discounts?.[0] || {};
+  const coupon = coupons.get(applied.coupon);
+  ok(p.discounts?.length === 1 && !!coupon, 'voucher: a coupon is applied via discounts', JSON.stringify(applied));
+  ok(!('promotion_code' in applied) && promos.size === 0, 'and no promotion code is minted — nothing to type into another checkout');
   ok(!('allow_promotion_codes' in p), 'and the promo box is NOT on (Stripe refuses both together)');
+  ok(coupon?.amount_off === 2999 && coupon?.max_redemptions === 1, 'single-use, for the voucher value',
+    `${coupon?.amount_off} x${coupon?.max_redemptions}`);
+  const ttl = (coupon?.redeem_by || 0) - Date.now() / 1000;
+  ok(ttl > 59 * 60 && ttl <= 60 * 60, 'redeemable for the 60-minute checkout window only', `${Math.round(ttl / 60)} min`);
+  ok(p.expires_at && p.expires_at < coupon?.redeem_by, 'and the session expires before the coupon does');
+  ok(coupon?.metadata?.source === 'groupon' && coupon?.metadata?.grouponVoucherId === 'grouponVoucher.v1',
+    'the coupon names its voucher in metadata');
+  ok(!JSON.stringify(coupon).includes('GRPN-REAL-CODE'), 'and never carries the Groupon code itself');
+  const vp = patches.filter((x) => x.id === 'grouponVoucher.v1').map((x) => x.set).reduce((a, b) => ({ ...a, ...b }), {});
+  ok(vp.stripeCouponId === coupon?.id, 'the voucher records its coupon id', vp.stripeCouponId);
+  ok(patches.some((x) => x.id === 'grouponVoucher.v1' && x.unset.includes('stripePromotionCodeId')),
+    'and drops any promotion code id left from an older checkout');
+}
+{
+  /* Stripe refuses the session: the minted coupon must not be left live, and
+     the voucher goes back to `claimed`. */
+  reset();
+  const token = 'claim-token-456';
+  const voucher = {
+    _id: 'grouponVoucher.v2', _rev: 'r1', code: 'GRPN-REAL-2', status: 'claimed', serviceSlug: 'your-song-your-story',
+    valuePence: 2999, claimTokenHash: createHash('sha256').update(token).digest('hex'),
+    claimExpiresAt: new Date(Date.now() + 3600e3).toISOString(), verificationStatus: 'verified',
+  };
+  fetchImpl = async (q) => (q.includes('_type == "service"') ? SERVICE : q.includes('claimTokenHash') ? voucher : null);
+  M.failCreate = true;
+  const res = await post(commissionCheckout, '/.netlify/functions/commission-checkout', commissionBody({ grouponClaimToken: token }));
+  M.failCreate = false;
+  ok(res.status >= 500, 'a refused session fails the request', String(res.status));
+  ok(deletedCoupons.length === 1 && coupons.size === 0, 'and its minted coupon is deleted', deletedCoupons.join(','));
+  ok(patches.some((x) => x.id === 'grouponVoucher.v2' && x.set.status === 'claimed'), 'and the voucher is released');
 }
 
 /* ================================================================ 3 */
@@ -210,7 +252,8 @@ const customer = () => sent.find((m) => ![].concat(m.to).includes('team@test.loc
 }
 {
   reset(); fetchImpl = async () => null;
-  promos.set('promo_grpn', { id: 'promo_grpn', code: 'GRPNABC123', metadata: { source: 'groupon' } });
+  // A legacy GRPN code (minted before the switch to coupons) typed into the shop.
+  promos.set('promo_grpn', { id: 'promo_grpn', code: 'GRPNABC123', metadata: { source: 'groupon', grouponVoucherId: 'grouponVoucher.v9' } });
   const s = shopSession('cs_shop_grpn', { discount: 999, promo: 'promo_grpn' });
   await post(shopWebhook, '/api/webhook', event(s), { 'stripe-signature': 'good' });
   const o = docs.get('order.cs_shop_grpn');
@@ -287,13 +330,47 @@ const commissionPatch = () => patches.find((p) => p.id === 'commission.PX-TEST1'
 }
 {
   reset(); fetchImpl = commissionFetch;
-  promos.set('promo_grpn', { id: 'promo_grpn', code: 'GRPNABC123', metadata: { source: 'groupon' } });
+  promos.set('promo_grpn', { id: 'promo_grpn', code: 'GRPNABC123', metadata: { source: 'groupon', grouponVoucherId: 'grouponVoucher.v9' } });
   const s = commissionSession('cs_c_grpn', { discount: 2999, promo: 'promo_grpn' });
   await post(commissionWebhook, '/.netlify/functions/stripe-webhook-commission', event(s), { 'stripe-signature': 'good' });
   const p = commissionPatch();
   ok(!!p.discountWarning, 'a Groupon code typed into the promo box is flagged on the commission');
   ok(/GROUPON CODE/.test(team()?.subject || '') && strip(team()?.html).includes('GROUPON CODE IN THE PROMO BOX'), 'and in the team email');
   ok(!strip(customer()?.html).includes('GROUPON'), 'but not in the customer email');
+}
+
+/* ================================================================ 5 */
+say('\n5. A VOUCHER IS KNOWN BY ITS COUPON METADATA, NOT A CODE\n');
+{
+  const { readDiscount } = await import(`${ROOT}_shared/discount.mjs`);
+  const { deleteVoucherCoupon } = await import(`${ROOT}_shared/groupon.mts`);
+  const withBreakdown = (id, claimed, discounts) => {
+    sessions.set(id, { id, total_details: { amount_discount: 2999, breakdown: { discounts } } });
+    return { id, total_details: { amount_discount: 2999 }, metadata: claimed ? { grouponVoucherId: claimed } : {} };
+  };
+  const minted = (voucherId) => ({ id: `co_${voucherId}`, amount_off: 2999, name: 'Groupon £29.99 - x', metadata: { source: 'groupon', grouponVoucherId: voucherId } });
+
+  reset();
+  let d = await readDiscount(M.stripe, withBreakdown('cs_own', 'grouponVoucher.v1', [{ amount: 2999, discount: { coupon: minted('grouponVoucher.v1') } }]));
+  ok(!d.groupon && d.codes.length === 0, 'its own minted coupon: not flagged, and no "Discount (CODE)" line');
+
+  promos.set('promo_legacy', { id: 'promo_legacy', code: 'GRPNOLD1', metadata: { source: 'groupon', grouponVoucherId: 'grouponVoucher.v1' } });
+  d = await readDiscount(M.stripe, withBreakdown('cs_legacy', 'grouponVoucher.v1', [{ amount: 2999, discount: { promotion_code: 'promo_legacy', coupon: { id: 'groupon-x-2999', metadata: { source: 'groupon' } } } }]));
+  ok(!d.groupon, 'a voucher checkout begun before the switch (legacy GRPN code, same voucher): not flagged');
+
+  d = await readDiscount(M.stripe, withBreakdown('cs_other', 'grouponVoucher.v2', [{ amount: 2999, discount: { coupon: minted('grouponVoucher.v1') } }]));
+  ok(d.groupon, "another voucher's coupon on this checkout: flagged");
+
+  d = await readDiscount(M.stripe, withBreakdown('cs_shop', null, [{ amount: 2999, discount: { promotion_code: 'promo_legacy', coupon: { id: 'groupon-x-2999', metadata: { source: 'groupon' } } } }]));
+  ok(d.groupon && d.codes.includes('GRPNOLD1'), 'a legacy GRPN code on a checkout with no voucher: flagged, and named');
+
+  reset();
+  coupons.set('groupon-your-song-your-story-2999', { id: 'groupon-your-song-your-story-2999', metadata: { source: 'groupon', serviceSlug: 'x' } });
+  coupons.set('co_mine', minted('grouponVoucher.v1'));
+  await deleteVoucherCoupon(M.stripe, 'groupon-your-song-your-story-2999');
+  await deleteVoucherCoupon(M.stripe, 'co_mine');
+  await deleteVoucherCoupon(M.stripe, 'co_already_gone');
+  ok(deletedCoupons.join() === 'co_mine', 'only a minted coupon is ever deleted; the shared legacy one is left', deletedCoupons.join());
 }
 
 say(`\n${pass} passed, ${fail} failed.`);

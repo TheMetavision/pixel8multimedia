@@ -21,8 +21,8 @@ import {
   CLAIM_COOKIE,
   clearClaimCookie,
   effectiveDiscountPence,
-  ensureCoupon,
-  mintPromotionCode,
+  mintVoucherCoupon,
+  deleteVoucherCoupon,
   deactivatePromotionCode,
   CHECKOUT_TTL_MINUTES,
   minutesFromNow,
@@ -630,10 +630,13 @@ export default async function handler(req: Request, _context: Context) {
             status: 200, headers: { 'Content-Type': 'application/json' },
           });
         }
-        // Expired — the old promotion code is dead weight.
+        // Expired — its single-use coupon is dead weight (or, for a checkout
+        // started before the switch to coupons, its promotion code).
+        await deleteVoucherCoupon(stripe, voucher.stripeCouponId);
         await deactivatePromotionCode(stripe, voucher.stripePromotionCodeId);
       } catch (e) {
         console.warn('commission-checkout: could not inspect in-flight voucher session:', e);
+        await deleteVoucherCoupon(stripe, voucher.stripeCouponId);
         await deactivatePromotionCode(stripe, voucher.stripePromotionCodeId);
       }
     }
@@ -877,7 +880,6 @@ export default async function handler(req: Request, _context: Context) {
     }
 
     // ── Apply the Groupon entitlement ─────────────────────────────────────
-    let promotionCodeId: string | undefined;
     let couponId: string | undefined;
     let voucherClaimed = false;
 
@@ -906,7 +908,7 @@ export default async function handler(req: Request, _context: Context) {
 
       // Compare-and-swap on the document revision. Only one concurrent request
       // can hold the voucher's current _rev, so two tabs racing here cannot
-      // both proceed — this, not the Stripe promotion code, is what makes
+      // both proceed — this, not the Stripe coupon, is what makes
       // double-spending impossible.
       try {
         await sanity
@@ -926,11 +928,12 @@ export default async function handler(req: Request, _context: Context) {
       }
 
       try {
-        const coupon = await ensureCoupon(stripe, voucher.serviceSlug, discountPence, service.title);
+        // A single-use coupon minted for this checkout, applied directly: no
+        // promotion code exists, so nothing is shown that could be typed into
+        // another checkout's promo box (see mintVoucherCoupon).
+        const coupon = await mintVoucherCoupon(stripe, voucher, discountPence, service.title, CHECKOUT_TTL_MINUTES);
         couponId = coupon.id;
-        const promo = await mintPromotionCode(stripe, coupon, voucher, CHECKOUT_TTL_MINUTES);
-        promotionCodeId = promo.id;
-        sessionParams.discounts = [{ promotion_code: promo.id }];
+        sessionParams.discounts = [{ coupon: coupon.id }];
         sessionParams.metadata = {
           ...(sessionParams.metadata || {}),
           source: 'groupon',
@@ -939,13 +942,14 @@ export default async function handler(req: Request, _context: Context) {
           grouponValuePence: String(voucher.valuePence),
           grouponDiscountPence: String(discountPence),
         };
-        // The session must expire before the promotion code does, or the
+        // The session must expire before the coupon's redeem_by, or the
         // customer reaches a page whose discount Stripe will refuse. Stripe
         // requires at least 30 minutes, so never let tuning push it below that.
         const sessionMinutes = Math.max(31, CHECKOUT_TTL_MINUTES - 5);
         sessionParams.expires_at = Math.floor(Date.now() / 1000) + sessionMinutes * 60;
       } catch (e: any) {
         console.error('commission-checkout: failed to build Groupon discount:', e);
+        await deleteVoucherCoupon(stripe, couponId);
         await releaseVoucher();
         return new Response(
           JSON.stringify({ error: 'We could not apply your Groupon voucher just now. Please try again in a moment — your voucher has not been used.' }),
@@ -977,9 +981,9 @@ export default async function handler(req: Request, _context: Context) {
     try {
       session = await stripe.checkout.sessions.create(sessionParams);
     } catch (e) {
-      // Don't strand a live single-use promotion code on a session that never
+      // Don't strand a live single-use coupon on a session that never
       // existed, and don't hold the voucher hostage.
-      await deactivatePromotionCode(stripe, promotionCodeId);
+      await deleteVoucherCoupon(stripe, couponId);
       await releaseVoucher();
       throw e;
     }
@@ -989,11 +993,13 @@ export default async function handler(req: Request, _context: Context) {
         await sanity.patch(voucher._id).set({
           stripeSessionId: session.id,
           stripeCouponId: couponId,
-          stripePromotionCodeId: promotionCodeId,
           commission: { _type: 'reference', _ref: commission._id },
           orderRef,
           customerEmail: email,
-        }).commit();
+        })
+          // Left over from a checkout begun before the switch to coupons.
+          .unset(['stripePromotionCodeId'])
+          .commit();
       } catch (e) {
         // Non-fatal: the webhook finalises the voucher from session metadata.
         console.warn('commission-checkout: could not attach session to voucher:', e);
