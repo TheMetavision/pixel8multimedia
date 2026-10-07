@@ -12,6 +12,7 @@ import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
 import { DIGITAL_CONSENT_CONFIRMATION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 import { chargedExShipping, commissionGaItems, sendPurchase } from './_shared/ga4.mjs';
+import { readDiscount, discountLabel, GROUPON_MISUSE } from './_shared/discount.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 const endpointSecret = process.env.STRIPE_COMMISSION_WEBHOOK_SECRET!;
@@ -59,8 +60,10 @@ function customerEmailHtml(args: {
   hasShipping: boolean;
   /** Set for orders that include digital files: what the customer agreed to at checkout. */
   digitalConsent?: string;
+  /** A promotion code the customer entered: shown above the total paid. */
+  discount?: { label: string; amount: number };
 }): string {
-  const { customerName, serviceTitle, orderRef, total, deliveryType, hasShipping, digitalConsent } = args;
+  const { customerName, serviceTitle, orderRef, total, deliveryType, hasShipping, digitalConsent, discount } = args;
   const nextSteps =
     deliveryType === 'print'
       ? 'Our team will create your artwork and prepare your print for dispatch. We\u2019ll email you a tracking update once it\u2019s on its way.'
@@ -94,6 +97,8 @@ function customerEmailHtml(args: {
               <tr><td style="padding:16px 20px;">
                 <p style="margin:0 0 6px;color:#6b7280;font-size:13px;">Order reference</p>
                 <p style="margin:0 0 14px;color:#1a1a2e;font-size:16px;font-weight:700;">${orderRef}</p>
+                ${discount ? `<p style="margin:0 0 6px;color:#6b7280;font-size:13px;">${discount.label}</p>
+                <p style="margin:0 0 14px;color:#16a34a;font-size:16px;font-weight:700;">−£${discount.amount.toFixed(2)}</p>` : ''}
                 <p style="margin:0 0 6px;color:#6b7280;font-size:13px;">Total paid</p>
                 <p style="margin:0;color:#1a1a2e;font-size:16px;font-weight:700;">\u00A3${total.toFixed(2)}</p>
               </td></tr>
@@ -141,10 +146,13 @@ function teamEmailHtml(args: {
   deliveryType: string;
   shippingAddress?: string;
   commissionId: string;
+  discount?: { label: string; amount: number };
+  /** Set when a Groupon voucher's promotion code was typed into the promo box. */
+  warning?: string;
 }): string {
   const {
     serviceTitle, orderRef, customerName, customerEmail, customerPhone,
-    total, deliveryType, shippingAddress, commissionId,
+    total, deliveryType, shippingAddress, commissionId, discount, warning,
   } = args;
   const studioUrl = `https://pixel8multimedia.sanity.studio/structure/commission;${commissionId}`;
   return `
@@ -166,7 +174,9 @@ function teamEmailHtml(args: {
           <td style="padding:32px 40px;">
             <p style="margin:0 0 16px;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#7c3aed;">New paid commission</p>
             <p style="margin:0 0 4px;font-size:18px;color:#1a1a2e;"><strong>${serviceTitle}</strong></p>
+            ${warning ? `<div style="margin:0 0 16px;padding:14px 16px;background:#fdecea;border-left:4px solid #d32f2f;border-radius:4px;color:#b71c1c;font-size:14px;line-height:1.5;"><strong>\u26A0 GROUPON CODE IN THE PROMO BOX</strong><br/>${warning}</div>` : ''}
             <p style="margin:0 0 16px;color:#6b7280;font-size:14px;">Ref: <strong>${orderRef}</strong> \u00B7 \u00A3${total.toFixed(2)} \u00B7 ${deliveryType.toUpperCase()}</p>
+            ${discount ? `<p style="margin:-8px 0 16px;color:#16a34a;font-size:14px;">${discount.label} \u2212\u00A3${discount.amount.toFixed(2)} (total above is what was paid)</p>` : ''}
             <p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Customer:</strong> ${customerName}</p>
             <p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Email:</strong> ${customerEmail}</p>
             ${customerPhone ? `<p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Phone:</strong> ${customerPhone}</p>` : ''}
@@ -312,6 +322,20 @@ export default async function handler(req: Request, _context: Context) {
     if (grouponVoucherId) {
       patch.discountPence = discountPence;
     }
+    // ── Promotion code typed into Stripe's promo box (no voucher) ────────
+    // Recorded on the same field, plus the code. Only looked up when there
+    // is no voucher: a voucher session cannot carry a typed code as well
+    // (commission-checkout passes `discounts` instead of the promo box).
+    const promo = !grouponVoucherId && discountPence > 0 ? await readDiscount(stripe, session) : null;
+    const promoWarning = promo?.groupon ? GROUPON_MISUSE : undefined;
+    if (promo) {
+      patch.discountPence = discountPence;
+      if (promo.codes.length) patch.discountCode = promo.codes.join(', ');
+      if (promoWarning) {
+        patch.discountWarning = promoWarning;
+        console.error(`[GROUPON] Groupon promotion code typed into the promo box on commission ${commissionId} (${promo.codes.join(', ')})`);
+      }
+    }
     // shippingAddress on the commission schema is a TEXT field — write a string.
     if (shippingAddressText) {
       patch.shippingAddress = shippingAddressText;
@@ -375,7 +399,10 @@ export default async function handler(req: Request, _context: Context) {
     // Show the ORDER's value, not the cash captured. A fully voucher-covered
     // job captures £0, and a "£0.00" confirmation reads as a broken order to
     // the customer and as nothing-to-do to whoever picks it up.
-    const total = amountPaid + discountPence / 100;
+    // A promotion code is different: the customer was charged less and the
+    // emails say so, with the discount shown as its own line.
+    const total = promo ? amountPaid : amountPaid + discountPence / 100;
+    const promoLine = promo ? { label: discountLabel(promo.codes), amount: discountPence / 100 } : undefined;
     const deliveryType = existing.deliveryType || 'digital';
 
     // C3: capture BOTH thrown errors and Resend's returned { error } object.
@@ -400,6 +427,7 @@ export default async function handler(req: Request, _context: Context) {
           // confirm the consent and acknowledgement given at checkout on a
           // durable medium (CCRs 2013 reg. 37).
           digitalConsent: needsDigitalConsent(deliveryType) ? DIGITAL_CONSENT_CONFIRMATION : undefined,
+          discount: promoLine,
         }),
       });
       if (error) {
@@ -416,7 +444,7 @@ export default async function handler(req: Request, _context: Context) {
         from: FROM_EMAIL,
         to: TEAM_EMAIL,
         replyTo: existing.customerEmail,
-        subject: `NEW PAID COMMISSION \u2014 ${serviceTitle} \u2014 ${existing.orderRef}`,
+        subject: `${promoWarning ? '\u26a0 GROUPON CODE \u2014 ' : ''}NEW PAID COMMISSION \u2014 ${serviceTitle} \u2014 ${existing.orderRef}`,
         html: teamEmailHtml({
           serviceTitle,
           orderRef: existing.orderRef,
@@ -427,6 +455,8 @@ export default async function handler(req: Request, _context: Context) {
           deliveryType,
           shippingAddress: shippingAddressText,
           commissionId: existing._id,
+          discount: promoLine,
+          warning: promoWarning,
         }),
       });
       if (error) {

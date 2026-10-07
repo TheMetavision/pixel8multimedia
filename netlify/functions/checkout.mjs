@@ -187,6 +187,10 @@ export default async (req, context) => {
       // pay for a design that's already gone, so carts with one get 35
       // minutes (Stripe's minimum is 30).
       ...(hasPersonalised ? { expires_at: Math.floor(Date.now() / 1000) + 35 * 60 } : {}),
+      // The customer types their code (e.g. the welcome PIX10) on Stripe's
+      // page. Coupons apply to line items only, so P&P above is never
+      // discounted. webhook.mjs reads the discount back (_shared/discount.mjs).
+      allow_promotion_codes: true,
       metadata: {
         source: 'shop',
         lines: String(priced.lines.length),

@@ -431,12 +431,30 @@ export default defineType({
     }),
     defineField({
       name: 'discountPence',
-      title: 'Voucher Discount Applied (pence)',
+      title: 'Discount Applied (pence)',
       type: 'number',
       group: 'source',
       readOnly: true,
-      description: 'How much of the total was covered by a voucher. The rest is what the customer paid us directly.',
-      hidden: ({ document }) => document?.source !== 'groupon',
+      description: 'How much came off: the Groupon voucher, or a promotion code (see Discount Code). Amount is what the customer actually paid.',
+      hidden: ({ document }) => document?.source !== 'groupon' && !document?.discountPence,
+    }),
+    defineField({
+      name: 'discountCode',
+      title: 'Discount Code',
+      type: 'string',
+      group: 'source',
+      readOnly: true,
+      description: 'Promotion code the customer typed at checkout (not a Groupon voucher).',
+      hidden: ({ value }) => !value,
+    }),
+    defineField({
+      name: 'discountWarning',
+      title: '⚠ Discount warning',
+      type: 'text',
+      rows: 3,
+      group: 'source',
+      readOnly: true,
+      hidden: ({ value }) => !value,
     }),
 
     // ── Legacy Fields (kept for backwards compat) ──

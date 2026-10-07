@@ -953,6 +953,15 @@ export default async function handler(req: Request, _context: Context) {
       }
     }
 
+    // ── Promotion codes: the promo box, or the voucher — never both ───────
+    // Stripe refuses allow_promotion_codes alongside `discounts`, and a
+    // voucher order must not stack a welcome code on top anyway. Without a
+    // voucher the customer may type one (e.g. PIX10) on Stripe's page;
+    // stripe-webhook-commission reads it back (_shared/discount.mjs).
+    if (!sessionParams.discounts) {
+      sessionParams.allow_promotion_codes = true;
+    }
+
     // Hand the voucher back if we claimed it and then couldn't finish. Leaving
     // it in `checkout` would lock the customer out for the full window.
     async function releaseVoucher() {

@@ -11,6 +11,7 @@ import { getStore } from '@netlify/blobs';
 import { flagMissingPrintFiles, teamSubject, missingBlockHtml } from './_shared/print-alerts.mjs';
 import { stockLineKeys } from './_shared/print-job.mjs';
 import { sendPurchase, shopGaItems } from './_shared/ga4.mjs';
+import { readDiscount, discountLabel, GROUPON_MISUSE } from './_shared/discount.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -86,6 +87,14 @@ export default async (req, context) => {
       const customerName = session.shipping_details?.name || session.customer_details?.name || 'Customer';
       const customerEmail = session.customer_details?.email || '';
       const totalAmount = (session.amount_total || 0) / 100;
+      // P&P as charged, and any promotion code (goods only — never P&P).
+      // totalAmount above is already the discounted total Stripe charged.
+      const shippingPence = session.shipping_cost?.amount_total ?? session.total_details?.amount_shipping ?? 0;
+      const discount = await readDiscount(stripe, session);
+      const discountAmount = discount.amountPence / 100;
+      // The shop never applies a voucher, so a Groupon code here was typed in.
+      const discountWarning = discount.groupon ? GROUPON_MISUSE : null;
+      if (discountWarning) console.error(`webhook: GROUPON CODE ON A SHOP ORDER — session ${session.id} (${discount.codes.join(', ')})`);
       const cartItems = await cartFromSession(session);
 
       // The order _id is derived from the Stripe session. The dot keeps the
@@ -140,6 +149,13 @@ export default async (req, context) => {
             country: shipping.country || '',
           },
           lineItems,
+          ...(discountAmount
+            ? {
+              discountAmount,
+              ...(discount.codes.length ? { discountCode: discount.codes.join(', ') } : {}),
+              ...(discountWarning ? { discountWarning } : {}),
+            }
+            : {}),
           totalAmount,
           status: 'received',
           createdAt: new Date().toISOString(),
@@ -227,6 +243,14 @@ export default async (req, context) => {
           </thead>
           <tbody>${itemRows}</tbody>
           <tfoot>
+            ${discountAmount ? `<tr>
+              <td colspan="4" style="padding: 10px 12px; text-align: right; color: #F5F5F0;">${discountLabel(discount.codes)}:</td>
+              <td style="padding: 10px 12px; text-align: right; color: #76FF03; font-family: monospace;">&minus;£${discountAmount.toFixed(2)}</td>
+            </tr>` : ''}
+            <tr>
+              <td colspan="4" style="padding: 10px 12px; text-align: right; color: #F5F5F0;">P&amp;P:</td>
+              <td style="padding: 10px 12px; text-align: right; color: #999; font-family: monospace;">${shippingPence ? `£${(shippingPence / 100).toFixed(2)}` : 'FREE'}</td>
+            </tr>
             <tr>
               <td colspan="4" style="padding: 10px 12px; text-align: right; font-weight: bold; color: #F5F5F0;">Total:</td>
               <td style="padding: 10px 12px; text-align: right; font-weight: bold; color: #F07828; font-family: monospace; font-size: 16px;">£${totalAmount.toFixed(2)}</td>
@@ -290,7 +314,7 @@ export default async (req, context) => {
         await resend.emails.send({
           from: process.env.EMAIL_FROM || 'Pixel8 Multimedia <orders@pixel8multimedia.co.uk>',
           to: [teamEmail],
-          subject: teamSubject({ total: totalAmount, customerName, missingCount: printCheck.missing.length }),
+          subject: `${discountWarning ? '⚠ GROUPON CODE — ' : ''}${teamSubject({ total: totalAmount, customerName, missingCount: printCheck.missing.length })}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1a1a1a;">
               <div style="background: #F07828; padding: 16px; text-align: center;">
@@ -298,6 +322,9 @@ export default async (req, context) => {
               </div>
               <div style="padding: 24px;">
                 ${missingBlockHtml(printCheck.missing)}
+                ${discountWarning ? `<div style="margin: 0 0 20px; padding: 14px 16px; background: #fdecea; border-left: 4px solid #d32f2f; border-radius: 4px; color: #b71c1c;">
+                  <strong>⚠ GROUPON CODE USED ON A SHOP ORDER (${discount.codes.join(', ')})</strong><br/>${GROUPON_MISUSE}
+                </div>` : ''}
                 <h2 style="margin: 0 0 4px;">${customerName}</h2>
                 <p style="color: #666; margin: 0 0 20px;">${customerEmail}</p>
                 ${orderTable}
