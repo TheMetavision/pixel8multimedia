@@ -213,14 +213,23 @@ const money = (p: number) => `£${(p / 100).toFixed(2)}`;
     okEl.classList.remove('hidden');
   }
 
+  // One claim at a time. After a successful claim the button stays disabled
+  // until the page has gone: re-enabling it during the redirect delay let a
+  // second click claim again. (The server answers a repeat claim with the
+  // existing one anyway; this just stops the extra request.)
+  let inFlight = false;
+  let claimed = false;
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (inFlight || claimed) return;
     const code = (codeInput.value || '').trim();
     const dealKey = dealInput.value;
 
     if (!code) { showError('Please enter your Groupon voucher code.'); return; }
     if (!dealKey) { showError('Please tell us which deal you bought.'); return; }
 
+    inFlight = true;
     button.disabled = true;
     button.textContent = 'Checking…';
     errorEl.classList.add('hidden');
@@ -251,6 +260,7 @@ const money = (p: number) => `£${(p / 100).toFixed(2)}`;
       } else {
         showOk('Voucher accepted. Taking you to your order form…');
       }
+      claimed = true;
 
       try {
         sessionStorage.setItem(
@@ -278,8 +288,13 @@ const money = (p: number) => `£${(p / 100).toFixed(2)}`;
     } catch {
       showError('We could not reach the server. Please check your connection and try again.');
     } finally {
-      button.disabled = false;
-      button.textContent = 'Start my order';
+      inFlight = false;
+      if (claimed) {
+        button.textContent = 'Taking you there…';   // stays disabled until the redirect
+      } else {
+        button.disabled = false;
+        button.textContent = 'Start my order';
+      }
     }
   });
 </script>
