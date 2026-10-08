@@ -102,11 +102,18 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             <p id="message-error" class="field-error hidden font-dm text-red-400 text-sm mt-2">Please write your message.</p>
           </div>
 
-          <!-- Honeypot — hidden from real users, bots fill it in -->
+          {/*
+            Honeypot. Off-screen (not display:none, which some bots skip),
+            aria-hidden and tabindex -1, so no person meets it. The name means
+            nothing to browser autofill -- it used to be "website", an autofill
+            token -- and the label gives no instruction a label-reading bot could
+            follow ("Leave this field empty" told it to). Astro comment, so the
+            note does not ship. The function also still traps the old name for
+            pages cached before the rename.
+          */}
           <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
-            <label>Leave this field empty
-              <input type="text" name="website" tabindex="-1" autocomplete="off" />
-            </label>
+            <label for="p8-extra-note">Extra note</label>
+            <input type="text" id="p8-extra-note" name="p8_extra_note" tabindex="-1" autocomplete="off" />
           </div>
 
           <!-- Bot check (Cloudflare Turnstile), rendered by the page script -->
@@ -361,7 +368,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         email: (fd.get('email') || '').toString().trim(),
         subject: (fd.get('subject') || '').toString().trim(),
         message: (fd.get('message') || '').toString().trim(),
-        website: (fd.get('website') || '').toString().trim(), // honeypot
+        p8_extra_note: (fd.get('p8_extra_note') || '').toString().trim(), // honeypot
         turnstile: '',
       };
 
