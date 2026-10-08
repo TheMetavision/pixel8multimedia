@@ -9,7 +9,7 @@
 // checkout pays for the canvas — which is the entire point of the digital-first
 // / hard-copy-upgrade strategy.
 
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type Stripe from 'stripe';
 import campaignData from '../../../src/data/groupon-campaigns.json' with { type: 'json' };
 
@@ -74,6 +74,7 @@ export interface VoucherDoc {
   valuePence: number;
   expiresAt?: string;
   claimTokenHash?: string;
+  claimedAt?: string;
   claimExpiresAt?: string;
   claimCount?: number;
   campaignName?: string;
@@ -121,6 +122,46 @@ export function sha256(value: string): string {
 export function newClaimToken(): { token: string; hash: string } {
   const token = randomBytes(32).toString('hex');
   return { token, hash: sha256(token) };
+}
+
+/**
+ * The secret claim tokens are derived from: GROUPON_CLAIM_SECRET, else the
+ * existing PERSONALISATION_SALT (domain-separated below). Null when neither is
+ * set, and then claims fall back to random tokens (still safe, just not
+ * idempotent).
+ */
+function claimSecret(): string | null {
+  return process.env.GROUPON_CLAIM_SECRET || process.env.PERSONALISATION_SALT || null;
+}
+
+/**
+ * The claim token for one claim of one voucher, derived rather than random so
+ * the SAME claim can be handed back on a repeat request (a double click, a
+ * retried POST, a second tab) without the token ever being stored: only its
+ * sha256 is, exactly as before. Same 64-hex shape as newClaimToken().
+ */
+export function claimTokenFor(voucherId: string, claimedAt: string, claimCount: number): { token: string; hash: string } | null {
+  const secret = claimSecret();
+  if (!secret || !voucherId || !claimedAt || !(claimCount > 0)) return null;
+  // claimCount makes every claim of a voucher distinct even if two land in the
+  // same millisecond; claimedAt alone would not.
+  const token = createHmac('sha256', `groupon-claim:${secret}`)
+    .update(`${voucherId}|${claimedAt}|${claimCount}`)
+    .digest('hex');
+  return { token, hash: sha256(token) };
+}
+
+/**
+ * The live claim on a voucher, if there is one this endpoint made: the token
+ * re-derived from the stored claimedAt matches the stored hash, and the
+ * window has not lapsed. Used to answer a repeat claim with the existing
+ * result instead of claiming again.
+ */
+export function liveClaimToken(v: Pick<VoucherDoc, '_id' | 'status' | 'claimedAt' | 'claimTokenHash' | 'claimExpiresAt' | 'claimCount'>): string | null {
+  if (v.status !== 'claimed' && v.status !== 'checkout') return null;
+  if (!v.claimedAt || !v.claimTokenHash || !v.claimExpiresAt || isPast(v.claimExpiresAt)) return null;
+  const derived = claimTokenFor(v._id, v.claimedAt, v.claimCount || 0);
+  return derived && hashesMatch(derived.hash, v.claimTokenHash) ? derived.token : null;
 }
 
 /** Constant-time compare of two hex digests of equal length. */

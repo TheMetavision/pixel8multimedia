@@ -19,11 +19,13 @@
 
 import type { Context } from '@netlify/functions';
 import { createClient } from '@sanity/client';
-import { randomUUID } from 'node:crypto';
 import {
   normaliseCode,
   looksLikeGrouponCode,
   newClaimToken,
+  claimTokenFor,
+  liveClaimToken,
+  sha256,
   minutesFromNow,
   rejectionFor,
   REJECTION_MESSAGE,
@@ -84,6 +86,25 @@ function json(body: unknown, status = 200, setCookie?: string) {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+const VOUCHER_FIELDS = `_id, _rev, code, status, serviceSlug, entitlementOrderType, valuePence,
+  expiresAt, claimTokenHash, claimedAt, claimExpiresAt, claimCount, campaignName,
+  optionLabel, stripeCouponId, stripePromotionCodeId, stripeSessionId,
+  verified, verificationStatus, declaredDealKey,
+  "commissionPaidAt": commission->paidAt`;
+
+async function voucherByCode(code: string): Promise<VoucherDoc | null> {
+  return sanity.fetch(`*[_type == "grouponVoucher" && code == $code][0]{ ${VOUCHER_FIELDS} }`, { code });
+}
+
+/**
+ * A token for a NEW claim: derived from the voucher id and claim time when a
+ * secret is configured (so a repeat request can be given the same claim back),
+ * else random.
+ */
+function mintClaim(voucherId: string, claimedAt: string, claimCount: number) {
+  return claimTokenFor(voucherId, claimedAt, claimCount) || newClaimToken();
+}
+
 /** Can a customer actually place this order right now? */
 async function serviceIsOrderable(slug: string): Promise<boolean> {
   const svc = await sanity.fetch(
@@ -120,16 +141,7 @@ export default async function handler(req: Request, _context: Context) {
   }
 
   try {
-    const voucher: VoucherDoc | null = await sanity.fetch(
-      `*[_type == "grouponVoucher" && code == $code][0]{
-        _id, code, status, serviceSlug, entitlementOrderType, valuePence,
-        expiresAt, claimTokenHash, claimExpiresAt, claimCount, campaignName,
-        optionLabel, stripeCouponId, stripePromotionCodeId, stripeSessionId,
-        verified, verificationStatus, declaredDealKey,
-        "commissionPaidAt": commission->paidAt
-      }`,
-      { code }
-    );
+    let voucher: VoucherDoc | null = await voucherByCode(code);
 
     // ── Known code: our record wins over anything the customer selected ──
     if (voucher) {
@@ -142,19 +154,46 @@ export default async function handler(req: Request, _context: Context) {
         return json({ error: NOT_ORDERABLE }, 503);
       }
 
-      const { token, hash } = newClaimToken();
-      const claimExpiresAt = minutesFromNow(CLAIM_TTL_MINUTES);
-      const claimCount = (voucher.claimCount || 0) + 1;
+      /* Idempotent. A voucher already holding a live claim made here is handed
+         back exactly as it is -- same token, same window, nothing written -- so
+         a double click, a retried POST or a second tab never claims twice, and
+         never leaves the browser holding a token the voucher no longer has. */
+      let token = liveClaimToken(voucher);
+      let claimExpiresAt = voucher.claimExpiresAt as string;
+      let repeat = !!token;
 
-      await sanity.patch(voucher._id).set({
-        status: 'claimed',
-        claimTokenHash: hash,
-        claimedAt: new Date().toISOString(),
-        claimExpiresAt,
-        claimCount,
-      }).commit();
-
-      console.log(`groupon-redeem: ${code} claimed (${voucher.serviceSlug}, claim #${claimCount})`);
+      if (!token) {
+        const claimedAt = new Date().toISOString();
+        const claimCount = (voucher.claimCount || 0) + 1;
+        const minted = mintClaim(voucher._id, claimedAt, claimCount);
+        claimExpiresAt = minutesFromNow(CLAIM_TTL_MINUTES);
+        try {
+          // Compare-and-swap on the revision: of two requests racing here, one
+          // writes the claim and the other is refused below.
+          let patch = sanity.patch(voucher._id);
+          if (voucher._rev) patch = patch.ifRevisionId(voucher._rev);
+          await patch.set({
+            status: 'claimed',
+            claimTokenHash: minted.hash,
+            claimedAt,
+            claimExpiresAt,
+            claimCount,
+          }).commit();
+          token = minted.token;
+          console.log(`groupon-redeem: ${code} claimed (${voucher.serviceSlug}, claim #${claimCount})`);
+        } catch (err: any) {
+          // Lost the race: the other request's claim is the claim. Hand it back.
+          voucher = await voucherByCode(code);
+          token = voucher ? liveClaimToken(voucher) : null;
+          if (!voucher || !token) {
+            console.warn(`groupon-redeem: ${code} claim conflict not resolvable:`, err?.message || err);
+            return json({ error: 'That voucher is being claimed in another window. Please try again in a moment.' }, 409);
+          }
+          claimExpiresAt = voucher.claimExpiresAt as string;
+          repeat = true;
+        }
+      }
+      if (repeat) console.log(`groupon-redeem: ${code} repeat claim -- existing claim returned, nothing written`);
 
       return json({
         ok: true,
@@ -201,12 +240,19 @@ export default async function handler(req: Request, _context: Context) {
       return json({ error: TOO_MANY }, 429);
     }
 
-    const { token, hash } = newClaimToken();
+    // One document per code, whatever arrives twice: the id is derived from the
+    // code, so a repeat request's create fails and is answered with the claim
+    // the first one made.
+    const voucherId = `grouponVoucher.unchecked-${sha256(code).slice(0, 32)}`;
+    const claimedAt = new Date().toISOString();
+    const { token, hash } = mintClaim(voucherId, claimedAt, 1);
     const claimExpiresAt = minutesFromNow(CLAIM_TTL_MINUTES);
 
-    const created = await sanity.create({
+    let created: any;
+    try {
+      created = await sanity.create({
       // Dotted _id: hidden from anonymous API reads (code, email, claim IP).
-      _id: `grouponVoucher.${randomUUID()}`,
+      _id: voucherId,
       _type: 'grouponVoucher',
       code,
       status: 'claimed',
@@ -222,14 +268,35 @@ export default async function handler(req: Request, _context: Context) {
       verificationStatus: 'unchecked',
       claimIp: ip,
       claimTokenHash: hash,
-      claimedAt: new Date().toISOString(),
+      claimedAt,
       claimExpiresAt,
       claimCount: 1,
       notes:
         'Code accepted before confirmation — it was not in the imported list. ' +
         'The deal above is what the CUSTOMER says they bought. Confirm in Merchant Center ' +
         'before this order is worked.',
-    });
+      });
+    } catch (err: any) {
+      const existing = await voucherByCode(code);
+      const existingToken = existing ? liveClaimToken(existing) : null;
+      if (!existing || !existingToken) {
+        console.warn(`groupon-redeem: ${code} unchecked create conflict not resolvable:`, err?.message || err);
+        return json({ error: 'That voucher is being claimed in another window. Please try again in a moment.' }, 409);
+      }
+      console.log(`groupon-redeem: ${code} repeat unchecked claim -- existing claim returned, nothing written`);
+      return json({
+        ok: true,
+        verified: false,
+        claimToken: existingToken,
+        serviceSlug: existing.serviceSlug,
+        entitlementOrderType: existing.entitlementOrderType || null,
+        valuePence: existing.valuePence,
+        campaignName: existing.campaignName || null,
+        optionLabel: existing.optionLabel || null,
+        correctedFromDeal: null,
+        claimExpiresAt: existing.claimExpiresAt,
+      }, 200, claimCookie(existingToken));
+    }
 
     console.log(`groupon-redeem: ${code} accepted UNCHECKED as ${option.key} (${created._id})`);
 
