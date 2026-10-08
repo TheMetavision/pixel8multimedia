@@ -45,31 +45,39 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <form id="contact-form" class="space-y-6" novalidate>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label class="block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2">Name *</label>
+              <label for="contact-name" class="block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2">Name <span class="text-pop-orange" aria-hidden="true">*</span></label>
               <input
                 type="text"
+                id="contact-name"
                 name="name"
                 required
+                aria-describedby="name-error"
                 class="w-full bg-bg-secondary border-4 border-edge-line text-off-white px-4 py-3 font-dm focus:outline-none focus:border-pop-orange transition-colors placeholder:text-gray-600"
                 placeholder="Your full name"
               />
+              <p id="name-error" class="field-error hidden font-dm text-red-400 text-sm mt-2">Please tell us your name.</p>
             </div>
             <div>
-              <label class="block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2">Email *</label>
+              <label for="contact-email" class="block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2">Email <span class="text-pop-orange" aria-hidden="true">*</span></label>
               <input
                 type="email"
+                id="contact-email"
                 name="email"
                 required
+                aria-describedby="email-error"
                 class="w-full bg-bg-secondary border-4 border-edge-line text-off-white px-4 py-3 font-dm focus:outline-none focus:border-pop-orange transition-colors placeholder:text-gray-600"
                 placeholder="your@email.com"
               />
+              <p id="email-error" class="field-error hidden font-dm text-red-400 text-sm mt-2">Please enter a valid email address.</p>
             </div>
           </div>
           <div>
-            <label class="block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2">Subject *</label>
+            <label for="contact-subject" class="block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2">Subject <span class="text-pop-orange" aria-hidden="true">*</span></label>
             <select
+              id="contact-subject"
               name="subject"
               required
+              aria-describedby="subject-error"
               class="w-full bg-bg-secondary border-4 border-edge-line text-off-white px-4 py-3 font-dm focus:outline-none focus:border-pop-orange transition-colors"
             >
               <option value="" disabled selected>Choose a subject...</option>
@@ -78,16 +86,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <option value="order-issue">Issue with Order</option>
               <option value="other">Other</option>
             </select>
+            <p id="subject-error" class="field-error hidden font-dm text-red-400 text-sm mt-2">Please choose a subject.</p>
           </div>
           <div>
-            <label class="block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2">Message *</label>
+            <label for="contact-message" class="block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2">Message <span class="text-pop-orange" aria-hidden="true">*</span></label>
             <textarea
+              id="contact-message"
               name="message"
               rows="6"
               required
+              aria-describedby="message-error"
               class="w-full bg-bg-secondary border-4 border-edge-line text-off-white px-4 py-3 font-dm focus:outline-none focus:border-pop-orange transition-colors placeholder:text-gray-600 resize-none"
               placeholder="Tell us everything..."
             ></textarea>
+            <p id="message-error" class="field-error hidden font-dm text-red-400 text-sm mt-2">Please write your message.</p>
           </div>
 
           <!-- Honeypot — hidden from real users, bots fill it in -->
@@ -100,20 +112,25 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <!-- Bot check (Cloudflare Turnstile), rendered by the page script -->
           <div id="contact-turnstile"></div>
 
-          <div>
-            <button id="contact-submit" type="submit" class="btn-primary text-xl">SEND MESSAGE</button>
+          <div id="contact-actions">
+            {/* Disabled until the page script is listening: a press before then
+                was a native GET that put the whole message in the URL. */}
+            <button id="contact-submit" type="submit" class="btn-primary text-xl" disabled>SEND MESSAGE</button>
           </div>
 
           <!-- Success message -->
           <div id="contact-success" class="hidden bg-bg-secondary border-4 border-pop-orange p-4" style="box-shadow: 3px 3px 0 rgba(255,242,0,0.3);">
             <p class="font-montserrat font-semibold text-pop-orange uppercase tracking-wide text-sm">Message sent!</p>
             <p class="font-dm text-gray-300 text-sm mt-1" id="contact-success-detail">We'll get back to you within 24-48 hours.</p>
+            <button id="contact-send-another" type="button" class="mt-3 font-montserrat font-semibold text-sm uppercase tracking-wide text-pop-orange underline">Send another message</button>
           </div>
 
           <!-- Error message -->
           <div id="contact-error" class="hidden bg-bg-secondary border-4 border-red-500 p-4" style="box-shadow: 3px 3px 0 rgba(239,68,68,0.3);">
             <p class="font-montserrat font-semibold text-red-400 uppercase tracking-wide text-sm">Something went wrong</p>
-            <p class="font-dm text-gray-300 text-sm mt-1" id="contact-error-detail">Please try again, or email us directly at hello@pixel8multimedia.co.uk.</p>
+            <p class="font-dm text-gray-300 text-sm mt-1">Please try again, or email us directly at hello@pixel8multimedia.co.uk.</p>
+            <p class="font-dm text-gray-300 text-sm mt-1 hidden" id="contact-error-detail"></p>
+            <button id="contact-retry" type="button" class="mt-3 font-montserrat font-semibold text-sm uppercase tracking-wide text-red-400 underline">Try again</button>
           </div>
         </form>
       </div>
@@ -216,24 +233,110 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     const errorBox = document.getElementById('contact-error');
     const errorDetail = document.getElementById('contact-error-detail');
 
+    const retryBtn = document.getElementById('contact-retry');
+    const sendAnotherBtn = document.getElementById('contact-send-another');
+    // Everything in the form except the two result panels: hidden after a
+    // successful send so the confirmation stands alone until Send another.
+    const fieldBlocks = form
+      ? [...form.children].filter((el) => el !== successBox && el !== errorBox)
+      : [];
+
+    /* One result panel at a time: every attempt starts with both hidden and
+       only this attempt's outcome is shown. */
     function hideMessages() {
       successBox?.classList.add('hidden');
       errorBox?.classList.add('hidden');
     }
 
+    function showFields(show: boolean) {
+      fieldBlocks.forEach((el) => el.classList.toggle('hidden', !show));
+    }
+
     function showSuccess(message: string) {
       hideMessages();
       if (successDetail) successDetail.textContent = message;
+      showFields(false);
       successBox?.classList.remove('hidden');
       successBox?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    function showError(message: string) {
+    /* The generic line always shows; the server's (or this page's) reason, when
+       there is one, goes under it as text. */
+    function showError(detail = '') {
       hideMessages();
-      if (errorDetail) errorDetail.textContent = message;
+      if (errorDetail) {
+        errorDetail.textContent = detail;
+        errorDetail.classList.toggle('hidden', !detail);
+      }
       errorBox?.classList.remove('hidden');
       errorBox?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+
+    /* Required fields, checked here before the bot check and before anything
+       is sent: each problem is marked on its own field, and the first gets the
+       focus. The function still validates everything itself. */
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const REQUIRED: { id: string; key: string; ok: (v: string) => boolean }[] = [
+      { id: 'contact-name', key: 'name', ok: (v) => v.length > 0 },
+      { id: 'contact-email', key: 'email', ok: (v) => EMAIL_RE.test(v) },
+      { id: 'contact-subject', key: 'subject', ok: (v) => v.length > 0 },
+      { id: 'contact-message', key: 'message', ok: (v) => v.length > 0 },
+    ];
+
+    function markField(id: string, key: string, bad: boolean) {
+      const field = document.getElementById(id);
+      const msg = document.getElementById(`${key}-error`);
+      if (!field) return;
+      field.classList.toggle('border-red-500', bad);
+      field.classList.toggle('focus:border-red-500', bad);   // stays red while focused
+      field.classList.toggle('border-edge-line', !bad);
+      if (bad) field.setAttribute('aria-invalid', 'true');
+      else field.removeAttribute('aria-invalid');
+      msg?.classList.toggle('hidden', !bad);
+    }
+
+    function validateFields(): boolean {
+      let firstBad: HTMLElement | null = null;
+      for (const { id, key, ok } of REQUIRED) {
+        const field = document.getElementById(id) as HTMLInputElement | null;
+        if (!field) continue;
+        const bad = !ok((field.value || '').trim());
+        markField(id, key, bad);
+        if (bad && !firstBad) firstBad = field;
+      }
+      firstBad?.focus();
+      return !firstBad;
+    }
+
+    // Clear a field's mark as soon as it is fixed.
+    for (const { id, key, ok } of REQUIRED) {
+      const field = document.getElementById(id) as HTMLInputElement | null;
+      const recheck = () => {
+        if (field?.getAttribute('aria-invalid') && ok((field.value || '').trim())) markField(id, key, false);
+      };
+      field?.addEventListener('input', recheck);
+      field?.addEventListener('change', recheck);
+    }
+
+    let inFlight = false;
+    let sent = false;
+
+    // The script is listening now; the button was rendered disabled until this.
+    if (submitBtn) submitBtn.disabled = false;
+
+    // Try again keeps what was typed; Send another starts a clean form.
+    retryBtn?.addEventListener('click', () => {
+      hideMessages();
+      (document.getElementById('contact-name') as HTMLInputElement | null)?.focus();
+    });
+    sendAnotherBtn?.addEventListener('click', () => {
+      sent = false;
+      form?.reset();
+      REQUIRED.forEach(({ id, key }) => markField(id, key, false));
+      hideMessages();
+      showFields(true);
+      (document.getElementById('contact-name') as HTMLInputElement | null)?.focus();
+    });
 
     function lockForm(locked: boolean) {
       if (!form) return;
@@ -248,9 +351,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      // One submission at a time, and none after a success until Send another.
+      if (!form || inFlight || sent) return;
       hideMessages();
-
-      if (!form) return;
 
       const fd = new FormData(form);
       const payload = {
@@ -262,15 +365,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         turnstile: '',
       };
 
-      // Basic client-side validation
-      if (!payload.name || !payload.email || !payload.subject || !payload.message) {
-        showError('Please fill in all required fields.');
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
-        showError('Please enter a valid email address.');
-        return;
-      }
+      // Fields first, so an empty form names what is missing.
+      if (!validateFields()) return;
 
       // A token is required before sending.
       if (turnstile.enabled) {
@@ -278,6 +374,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         if (!payload.turnstile) { showError(TURNSTILE_WAIT_MESSAGE); return; }
       }
 
+      inFlight = true;
       lockForm(true);
 
       try {
@@ -290,6 +387,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         const data = await res.json().catch(() => ({}));
 
         if (res.ok && data.success) {
+          sent = true;
           form.reset();
           showSuccess(
             data.refCode
@@ -297,12 +395,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               : data.message || `We'll get back to you within 24-48 hours.`
           );
         } else {
-          showError(data.error || 'Could not send your message. Please try again.');
+          showError(typeof data.error === 'string' ? data.error : '');
         }
       } catch (err) {
         console.error('Contact submit error:', err);
-        showError('Could not send your message. Please try again, or email us directly at hello@pixel8multimedia.co.uk.');
+        showError();
       } finally {
+        inFlight = false;
         lockForm(false);
         turnstile.reset(); // spent, whatever the outcome
       }
