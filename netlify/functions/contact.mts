@@ -8,7 +8,9 @@
 //
 // Endpoint: /api/contact (rewritten via the export below)
 //
-// Expected POST body: { name, email, subject, message, website (honeypot), turnstile }
+// Expected POST body: { name, email, subject, message, p8_extra_note (honeypot), turnstile }
+// The honeypot was called `website` until Oct 2026; either name, if filled,
+// is treated as a bot (see honeypotValue) so cached pages keep the trap.
 
 import type { Context, Config } from '@netlify/functions';
 import { createClient } from '@sanity/client';
@@ -110,6 +112,15 @@ function buildAckEmail(opts: { name: string; refCode: string }): string {
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
+/** The honeypot under its current name or the old one (`website`), trimmed. */
+export function honeypotValue(body: any): string {
+  for (const key of ['p8_extra_note', 'website']) {
+    const v = (body?.[key] ?? '').toString().trim();
+    if (v) return v;
+  }
+  return '';
+}
+
 export default async (req: Request, _context: Context) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -124,7 +135,7 @@ export default async (req: Request, _context: Context) => {
     const email = (body?.email || '').toString().trim().toLowerCase();
     const subject = (body?.subject || '').toString().trim();
     const message = (body?.message || '').toString().trim();
-    const honeypot = (body?.website || '').toString().trim(); // honeypot field
+    const honeypot = honeypotValue(body);
 
     // ── Spam check ─────────────────────────────────────────────────────────
     if (honeypot) {
