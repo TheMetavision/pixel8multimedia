@@ -222,9 +222,9 @@ export function couponNameFor(serviceTitle: string | undefined, serviceSlug: str
  * digital-first / hard-copy-upgrade model. Any unused entitlement is forfeited,
  * exactly as it would be on Groupon.
  */
-export function effectiveDiscountPence(valuePence: number, baseTierPence: number): number {
-  return Math.max(0, Math.min(Math.round(valuePence), Math.round(baseTierPence)));
-}
+// Defined in commission-totals.mjs, so the commission review step (browser)
+// computes the same discount the checkout applies.
+export { effectiveDiscountPence } from './commission-totals.mjs';
 
 /** Read one cookie out of a request. */
 export function readCookie(req: Request, name: string): string | null {

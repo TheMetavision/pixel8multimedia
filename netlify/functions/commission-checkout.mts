@@ -36,6 +36,7 @@ import { verifyGrant } from './_shared/commission-grant.mjs';
 import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 import { gaClientIdMetadata } from './_shared/ga4.mjs';
 import { customerForEmail } from './_shared/stripe-customer.mjs';
+import { commissionShipping } from './_shared/commission-totals.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 
@@ -856,27 +857,26 @@ export default async function handler(req: Request, _context: Context) {
     // For orders involving physical prints, ask Stripe Checkout to collect the
     // shipping address inline. UK only for now. The webhook reads
     // session.shipping_details after payment and patches the commission doc.
-    // Shipping: £50 free / £4.95 standard, mirroring the standard cart.
-    if (breakdown.prints.length > 0) {
+    // Shipping: £50 free / £4.95 standard, mirroring the standard cart. The
+    // rule lives in _shared/commission-totals.mjs, which the review step reads
+    // too, so the total shown before payment is the one Stripe charges.
+    const shipping = commissionShipping({ hasPrints: breakdown.prints.length > 0, subtotalGbp: breakdown.total });
+    if (shipping.applies) {
       sessionParams.shipping_address_collection = {
         allowed_countries: ['GB'],
       };
       // Also collect phone — useful for courier delivery contact
       sessionParams.phone_number_collection = { enabled: true };
 
-      const FREE_SHIPPING_THRESHOLD_GBP = 50;
-      const STANDARD_SHIPPING_PENCE = 495;
-      const freeShipping = breakdown.total >= FREE_SHIPPING_THRESHOLD_GBP;
-
       sessionParams.shipping_options = [
         {
           shipping_rate_data: {
             type: 'fixed_amount',
             fixed_amount: {
-              amount: freeShipping ? 0 : STANDARD_SHIPPING_PENCE,
+              amount: shipping.pence,
               currency: 'gbp',
             },
-            display_name: freeShipping ? 'FREE UK P&P' : 'UK Standard P&P (£4.95)',
+            display_name: shipping.label,
             delivery_estimate: {
               minimum: { unit: 'business_day', value: 3 },
               maximum: { unit: 'business_day', value: 6 },
