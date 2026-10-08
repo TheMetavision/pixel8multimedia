@@ -87,7 +87,9 @@ const currentYear = new Date().getFullYear();
             class="newsletter-input bg-bg-secondary border border-edge-line text-off-white font-dm text-sm px-4 py-2.5 focus:outline-none focus:border-pop-orange transition-colors rounded"
             aria-label="Email address"
           />
-          <button type="submit" class="newsletter-submit btn-primary text-xs py-2.5">Subscribe</button>
+          {/* Disabled until the script below is listening, so an early press is
+              not a native GET with the email in the URL. */}
+          <button type="submit" class="newsletter-submit btn-primary text-xs py-2.5" disabled>Subscribe</button>
           <p class="newsletter-feedback font-dm text-xs mt-1 hidden" role="status" aria-live="polite"></p>
         </form>
         <p class="font-dm text-xs text-deep-grey mt-2">No spam, ever. Unsubscribe any time.</p>
@@ -206,5 +208,10 @@ const currentYear = new Date().getFullYear();
         turnstile.reset(); // spent, whatever the outcome
       }
     });
+
+    // Listening now; every newsletter button is rendered disabled until this
+    // point (here and in NewsletterSignup.astro).
+    const ready = form.querySelector('.newsletter-submit') as HTMLButtonElement | null;
+    if (ready) ready.disabled = false;
   });
 </script>
