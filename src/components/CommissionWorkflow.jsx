@@ -36,6 +36,11 @@ import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
 import { FRIENDLY_HEIC } from '../../netlify/functions/_shared/upload-messages.mjs';
 import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION } from '../../netlify/functions/_shared/digital-consent.mjs';
 import { gaCheckoutIds } from '../lib/analytics';
+import {
+  commissionReviewTotals,
+  FREE_SHIPPING_THRESHOLD_GBP,
+  STANDARD_SHIPPING_PENCE,
+} from '../../netlify/functions/_shared/commission-totals.mjs';
 
 // ─── Bot check ──────────────────────────────────────────────────────────────
 // One Cloudflare Turnstile check per visit. The first photo upload spends a
@@ -1031,6 +1036,26 @@ export default function CommissionWorkflow({ service }) {
     return { lines: [], total: 0, artworkFeeWaived: false };
   }, [orderType, prints, digitalPrice, digitalPriceSecondary, digitalPriceBoth, bundleCollection, hasSecondaryCollection, collectionLabel, collectionLabelSecondary, animationMusicPrice, animationVoPrice, includePrintsWithAnimation, artworkFee, sizeLabels, service, styleOptions, styleOptionsSecondary]);
 
+  // ─── What Stripe will charge ──────────────────────────────────────────────
+  // The same rule commission-checkout uses (_shared/commission-totals.mjs):
+  // P&P only when a completed print line is in the order (the server's
+  // breakdown.prints), £4.95 under £50 and free at £50+, judged before any
+  // discount; a Groupon voucher comes off the digital / animation tier only.
+  const completedPrintCount = orderInvolvesPrints
+    ? prints.filter((p) => p.format && p.size).length
+    : 0;
+  const baseTierGbp = orderType === 'singlePrint' ? 0 : (pricing.lines[0]?.amount || 0);
+  const totals = commissionReviewTotals({
+    subtotalGbp: pricing.total,
+    hasPrints: completedPrintCount > 0,
+    baseTierGbp,
+    voucherValuePence: grouponClaim ? Number(grouponClaim.valuePence) || 0 : 0,
+  });
+  const freeShippingThreshold = FREE_SHIPPING_THRESHOLD_GBP;
+  const standardShipping = STANDARD_SHIPPING_PENCE / 100;
+  // "£50", not "£50.00": a threshold reads as a round number.
+  const thresholdLabel = Number.isInteger(freeShippingThreshold) ? `£${freeShippingThreshold}` : priceLabel(freeShippingThreshold);
+
   // ─── Validation ────────────────────────────────────────────────────────────
   function validateBriefStep() {
     for (const f of filteredBriefingFields) {
@@ -1577,16 +1602,16 @@ export default function CommissionWorkflow({ service }) {
             <p className="cw__shipping-note__body">
               You'll enter your delivery address on the secure payment page in the
               next step. We ship to UK addresses only.
-              {pricing.total >= 50 ? (
+              {pricing.total >= freeShippingThreshold ? (
                 <> <strong>FREE UK P&amp;P on this order.</strong></>
               ) : (
-                <> UK P&amp;P is £4.95 standard, <strong>FREE on orders of £50 and over</strong> (add {priceLabel(50 - pricing.total)} more to qualify).</>
+                <> UK P&amp;P is {priceLabel(standardShipping)} standard, <strong>FREE on orders of {thresholdLabel} and over</strong> (add {priceLabel(freeShippingThreshold - pricing.total)} more to qualify).</>
               )}
             </p>
           </div>
 
           <div className="cw__price-preview">
-            <span>Running total:</span>
+            <span>Running total{totals.shipping.applies ? ' (before P&P)' : ''}:</span>
             <strong>{priceLabel(pricing.total)}</strong>
           </div>
         </section>
@@ -1665,10 +1690,50 @@ export default function CommissionWorkflow({ service }) {
             )}
           </div>
 
+          {(totals.shipping.applies || totals.discountPence > 0) && (
+            <div className="cw__line-items cw__line-items--totals">
+              <div className="cw__line-item">
+                <span className="cw__line-label">Subtotal</span>
+                <span className="cw__line-amount">{priceLabel(totals.subtotalPence / 100)}</span>
+              </div>
+              {totals.shipping.applies && (
+                <div className="cw__line-item" data-testid="review-shipping">
+                  <span className="cw__line-label">
+                    UK P&amp;P
+                    {!totals.shipping.free && (
+                      <em className="cw__line-note"> · free on orders of {thresholdLabel} and over</em>
+                    )}
+                  </span>
+                  <span className="cw__line-amount">
+                    {totals.shipping.free ? 'FREE' : priceLabel(totals.shipping.pence / 100)}
+                  </span>
+                </div>
+              )}
+              {totals.discountPence > 0 && (
+                <div className="cw__line-item cw__line-item--savings" data-testid="review-voucher">
+                  <span className="cw__line-label">Groupon voucher</span>
+                  <span className="cw__line-amount">−{priceLabel(totals.discountPence / 100)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {grouponClaim && totals.discountPence === 0 && (
+            <p className="cw__error" role="alert">
+              Your Groupon voucher covers {service.title} itself, so your order needs to include it.
+              Add the {service.title} option and the voucher will come off at checkout.
+            </p>
+          )}
+
           <div className="cw__total-row">
-            <span>Total</span>
-            <strong>{priceLabel(pricing.total)}</strong>
+            <span>Total{totals.shipping.applies ? ' inc. P&P' : ''}</span>
+            <strong data-testid="review-total">{priceLabel(totals.totalPence / 100)}</strong>
           </div>
+          {!grouponClaim && (
+            <p className="cw__total-note">
+              Have a promotion code? Enter it on the payment page; Stripe takes it off this total.
+            </p>
+          )}
         </section>
       )}
 
