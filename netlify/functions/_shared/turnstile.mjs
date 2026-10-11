@@ -4,7 +4,9 @@
  * Cloudflare Turnstile check for every public form: Your Photo upload,
  * contact, newsletter, and the commission flow (uploads + checkout).
  * The same behaviour as fix/turnstile-upload, in one place:
- *   - TURNSTILE_SECRET_KEY unset → skipped (dev / pre-launch)
+ *   - TURNSTILE_SECRET_KEY unset → fails closed: { ok: false, unavailable: true },
+ *     which every caller answers with a 503. A missing secret closes the form,
+ *     it never opens it (for local runs set Cloudflare's test secret)
  *   - no token → fails ("missing-input-response")
  *   - siteverify with an 8 s timeout (timeoutMs to change it: the newsletter
  *     uses 4 s); unreachable or slow → fails closed
@@ -14,14 +16,18 @@
 
 export const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 export const GENERIC_FAILURE = 'Verification failed — please try again.';
+export const UNAVAILABLE = 'This form is temporarily unavailable. Please try again later.';
 
 /**
  * @param {string|null|undefined} token
  * @param {{ context: string, secret?: string, fetchImpl?: typeof fetch, log?: (msg: string) => void, timeoutMs?: number }} opts
- * @returns {Promise<{ ok: boolean, skipped?: boolean, codes?: string[], hostname?: string }>}
+ * @returns {Promise<{ ok: boolean, unavailable?: boolean, codes?: string[], hostname?: string }>}
  */
 export async function verifyTurnstile(token, { context, secret = process.env.TURNSTILE_SECRET_KEY, fetchImpl = fetch, log = console.warn, timeoutMs = 8000 } = {}) {
-  if (!secret) return { ok: true, skipped: true };
+  if (!secret) {
+    console.error(`${context}: TURNSTILE_SECRET_KEY not set - refusing (fail closed)`);
+    return { ok: false, unavailable: true, codes: ['missing-secret'] };
+  }
   if (!token || typeof token !== 'string') {
     log(`${context}: turnstile failed codes=[missing-input-response] hostname=- (no token)`);
     return { ok: false, codes: ['missing-input-response'] };

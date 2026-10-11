@@ -49,9 +49,13 @@ registerHooks({
   resolve(spec, ctx, next) { return spec in STUBS ? { url: `stub:${spec}`, shortCircuit: true } : next(spec, ctx); },
   load(url, ctx, next) { return url.startsWith('stub:') ? { format: 'module', source: STUBS[url.slice(5)], shortCircuit: true } : next(url, ctx); },
 });
-globalThis.fetch = async () => new Response('{}', { status: 200 });   // GA4 / internal triggers only
+// GA4 / internal triggers, and Cloudflare's siteverify (passes every token).
+globalThis.fetch = async (url) => String(url).includes('challenges.cloudflare.com')
+  ? Response.json({ success: true, hostname: 'localhost' })
+  : new Response('{}', { status: 200 });
 process.env.STRIPE_SECRET_KEY = 'sk_test_stub';
-delete process.env.TURNSTILE_SECRET_KEY;
+// A secret is required now: without one the check fails closed (503).
+process.env.TURNSTILE_SECRET_KEY = 'ts_test_secret';
 
 const {
   commissionShipping, commissionReviewTotals, effectiveDiscountPence,
@@ -124,7 +128,7 @@ async function checkout(extra) {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      serviceSlug: 'cartoonify-me', name: 'Test', email: 'p8-test@example.com', brief: 'test', digitalSupplyConsent: true,
+      serviceSlug: 'cartoonify-me', name: 'Test', email: 'p8-test@example.com', brief: 'test', digitalSupplyConsent: true, turnstile: 'tok-ok',
       // Cartoonify needs a photo; an already-uploaded Sanity asset id stands in for one.
       uploadedAssets: [{ fieldKey: 'photo', assetId: 'image-test0001-1200x1200-jpg' }],
       ...extra,

@@ -17,7 +17,7 @@ import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
-import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
+import { verifyTurnstile, GENERIC_FAILURE, UNAVAILABLE } from './_shared/turnstile.mjs';
 
 const sanity = createClient({
   projectId: 'bqb4w421',
@@ -168,6 +168,9 @@ export default async (req: Request, _context: Context) => {
 
     // ── Bot check (Cloudflare Turnstile) ───────────────────────────────────
     const human = await verifyTurnstile(body?.turnstile ? String(body.turnstile) : null, { context: 'contact' });
+    if (human.unavailable) {
+      return new Response(JSON.stringify({ error: UNAVAILABLE }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    }
     if (!human.ok) {
       return new Response(
         JSON.stringify({ error: GENERIC_FAILURE, turnstile: true }),
