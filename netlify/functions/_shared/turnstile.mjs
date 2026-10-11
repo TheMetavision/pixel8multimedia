@@ -6,7 +6,8 @@
  * The same behaviour as fix/turnstile-upload, in one place:
  *   - TURNSTILE_SECRET_KEY unset → skipped (dev / pre-launch)
  *   - no token → fails ("missing-input-response")
- *   - siteverify with an 8 s timeout; unreachable → fails closed
+ *   - siteverify with an 8 s timeout (timeoutMs to change it: the newsletter
+ *     uses 4 s); unreachable or slow → fails closed
  *   - on failure, logs Cloudflare's error-codes and hostname — never the
  *     token or the secret; the caller returns a generic message
  */
@@ -16,10 +17,10 @@ export const GENERIC_FAILURE = 'Verification failed — please try again.';
 
 /**
  * @param {string|null|undefined} token
- * @param {{ context: string, secret?: string, fetchImpl?: typeof fetch, log?: (msg: string) => void }} opts
+ * @param {{ context: string, secret?: string, fetchImpl?: typeof fetch, log?: (msg: string) => void, timeoutMs?: number }} opts
  * @returns {Promise<{ ok: boolean, skipped?: boolean, codes?: string[], hostname?: string }>}
  */
-export async function verifyTurnstile(token, { context, secret = process.env.TURNSTILE_SECRET_KEY, fetchImpl = fetch, log = console.warn } = {}) {
+export async function verifyTurnstile(token, { context, secret = process.env.TURNSTILE_SECRET_KEY, fetchImpl = fetch, log = console.warn, timeoutMs = 8000 } = {}) {
   if (!secret) return { ok: true, skipped: true };
   if (!token || typeof token !== 'string') {
     log(`${context}: turnstile failed codes=[missing-input-response] hostname=- (no token)`);
@@ -30,7 +31,7 @@ export async function verifyTurnstile(token, { context, secret = process.env.TUR
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ secret, response: token }),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const data = await res.json();
     if (data?.success === true) return { ok: true, hostname: data.hostname };

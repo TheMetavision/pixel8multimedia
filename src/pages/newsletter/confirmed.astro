@@ -1,0 +1,20 @@
+---
+/** /newsletter/confirmed/  (Pixel8) -- where /api/newsletter-confirm sends a confirmed subscriber. */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+<BaseLayout title="You're in the gallery" description="Your Pixel8 Multimedia newsletter subscription is confirmed." noindex={true}>
+  <section class="relative bg-bg-primary py-20 min-h-[60vh]">
+    <div class="absolute top-0 left-0 right-0 h-1 bg-pop-orange"></div>
+    <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
+      <p class="font-mono text-xs uppercase tracking-widest text-pop-orange mb-4">Subscription confirmed</p>
+      <h1 class="font-montserrat font-bold text-4xl md:text-6xl text-off-white tracking-wide mb-6">
+        YOU'RE <span class="text-pop-orange">IN!</span>
+      </h1>
+      <p class="font-dm text-gray-300 text-lg leading-relaxed mb-10 max-w-lg mx-auto">
+        Welcome to the gallery. Your welcome email is on its way, so keep an eye on your inbox
+        (and your spam folder, just in case).
+      </p>
+      <a href="/store/" class="btn-primary">Browse the store</a>
+    </div>
+  </section>
+</BaseLayout>
