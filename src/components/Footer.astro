@@ -89,6 +89,13 @@ const currentYear = new Date().getFullYear();
           />
           {/* Disabled until the script below is listening, so an early press is
               not a native GET with the email in the URL. */}
+          {/* Honeypot: off-screen, unreachable by pointer, keyboard or screen
+              reader, with a name autofill does not recognise. Checked in
+              netlify/functions/newsletter.mts. */}
+          <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+            <label for="p8-nl-extra-footer">Extra</label>
+            <input type="text" id="p8-nl-extra-footer" name="p8_nl_extra" tabindex="-1" autocomplete="off" />
+          </div>
           <button type="submit" class="newsletter-submit btn-primary text-xs py-2.5" disabled>Subscribe</button>
           <p class="newsletter-feedback font-dm text-xs mt-1 hidden" role="status" aria-live="polite"></p>
         </form>
@@ -122,6 +129,13 @@ const currentYear = new Date().getFullYear();
   // identifies which form fired (footer, join-the-gallery, etc.) for analytics.
   //
   // This script runs once globally because Footer renders on every page.
+  //
+  // Each form gets exactly one submit listener (data-nl-bound), and a submit
+  // is ignored while one is in flight: a second post would reuse the spent
+  // Turnstile token, fail, and put an error over the success message.
+
+  // Time on page: stamped now, compared with the submit time by the function.
+  const nlLoadedAt = Date.now();
 
   function setFeedback(form: HTMLFormElement, message: string, kind: 'success' | 'error') {
     // Feedback element may be inside the form OR immediately after it.
@@ -146,6 +160,10 @@ const currentYear = new Date().getFullYear();
   }
 
   document.querySelectorAll<HTMLFormElement>('.newsletter-form').forEach((form) => {
+    if (form.dataset.nlBound) return;
+    form.dataset.nlBound = '1';
+    let inFlight = false;
+
     // Bot check: one compact, interaction-only Turnstile widget per form. It
     // solves in the background and only shows itself if Cloudflare needs a
     // click, so the inline form keeps its layout. It sits just after the form.
@@ -165,6 +183,7 @@ const currentYear = new Date().getFullYear();
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (inFlight) return;
 
       const input = form.querySelector('.newsletter-input') as HTMLInputElement | null;
       const email = (input?.value || '').trim();
@@ -175,11 +194,13 @@ const currentYear = new Date().getFullYear();
         return;
       }
 
+      inFlight = true;
       lockForm(form, true);
       // A token is required; the background check usually has one ready.
       const turnstile = ensureTurnstile();
       const token = turnstile.enabled ? await turnstile.waitForToken(8000) : '';
       if (turnstile.enabled && !token) {
+        inFlight = false;
         lockForm(form, false);
         setFeedback(form, TURNSTILE_WAIT_MESSAGE, 'error');
         return;
@@ -189,13 +210,21 @@ const currentYear = new Date().getFullYear();
         const res = await fetch('/api/newsletter', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, source, turnstile: token }),
+          body: JSON.stringify({
+            email,
+            source,
+            turnstile: token,
+            p8_nl_extra: (form.querySelector('input[name="p8_nl_extra"]') as HTMLInputElement | null)?.value || '',
+            p8_nl_ts_load: nlLoadedAt,
+            p8_nl_ts_submit: Date.now(),
+          }),
         });
 
         const data = await res.json().catch(() => ({}));
 
         if (res.ok && data.success) {
-          setFeedback(form, data.message || 'Thanks for subscribing!', 'success');
+          // The same reply whoever the address belongs to (see newsletter.mts).
+          setFeedback(form, data.message || "Thanks! If you're new here, check your inbox for a link to confirm your subscription.", 'success');
           if (input) input.value = '';
         } else {
           setFeedback(form, data.error || 'Could not subscribe. Please try again.', 'error');
@@ -204,6 +233,7 @@ const currentYear = new Date().getFullYear();
         console.error('Newsletter submit error:', err);
         setFeedback(form, 'Could not subscribe. Please try again.', 'error');
       } finally {
+        inFlight = false;
         lockForm(form, false);
         turnstile.reset(); // spent, whatever the outcome
       }

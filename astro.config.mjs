@@ -11,7 +11,11 @@ import react from '@astrojs/react';
 const SITE = 'https://pixel8multimedia.co.uk';
 
 // Transactional pages: noindex, and never in the sitemap.
-const NOT_IN_SITEMAP = ['/order-confirmation/', '/commission/success/'];
+const NOT_IN_SITEMAP = [
+  '/order-confirmation/', '/commission/success/',
+  // The newsletter's confirm pages, reached only from its email.
+  '/newsletter/confirm/', '/newsletter/confirmed/', '/newsletter/link-expired/',
+];
 
 // /services/<slug>/ renders on demand, so the sitemap integration can't see it.
 // List the published services here. Fails the build rather than shipping a

@@ -21,6 +21,12 @@
     {/* Disabled until the shared newsletter script in Footer.astro is
         listening, so an early press is not a native GET with the email in
         the URL. */}
+    {/* Honeypot, as in Footer.astro: off-screen, unreachable, and a name
+        autofill does not recognise. */}
+    <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+      <label for="p8-nl-extra-gallery">Extra</label>
+      <input type="text" id="p8-nl-extra-gallery" name="p8_nl_extra" tabindex="-1" autocomplete="off" />
+    </div>
     <button type="submit" class="newsletter-submit btn-primary py-3 px-6 text-xs" disabled>Subscribe</button>
   </form>
   <p class="newsletter-feedback font-dm text-sm mt-4 hidden" role="status" aria-live="polite"></p>
