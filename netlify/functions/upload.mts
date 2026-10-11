@@ -34,7 +34,7 @@ import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import { UPLOADS_STORE, storeUpload, isUploadId } from './_shared/commission-uploads.mjs';
 import { stripMetadata } from './_shared/strip-metadata.mjs';
-import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
+import { verifyTurnstile, GENERIC_FAILURE, UNAVAILABLE } from './_shared/turnstile.mjs';
 import { makeGrant, verifyGrant } from './_shared/commission-grant.mjs';
 
 function jsonResponse(status: number, body: Record<string, unknown>): Response {
@@ -64,12 +64,13 @@ export default async function handler(req: Request, _ctx: Context): Promise<Resp
     const f = file as File;
 
     // Bot check: a valid grant for this visit, or a Turnstile token (which
-    // earns one). Skipped only while TURNSTILE_SECRET_KEY is unset.
+    // earns one). Without TURNSTILE_SECRET_KEY: 503, nothing stored.
     const askedId = String(formData.get('uploadId') || '');
     const uploadId = isUploadId(askedId) ? askedId : randomUUID();
     const granted = verifyGrant(String(formData.get('grant') || ''));
     if (!(granted && granted === uploadId)) {
       const v = await verifyTurnstile(formData.get('turnstile') as string | null, { context: 'upload' });
+      if (v.unavailable) return jsonResponse(503, { ok: false, error: UNAVAILABLE });
       if (!v.ok) return jsonResponse(403, { ok: false, error: GENERIC_FAILURE, turnstile: true });
     }
 

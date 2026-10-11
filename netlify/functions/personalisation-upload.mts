@@ -17,15 +17,16 @@ import {
   LIMITS, CONSENT_VERSION, sanity, images, newPid, docId, blobKey, sha256,
   ipHash, nowIso, hoursFromNow, json, bad, toArrayBuffer,
 } from './_shared/personalisation.mts';
-import { verifyTurnstile as verifyShared } from './_shared/turnstile.mjs';
+import { verifyTurnstile as verifyShared, UNAVAILABLE } from './_shared/turnstile.mjs';
 
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
-// Turnstile: the shared check (_shared/turnstile.mjs) — the same behaviour
-// this function had: skipped while TURNSTILE_SECRET_KEY is unset, logs
-// Cloudflare's error-codes and hostname on failure (never the token/secret).
-async function verifyTurnstile(token: string | null): Promise<boolean> {
-  return (await verifyShared(token, { context: 'personalisation-upload' })).ok;
+// Turnstile: the shared check (_shared/turnstile.mjs). Fails closed: without
+// TURNSTILE_SECRET_KEY the upload is refused with a 503. Logs Cloudflare's
+// error-codes and hostname on failure (never the token/secret).
+async function verifyTurnstile(token: string | null): Promise<'ok' | 'failed' | 'unavailable'> {
+  const v = await verifyShared(token, { context: 'personalisation-upload' });
+  return v.unavailable ? 'unavailable' : v.ok ? 'ok' : 'failed';
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -43,9 +44,9 @@ export default async function handler(req: Request): Promise<Response> {
     return bad('Please confirm you own the photo and agree to how it will be processed.');
   }
   const ip = ipHash(req);
-  if (!(await verifyTurnstile(form.get('turnstile') as string | null))) {
-    return bad('Verification failed — please try again.', 403);
-  }
+  const human = await verifyTurnstile(form.get('turnstile') as string | null);
+  if (human === 'unavailable') return bad(UNAVAILABLE, 503);
+  if (human === 'failed') return bad('Verification failed — please try again.', 403);
 
   const file = form.get('file');
   if (!file || typeof file === 'string') return bad('No file in request.');

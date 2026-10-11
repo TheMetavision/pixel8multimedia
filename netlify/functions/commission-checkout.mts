@@ -31,7 +31,7 @@ import {
 import { COMMISSION_SIZE_VALUES } from './_shared/print-spec.mjs';
 import { getStore } from '@netlify/blobs';
 import { UPLOADS_STORE, photosForCommission } from './_shared/commission-uploads.mjs';
-import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
+import { verifyTurnstile, GENERIC_FAILURE, UNAVAILABLE } from './_shared/turnstile.mjs';
 import { verifyGrant } from './_shared/commission-grant.mjs';
 import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 import { gaClientIdMetadata } from './_shared/ga4.mjs';
@@ -510,6 +510,11 @@ export default async function handler(req: Request, _context: Context) {
       const grantOk = Boolean(grantedFor) && photoIds.every((id) => id === grantedFor);
       if (!grantOk) {
         const v = await verifyTurnstile(body.turnstile ? String(body.turnstile) : null, { context: 'commission-checkout' });
+        if (v.unavailable) {
+          return new Response(JSON.stringify({ error: UNAVAILABLE }), {
+            status: 503, headers: { 'Content-Type': 'application/json' },
+          });
+        }
         if (!v.ok) {
           return new Response(JSON.stringify({ error: GENERIC_FAILURE, turnstile: true }), {
             status: 403, headers: { 'Content-Type': 'application/json' },
