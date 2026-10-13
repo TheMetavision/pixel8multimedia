@@ -95,8 +95,74 @@ function slugifyQuestion(text: string): string {
     .substring(0, 80);
 }
 
-const seoTitle = `${service.title} | Pixel8 Multimedia`;
-const seoDesc = service.description?.substring(0, 155);
+// Keyword-led titles/descriptions (Frame, 2026-10-13). Fallback: service title.
+const SEO_OVERRIDES: Record<string, { title: string; description: string }> = {
+  "cartoonify-me": {
+    "title": "Turn Your Photo Into a Cartoon Portrait | Pixel8",
+    "description": "Your photo as a custom cartoon in Simpsons, Rick & Morty, Anime, 3D Pixar and more. Studio-made, print-ready, delivered digitally or on canvas. UK."
+  },
+  "scene-stealer": {
+    "title": "Put Yourself in a Movie Scene | Pixel8 Multimedia",
+    "description": "Yes, you can star in your favourite film. We place you in the scene with matched lighting and mood. Digital file, poster or canvas. Made in the UK."
+  },
+  "star-power": {
+    "title": "Your Own Movie Poster Starring You | Pixel8",
+    "description": "Cast your child, pet, partner, parent or yourself as the star of a blockbuster movie poster. Digital download, poster or canvas. UK studio."
+  },
+  "past-perfect": {
+    "title": "Old Photo Restoration UK | Pixel8 Multimedia",
+    "description": "Restore faded, creased or damaged family photos. Delivered as a digital file or printed as a poster or canvas, made in the UK."
+  },
+  "the-missing-moment": {
+    "title": "Create the Photo That Was Never Taken | Pixel8",
+    "description": "Bring loved ones together in one image — a family moment that never happened, created with care. Digital, poster or canvas. UK studio."
+  },
+  "stills-to-reels": {
+    "title": "Turn Photos Into an Animated Video | Pixel8",
+    "description": "Bring still photos to life as a short animated reel with music. A moving keepsake for birthdays, anniversaries and memorials."
+  },
+  "your-song-your-story": {
+    "title": "Song Lyrics & Memory Art Print | Pixel8 Multimedia",
+    "description": "Turn a song that means everything into personalised art. Lyrics, memories and design combined in a print made in the UK."
+  },
+  "story-of-your-life": {
+    "title": "Personalised Life Story Collage | Pixel8",
+    "description": "A lifetime of photos and milestones in one designed collage — for milestone birthdays, retirements and anniversaries. UK made."
+  },
+  "back-in-time": {
+    "title": "See Yourself in Another Era | Pixel8 Multimedia",
+    "description": "Your photo reimagined across the decades or in historical periods from Roman to Victorian. Digital bundle, poster or canvas."
+  },
+  "the-day-i-met": {
+    "title": "Commemorate the Day You Met | Pixel8 Multimedia",
+    "description": "Mark the meeting that changed everything with personalised art — perfect for anniversaries and proposals. Digital, poster or canvas."
+  },
+  "crayon-to-creation": {
+    "title": "Turn Your Child's Drawing Into Art | Pixel8",
+    "description": "We turn a child's drawing into professional wall art while keeping every wobbly line they love. A gift grandparents treasure."
+  },
+  "prankz": {
+    "title": "Funny Personalised Photo Gifts | Pixel8 Multimedia",
+    "description": "Gloriously silly AI art of your friends, family or colleagues — the novelty gift that gets the biggest reaction. Digital, poster or canvas."
+  }
+};
+const seoOverride = SEO_OVERRIDES[service.slug?.current || ''];
+const seoTitle = seoOverride?.title ?? `${service.title} | Pixel8 Multimedia`;
+const seoDesc = seoOverride?.description ?? service.description?.substring(0, 155);
+
+// FAQPage schema built from the same FAQs rendered on the page (1:1 with visible text).
+const faqJsonLd = serviceFaqs?.length
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      '@id': `https://pixel8multimedia.co.uk/services/${service.slug.current}/#faq`,
+      mainEntity: serviceFaqs.map((faq: any) => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+      })),
+    }
+  : undefined;
 
 const extParagraphs = service.extendedDescription
   ? service.extendedDescription.split(/\n\n+/).filter(Boolean)
@@ -279,7 +345,7 @@ const pic = (url: string | undefined | null, w: number) => ({
 });
 ---
 
-<BaseLayout title={seoTitle} description={seoDesc}>
+<BaseLayout title={seoTitle} description={seoDesc} jsonLd={faqJsonLd}>
   <div class="service-page">
     <!-- Hero Section -->
     <section class="service-page__hero">

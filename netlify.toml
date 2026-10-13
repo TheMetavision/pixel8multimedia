@@ -38,6 +38,858 @@
   to = "/groupon"
   status = 301
 
+# ── Legacy Hostinger URLs (Vox, 2026-10-13) ── from Search Console 404 report.
+# Old shop + blog index
+[[redirects]]
+  from = "/shop"
+  to = "/store/"
+  status = 301
+
+[[redirects]]
+  from = "/shop/*"
+  to = "/store/"
+  status = 301
+
+[[redirects]]
+  from = "/blog-list"
+  to = "/blog/"
+  status = 301
+
+[[redirects]]
+  from = "/animations"
+  to = "/store/?category=animations"
+  status = 301
+
+[[redirects]]
+  from = "/music"
+  to = "/store/?category=music"
+  status = 301
+
+[[redirects]]
+  from = "/sport"
+  to = "/store/?category=sport"
+  status = 301
+
+[[redirects]]
+  from = "/tv-movies"
+  to = "/store/?category=tv-movies"
+  status = 301
+
+[[redirects]]
+  from = "/miscellaneous"
+  to = "/store/?category=miscellaneous"
+  status = 301
+
+[[redirects]]
+  from = "/personalised"
+  to = "/store/?category=personalised"
+  status = 301
+
+[[redirects]]
+  from = "/cartoonify-me"
+  to = "/services/cartoonify-me/"
+  status = 301
+
+[[redirects]]
+  from = "/stills-to-reels"
+  to = "/services/stills-to-reels/"
+  status = 301
+
+[[redirects]]
+  from = "/the-missing-moment"
+  to = "/services/the-missing-moment/"
+  status = 301
+
+[[redirects]]
+  from = "/past-perfect"
+  to = "/services/past-perfect/"
+  status = 301
+
+[[redirects]]
+  from = "/your-song-your-story"
+  to = "/services/your-song-your-story/"
+  status = 301
+
+[[redirects]]
+  from = "/story-of-your-life"
+  to = "/services/story-of-your-life/"
+  status = 301
+
+[[redirects]]
+  from = "/back-in-time"
+  to = "/services/back-in-time/"
+  status = 301
+
+[[redirects]]
+  from = "/the-day-i-met"
+  to = "/services/the-day-i-met/"
+  status = 301
+
+[[redirects]]
+  from = "/scene-stealer"
+  to = "/services/scene-stealer/"
+  status = 301
+
+[[redirects]]
+  from = "/crayon-to-creation"
+  to = "/services/crayon-to-creation/"
+  status = 301
+
+[[redirects]]
+  from = "/star-power"
+  to = "/services/star-power/"
+  status = 301
+
+[[redirects]]
+  from = "/prankz"
+  to = "/services/prankz/"
+  status = 301
+
+[[redirects]]
+  from = "/adele-*"
+  to = "/store/adele/"
+  status = 301
+
+[[redirects]]
+  from = "/albert-einstein-*"
+  to = "/store/albert-einstein/"
+  status = 301
+
+[[redirects]]
+  from = "/anakin-skywalker-*"
+  to = "/store/anakin-skywalker/"
+  status = 301
+
+[[redirects]]
+  from = "/ayrton-senna-*"
+  to = "/store/ayrton-senna/"
+  status = 301
+
+[[redirects]]
+  from = "/bart-simpson-*"
+  to = "/store/bart-simpson/"
+  status = 301
+
+[[redirects]]
+  from = "/batman-*"
+  to = "/store/batman/"
+  status = 301
+
+[[redirects]]
+  from = "/beetlejuice-*"
+  to = "/store/beetlejuice/"
+  status = 301
+
+[[redirects]]
+  from = "/billie-eilish-*"
+  to = "/store/billie-eilish/"
+  status = 301
+
+[[redirects]]
+  from = "/bob-marley-*"
+  to = "/store/bob-marley/"
+  status = 301
+
+[[redirects]]
+  from = "/boba-fett-*"
+  to = "/store/boba-fett/"
+  status = 301
+
+[[redirects]]
+  from = "/bruce-lee-*"
+  to = "/store/bruce-lee/"
+  status = 301
+
+[[redirects]]
+  from = "/bugs-bunny-*"
+  to = "/store/bugs-bunny/"
+  status = 301
+
+[[redirects]]
+  from = "/buzz-lightyear-*"
+  to = "/store/buzz-lightyear/"
+  status = 301
+
+[[redirects]]
+  from = "/c-3po-*"
+  to = "/store/c-3po/"
+  status = 301
+
+[[redirects]]
+  from = "/captain-america-*"
+  to = "/store/captain-america/"
+  status = 301
+
+[[redirects]]
+  from = "/charlie-brown-*"
+  to = "/store/charlie-brown/"
+  status = 301
+
+[[redirects]]
+  from = "/charlie-chaplin-the-tramp-*"
+  to = "/store/charlie-chaplin-the-tramp/"
+  status = 301
+
+[[redirects]]
+  from = "/chewbacca-*"
+  to = "/store/chewbacca/"
+  status = 301
+
+[[redirects]]
+  from = "/chucky-*"
+  to = "/store/chucky/"
+  status = 301
+
+[[redirects]]
+  from = "/count-dooku-*"
+  to = "/store/count-dooku/"
+  status = 301
+
+[[redirects]]
+  from = "/daffy-duck-*"
+  to = "/store/daffy-duck/"
+  status = 301
+
+[[redirects]]
+  from = "/darth-maul-*"
+  to = "/store/darth-maul/"
+  status = 301
+
+[[redirects]]
+  from = "/darth-vader-*"
+  to = "/store/darth-vader/"
+  status = 301
+
+[[redirects]]
+  from = "/david-beckham-*"
+  to = "/store/david-beckham/"
+  status = 301
+
+[[redirects]]
+  from = "/david-bowie-*"
+  to = "/store/david-bowie/"
+  status = 301
+
+[[redirects]]
+  from = "/deadpool-*"
+  to = "/store/deadpool/"
+  status = 301
+
+[[redirects]]
+  from = "/donald-duck-*"
+  to = "/store/donald-duck/"
+  status = 301
+
+[[redirects]]
+  from = "/dorothy-wizard-of-oz-*"
+  to = "/store/dorothy-wizard-of-oz/"
+  status = 301
+
+[[redirects]]
+  from = "/e-t-*"
+  to = "/store/e-t/"
+  status = 301
+
+[[redirects]]
+  from = "/edward-scissorhands-*"
+  to = "/store/edward-scissorhands/"
+  status = 301
+
+[[redirects]]
+  from = "/eeyore-*"
+  to = "/store/eeyore/"
+  status = 301
+
+[[redirects]]
+  from = "/eleven-stranger-things-*"
+  to = "/store/eleven-stranger-things/"
+  status = 301
+
+[[redirects]]
+  from = "/ellen-ripley-*"
+  to = "/store/ellen-ripley/"
+  status = 301
+
+[[redirects]]
+  from = "/elmer-fudd-*"
+  to = "/store/elmer-fudd/"
+  status = 301
+
+[[redirects]]
+  from = "/elton-john-*"
+  to = "/store/elton-john/"
+  status = 301
+
+[[redirects]]
+  from = "/elvis-*"
+  to = "/store/elvis/"
+  status = 301
+
+[[redirects]]
+  from = "/eminem-*"
+  to = "/store/eminem/"
+  status = 301
+
+[[redirects]]
+  from = "/forrest-gump-*"
+  to = "/store/forrest-gump/"
+  status = 301
+
+[[redirects]]
+  from = "/fozzie-bear-*"
+  to = "/store/fozzie-bear/"
+  status = 301
+
+[[redirects]]
+  from = "/frank-sinatra-*"
+  to = "/store/frank-sinatra/"
+  status = 301
+
+[[redirects]]
+  from = "/frankensteins-monster-*"
+  to = "/store/frankensteins-monster/"
+  status = 301
+
+[[redirects]]
+  from = "/fred-flintstone-*"
+  to = "/store/fred-flintstone/"
+  status = 301
+
+[[redirects]]
+  from = "/freddie-mercury-*"
+  to = "/store/freddie-mercury/"
+  status = 301
+
+[[redirects]]
+  from = "/freddy-krueger-*"
+  to = "/store/freddy-krueger/"
+  status = 301
+
+[[redirects]]
+  from = "/gandalf-*"
+  to = "/store/gandalf/"
+  status = 301
+
+[[redirects]]
+  from = "/garfield-*"
+  to = "/store/garfield/"
+  status = 301
+
+[[redirects]]
+  from = "/general-grievous-*"
+  to = "/store/general-grievous/"
+  status = 301
+
+[[redirects]]
+  from = "/ghostface-*"
+  to = "/store/ghostface/"
+  status = 301
+
+[[redirects]]
+  from = "/goku-*"
+  to = "/store/goku/"
+  status = 301
+
+[[redirects]]
+  from = "/gollum-*"
+  to = "/store/gollum/"
+  status = 301
+
+[[redirects]]
+  from = "/goofy-*"
+  to = "/store/goofy/"
+  status = 301
+
+[[redirects]]
+  from = "/greedo-*"
+  to = "/store/greedo/"
+  status = 301
+
+[[redirects]]
+  from = "/grogu-*"
+  to = "/store/grogu/"
+  status = 301
+
+[[redirects]]
+  from = "/groot-*"
+  to = "/store/groot/"
+  status = 301
+
+[[redirects]]
+  from = "/han-solo-*"
+  to = "/store/han-solo/"
+  status = 301
+
+[[redirects]]
+  from = "/harry-styles-*"
+  to = "/store/harry-styles/"
+  status = 301
+
+[[redirects]]
+  from = "/he-man-*"
+  to = "/store/he-man/"
+  status = 301
+
+[[redirects]]
+  from = "/homer-simpson-*"
+  to = "/store/homer-simpson/"
+  status = 301
+
+[[redirects]]
+  from = "/indiana-jones-*"
+  to = "/store/indiana-jones/"
+  status = 301
+
+[[redirects]]
+  from = "/inigo-montoya-*"
+  to = "/store/inigo-montoya/"
+  status = 301
+
+[[redirects]]
+  from = "/iron-man-*"
+  to = "/store/iron-man/"
+  status = 301
+
+[[redirects]]
+  from = "/jabba-the-hutt-*"
+  to = "/store/jabba-the-hutt/"
+  status = 301
+
+[[redirects]]
+  from = "/jack-sparrow-*"
+  to = "/store/jack-sparrow/"
+  status = 301
+
+[[redirects]]
+  from = "/jack-torrance-*"
+  to = "/store/jack-torrance/"
+  status = 301
+
+[[redirects]]
+  from = "/james-dean-*"
+  to = "/store/james-dean/"
+  status = 301
+
+[[redirects]]
+  from = "/janis-joplin-*"
+  to = "/store/janis-joplin/"
+  status = 301
+
+[[redirects]]
+  from = "/jason-vorhees-*"
+  to = "/store/jason-vorhees/"
+  status = 301
+
+[[redirects]]
+  from = "/jawa-*"
+  to = "/store/jawa/"
+  status = 301
+
+[[redirects]]
+  from = "/jimi-hendrix-*"
+  to = "/store/jimi-hendrix/"
+  status = 301
+
+[[redirects]]
+  from = "/joey-ramone-*"
+  to = "/store/joey-ramone/"
+  status = 301
+
+[[redirects]]
+  from = "/john-lennon-*"
+  to = "/store/john-lennon/"
+  status = 301
+
+[[redirects]]
+  from = "/john-wick-*"
+  to = "/store/john-wick/"
+  status = 301
+
+[[redirects]]
+  from = "/joker-*"
+  to = "/store/joker/"
+  status = 301
+
+[[redirects]]
+  from = "/jules-winnfield-*"
+  to = "/store/jules-winnfield/"
+  status = 301
+
+[[redirects]]
+  from = "/kermit-the-frog-*"
+  to = "/store/kermit-the-frog/"
+  status = 301
+
+[[redirects]]
+  from = "/kill-bill-the-bride-*"
+  to = "/store/kill-bill-the-bride/"
+  status = 301
+
+[[redirects]]
+  from = "/kobe-bryant-*"
+  to = "/store/kobe-bryant/"
+  status = 301
+
+[[redirects]]
+  from = "/kurt-cobain-*"
+  to = "/store/kurt-cobain/"
+  status = 301
+
+[[redirects]]
+  from = "/kylo-ren-*"
+  to = "/store/kylo-ren/"
+  status = 301
+
+[[redirects]]
+  from = "/leatherface-*"
+  to = "/store/leatherface/"
+  status = 301
+
+[[redirects]]
+  from = "/lionel-messi-*"
+  to = "/store/lionel-messi/"
+  status = 301
+
+[[redirects]]
+  from = "/luke-skywalker-*"
+  to = "/store/luke-skywalker/"
+  status = 301
+
+[[redirects]]
+  from = "/maradona-*"
+  to = "/store/maradona/"
+  status = 301
+
+[[redirects]]
+  from = "/marty-mcfly-*"
+  to = "/store/marty-mcfly/"
+  status = 301
+
+[[redirects]]
+  from = "/michael-jackson-*"
+  to = "/store/michael-jackson/"
+  status = 301
+
+[[redirects]]
+  from = "/michael-jordan-*"
+  to = "/store/michael-jordan/"
+  status = 301
+
+[[redirects]]
+  from = "/michael-myers-*"
+  to = "/store/michael-myers/"
+  status = 301
+
+[[redirects]]
+  from = "/mick-jagger-*"
+  to = "/store/mick-jagger/"
+  status = 301
+
+[[redirects]]
+  from = "/mickey-mouse-*"
+  to = "/store/mickey-mouse/"
+  status = 301
+
+[[redirects]]
+  from = "/muhammad-ali-*"
+  to = "/store/muhammad-ali/"
+  status = 301
+
+[[redirects]]
+  from = "/notorious-big-*"
+  to = "/store/notorious-big/"
+  status = 301
+
+[[redirects]]
+  from = "/obi-wan-kenobi-*"
+  to = "/store/obi-wan-kenobi/"
+  status = 301
+
+[[redirects]]
+  from = "/olivia-dean-*"
+  to = "/store/olivia-dean/"
+  status = 301
+
+[[redirects]]
+  from = "/optimus-prime-*"
+  to = "/store/optimus-prime/"
+  status = 301
+
+[[redirects]]
+  from = "/ozzy-osbourne-*"
+  to = "/store/ozzy-osbourne/"
+  status = 301
+
+[[redirects]]
+  from = "/paddington-*"
+  to = "/store/paddington/"
+  status = 301
+
+[[redirects]]
+  from = "/patrick-star-*"
+  to = "/store/patrick-star/"
+  status = 301
+
+[[redirects]]
+  from = "/pele-*"
+  to = "/store/pele/"
+  status = 301
+
+[[redirects]]
+  from = "/pennywise-*"
+  to = "/store/pennywise/"
+  status = 301
+
+[[redirects]]
+  from = "/pikachu-*"
+  to = "/store/pikachu/"
+  status = 301
+
+[[redirects]]
+  from = "/pluto-*"
+  to = "/store/pluto/"
+  status = 301
+
+[[redirects]]
+  from = "/popeye-*"
+  to = "/store/popeye/"
+  status = 301
+
+[[redirects]]
+  from = "/prince-*"
+  to = "/store/prince/"
+  status = 301
+
+[[redirects]]
+  from = "/princess-leia-*"
+  to = "/store/princess-leia/"
+  status = 301
+
+[[redirects]]
+  from = "/r2d2-*"
+  to = "/store/r2d2/"
+  status = 301
+
+[[redirects]]
+  from = "/rafa-nadal-*"
+  to = "/store/rafa-nadal/"
+  status = 301
+
+[[redirects]]
+  from = "/rey-*"
+  to = "/store/rey/"
+  status = 301
+
+[[redirects]]
+  from = "/robbie-williams-*"
+  to = "/store/robbie-williams/"
+  status = 301
+
+[[redirects]]
+  from = "/rocky-balboa-*"
+  to = "/store/rocky-balboa/"
+  status = 301
+
+[[redirects]]
+  from = "/roger-federer-*"
+  to = "/store/roger-federer/"
+  status = 301
+
+[[redirects]]
+  from = "/ronaldo-*"
+  to = "/store/ronaldo/"
+  status = 301
+
+[[redirects]]
+  from = "/scooby-doo-*"
+  to = "/store/scooby-doo/"
+  status = 301
+
+[[redirects]]
+  from = "/shaggy-*"
+  to = "/store/shaggy/"
+  status = 301
+
+[[redirects]]
+  from = "/snake-plissken-*"
+  to = "/store/snake-plissken/"
+  status = 301
+
+[[redirects]]
+  from = "/snoop-dogg-*"
+  to = "/store/snoop-dogg/"
+  status = 301
+
+[[redirects]]
+  from = "/snoopy-*"
+  to = "/store/snoopy/"
+  status = 301
+
+[[redirects]]
+  from = "/sonic-the-hedgehog-*"
+  to = "/store/sonic-the-hedgehog/"
+  status = 301
+
+[[redirects]]
+  from = "/spider-man-*"
+  to = "/store/spider-man/"
+  status = 301
+
+[[redirects]]
+  from = "/spongebob-squarepants-*"
+  to = "/store/spongebob-squarepants/"
+  status = 301
+
+[[redirects]]
+  from = "/squidward-tentacles-*"
+  to = "/store/squidward-tentacles/"
+  status = 301
+
+[[redirects]]
+  from = "/stewie-griffin-*"
+  to = "/store/stewie-griffin/"
+  status = 301
+
+[[redirects]]
+  from = "/stitch-*"
+  to = "/store/stitch/"
+  status = 301
+
+[[redirects]]
+  from = "/stormtrooper-*"
+  to = "/store/stormtrooper/"
+  status = 301
+
+[[redirects]]
+  from = "/superman-*"
+  to = "/store/superman/"
+  status = 301
+
+[[redirects]]
+  from = "/sylvester-the-cat-*"
+  to = "/store/sylvester-the-cat/"
+  status = 301
+
+[[redirects]]
+  from = "/taylor-swift-*"
+  to = "/store/taylor-swift/"
+  status = 301
+
+[[redirects]]
+  from = "/taz-*"
+  to = "/store/taz/"
+  status = 301
+
+[[redirects]]
+  from = "/the-dude-*"
+  to = "/store/the-dude/"
+  status = 301
+
+[[redirects]]
+  from = "/the-godfather-*"
+  to = "/store/the-godfather/"
+  status = 301
+
+[[redirects]]
+  from = "/the-incredible-hulk-*"
+  to = "/store/the-incredible-hulk/"
+  status = 301
+
+[[redirects]]
+  from = "/the-mandalorian-*"
+  to = "/store/the-mandalorian/"
+  status = 301
+
+[[redirects]]
+  from = "/the-pink-panther-*"
+  to = "/store/the-pink-panther/"
+  status = 301
+
+[[redirects]]
+  from = "/the-roadrunner-*"
+  to = "/store/the-roadrunner/"
+  status = 301
+
+[[redirects]]
+  from = "/tigger-*"
+  to = "/store/tigger/"
+  status = 301
+
+[[redirects]]
+  from = "/tom-and-jerry-*"
+  to = "/store/tom-and-jerry/"
+  status = 301
+
+[[redirects]]
+  from = "/tony-montana-*"
+  to = "/store/tony-montana/"
+  status = 301
+
+[[redirects]]
+  from = "/travis-bickle-*"
+  to = "/store/travis-bickle/"
+  status = 301
+
+[[redirects]]
+  from = "/tupac-*"
+  to = "/store/tupac/"
+  status = 301
+
+[[redirects]]
+  from = "/tusken-raider-*"
+  to = "/store/tusken-raider/"
+  status = 301
+
+[[redirects]]
+  from = "/tweety-pie-*"
+  to = "/store/tweety-pie/"
+  status = 301
+
+[[redirects]]
+  from = "/tyler-durden-*"
+  to = "/store/tyler-durden/"
+  status = 301
+
+[[redirects]]
+  from = "/usain-bolt-*"
+  to = "/store/usain-bolt/"
+  status = 301
+
+[[redirects]]
+  from = "/wednesday-addams-*"
+  to = "/store/wednesday-addams/"
+  status = 301
+
+[[redirects]]
+  from = "/wicket-*"
+  to = "/store/wicket/"
+  status = 301
+
+[[redirects]]
+  from = "/wile-e-coyote-*"
+  to = "/store/wile-e-coyote/"
+  status = 301
+
+[[redirects]]
+  from = "/winnie-the-pooh-*"
+  to = "/store/winnie-the-pooh/"
+  status = 301
+
+[[redirects]]
+  from = "/wolverine-*"
+  to = "/store/wolverine/"
+  status = 301
+
+[[redirects]]
+  from = "/yoda-*"
+  to = "/store/yoda/"
+  status = 301
+
+[[redirects]]
+  from = "/yosemite-sam-*"
+  to = "/store/yosemite-sam/"
+  status = 301
+
 [functions]
   included_files = ["netlify/functions/_shared/refs/**"]
 
