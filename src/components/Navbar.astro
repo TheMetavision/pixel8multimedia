@@ -63,6 +63,31 @@ const navLinks: NavLink[] = [
 ---
 
 <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-black border-b border-transparent">
+  <!--
+    Christmas 2026 announcement bar (Vox build brief item 6, 2026-10-14).
+    Shown 19 Oct - 16 Dec 2026 (UK time), decided in the browser so it switches
+    on and off without a rebuild. Line approved by Alan 13 Oct (Pack).
+    While shown, html.has-promo pushes <main> and the sticky filter bars down
+    by --promo-h (see global.css). Outside the window it stays hidden.
+  -->
+  <div id="promo-bar" hidden class="promo-bar bg-pop-orange text-black font-dm font-semibold text-xs sm:text-sm text-center px-4">
+    <a href="/store/" class="promo-bar__link">
+      <span class="hidden sm:inline">Gifts they'll actually keep &mdash; order by 16 December for delivery by Christmas.</span>
+      <span class="sm:hidden">Order by 16 Dec for delivery by Christmas</span>
+      <span class="underline ml-1">Shop gifts &rarr;</span>
+    </a>
+  </div>
+  <script is:inline>
+    (function () {
+      var now = Date.now();
+      var start = Date.UTC(2026, 9, 18, 23, 0, 0);  // 19 Oct 2026 00:00 BST
+      var end = Date.UTC(2026, 11, 17, 0, 0, 0);    // end of 16 Dec 2026 GMT
+      if (now >= start && now < end) {
+        document.getElementById('promo-bar').hidden = false;
+        document.documentElement.classList.add('has-promo');
+      }
+    })();
+  </script>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-40">
       <!-- Logo -->
@@ -137,7 +162,7 @@ const navLinks: NavLink[] = [
   </div>
 
   <!-- Mobile Menu -->
-  <div id="mobile-menu" class="hidden lg:hidden bg-black border-t border-edge-line max-h-[calc(100vh-10rem)] overflow-y-auto">
+  <div id="mobile-menu" class="hidden lg:hidden bg-black border-t border-edge-line max-h-[calc(100vh-10rem-var(--promo-h,0px))] overflow-y-auto">
     <div class="px-4 py-4 space-y-1">
       {navLinks.map((link, idx) => (
         link.children ? (

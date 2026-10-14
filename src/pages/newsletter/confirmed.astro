@@ -18,3 +18,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
     </div>
   </section>
 </BaseLayout>
+
+<script>
+  // GA4 `sign_up` (Blix scorecard; Vox build brief item 7, 2026-10-14).
+  // Fires here, after the double opt-in, so only confirmed subscribers count.
+  // track() sends nothing unless the visitor has accepted analytics cookies.
+  import { track } from '../../lib/analytics';
+  track('sign_up', { method: 'newsletter' });
+</script>

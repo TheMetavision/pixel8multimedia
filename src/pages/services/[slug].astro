@@ -164,6 +164,35 @@ const faqJsonLd = serviceFaqs?.length
     }
   : undefined;
 
+// Service schema (Vox build brief item 9, 2026-10-14): lets AI answers and
+// Google see what the service is, who provides it and what it costs.
+const serviceUrl = `https://pixel8multimedia.co.uk/services/${service.slug.current}/`;
+const fromPrice = service.digitalPrice ?? service.price;
+const serviceJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  '@id': `${serviceUrl}#service`,
+  name: service.title,
+  serviceType: 'Personalised photo artwork',
+  description: seoDesc,
+  url: serviceUrl,
+  ...(service.heroImage ? { image: service.heroImage } : {}),
+  provider: { '@id': 'https://pixel8multimedia.co.uk/#organization' },
+  areaServed: { '@type': 'Country', name: 'United Kingdom' },
+  ...(typeof fromPrice === 'number'
+    ? {
+        offers: {
+          '@type': 'Offer',
+          price: fromPrice.toFixed(2),
+          priceCurrency: 'GBP',
+          availability: 'https://schema.org/InStock',
+          url: serviceUrl,
+        },
+      }
+    : {}),
+};
+const serviceSchemas = faqJsonLd ? [serviceJsonLd, faqJsonLd] : [serviceJsonLd];
+
 const extParagraphs = service.extendedDescription
   ? service.extendedDescription.split(/\n\n+/).filter(Boolean)
   : [];
@@ -345,7 +374,7 @@ const pic = (url: string | undefined | null, w: number) => ({
 });
 ---
 
-<BaseLayout title={seoTitle} description={seoDesc} jsonLd={faqJsonLd}>
+<BaseLayout title={seoTitle} description={seoDesc} jsonLd={serviceSchemas}>
   <div class="service-page">
     <!-- Hero Section -->
     <section class="service-page__hero">
