@@ -17,7 +17,7 @@ import {
   SIZES,
   CATEGORY_LABELS,
 } from '../../data/products';
-import { offersFor, SITE_URL } from '../../lib/shopping-feed.mjs';
+import { offersFor, SITE_URL, stripDesignName, hasDesignName } from '../../lib/shopping-feed.mjs';
 
 export async function getStaticPaths() {
   // Fail the build, rather than ship a shop with no product pages, if Sanity
@@ -76,8 +76,11 @@ const seoTitle = [
   `${characterDisplayName} Wall Art — ${designCount} Designs | Pixel8`,
   `${characterDisplayName} Wall Art | Pixel8`,
 ].find((t) => t.length <= 60) ?? `${characterDisplayName} Wall Art`;
+// Design names ("Dude Glow" etc.) don't match the artwork (Alan, 14 Oct): never
+// show them. An SEO description that still names one falls back to the generic line.
+const seoMeta = activeVariant.seo?.metaDescription;
 const seoDesc =
-  activeVariant.seo?.metaDescription ||
+  (seoMeta && !hasDesignName(seoMeta) ? seoMeta : '') ||
   `${characterDisplayName} reimagined in 10 exclusive Pixel8 designs. Poster prints and canvas, made to order in the UK.`;
 
 // Display copies of the artwork (WebP/AVIF where supported). The cart keeps
@@ -126,7 +129,7 @@ const variantPayloads = variants
       productId: v._id,
       slug: v.slug,
       title: v.title,
-      description: descText,
+      description: stripDesignName(descText),
       accentColor: v.accentColor || '#F07828',
       prices: v.prices || PRICES,
       heroUrl,
@@ -221,9 +224,9 @@ const jsonLd = {
             {activeVariant.description && (
               Array.isArray(activeVariant.description)
                 ? activeVariant.description.map((block: any) => (
-                    <p>{block.children?.map((child: any) => child.text).join('') || ''}</p>
+                    <p>{stripDesignName(block.children?.map((child: any) => child.text).join('') || '')}</p>
                   ))
-                : <p>{activeVariant.description}</p>
+                : <p>{stripDesignName(activeVariant.description)}</p>
             )}
           </div>
 

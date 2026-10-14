@@ -73,6 +73,8 @@ export function variantLead(p, format, size) {
  */
 export const stripDesignName = (text) =>
   String(text || '').replace(/(Option [A-J]) (?:"|“)[^"”]{1,40}(?:"|”) design/g, '$1 design');
+/** True when text still carries a quoted design name (e.g. an old SEO description). */
+export const hasDesignName = (text) => /(?:"|“)[^"”]{1,40}(?:"|”) design/.test(String(text || ''));
 
 export const characterOf = (slug) => String(slug || '').replace(/-style-[a-j]$/, '');
 export const letterOf = (slug) => (/-style-([a-j])$/.exec(String(slug || '')) || [])[1] || '';
