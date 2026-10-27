@@ -159,3 +159,18 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #00BCD4;
 }
+
+/* Christmas announcement bar (Navbar.astro #promo-bar). Fixed height so the
+   offsets below stay exact; html.has-promo is set only while the bar shows. */
+.promo-bar {
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.promo-bar__link:hover .underline { text-decoration-thickness: 2px; }
+html.has-promo { --promo-h: 2.25rem; }
+html.has-promo main.pt-40 { padding-top: calc(10rem + var(--promo-h)); }
+html.has-promo .sticky.top-40 { top: calc(10rem + var(--promo-h)); }

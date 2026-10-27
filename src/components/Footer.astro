@@ -120,7 +120,7 @@ const currentYear = new Date().getFullYear();
 
 <script>
   import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
-  import { openConsentSettings } from '../lib/analytics';
+  import { openConsentSettings, track } from '../lib/analytics';
 
   document.querySelectorAll('[data-cookie-settings]').forEach((el) => el.addEventListener('click', openConsentSettings));
 
@@ -225,6 +225,9 @@ const currentYear = new Date().getFullYear();
         if (res.ok && data.success) {
           // The same reply whoever the address belongs to (see newsletter.mts).
           setFeedback(form, data.message || "Thanks! If you're new here, check your inbox for a link to confirm your subscription.", 'success');
+          // Form accepted (before opt-in). The confirmed sign-up is `sign_up`
+          // on /newsletter/confirmed/.
+          track('newsletter_submit', { source });
           if (input) input.value = '';
         } else {
           setFeedback(form, data.error || 'Could not subscribe. Please try again.', 'error');

@@ -41,6 +41,41 @@ export const QUERY = `*[_type == "product" && category != "personalised" && defi
   "description": coalesce(pt::text(description), description)
 }`;
 
+/**
+ * Merchant Center asks for "Type" and "Theme" key details in the description of
+ * every canvas item (14 Oct 2026: "Update descriptions… Framed Wall Art",
+ * 8,882 items). Each item's description therefore opens with a variant line,
+ * e.g. "Stretched canvas print, standard frame, 16 x 16 in. Theme: music,
+ * Prince." The product copy follows.
+ */
+const TYPE_TEXT = {
+  poster: 'Poster print on art paper',
+  canvasStandard: 'Stretched canvas print, standard frame',
+  canvasGallery: 'Gallery-wrapped canvas print, deep frame',
+};
+const MATERIAL = { poster: 'Paper', canvasStandard: 'Canvas', canvasGallery: 'Canvas' };
+const THEME_TEXT = {
+  'tv-movies': 'film and TV',
+  music: 'music',
+  sport: 'sport',
+  animations: 'animation and cartoons',
+  miscellaneous: 'pop culture',
+};
+export function variantLead(p, format, size) {
+  const dims = String(sizeAttr(p, size)).replace(/x/i, ' x ').replace(/in$/, ' in');
+  const theme = THEME_TEXT[p.category] || 'pop culture';
+  return `${TYPE_TEXT[format]}, ${dims}. Theme: ${theme}, ${characterTitle(p)}.`;
+}
+/**
+ * Design names ("Option A "Velvet Glow" design") don't match the artwork and are
+ * being removed from Sanity (Alan, 14 Oct). Strip any that remain so the feed
+ * never shows one.
+ */
+export const stripDesignName = (text) =>
+  String(text || '').replace(/(Option [A-J]) (?:"|“)[^"”]{1,40}(?:"|”) design/g, '$1 design');
+/** True when text still carries a quoted design name (e.g. an old SEO description). */
+export const hasDesignName = (text) => /(?:"|“)[^"”]{1,40}(?:"|”) design/.test(String(text || ''));
+
 export const characterOf = (slug) => String(slug || '').replace(/-style-[a-j]$/, '');
 export const letterOf = (slug) => (/-style-([a-j])$/.exec(String(slug || '')) || [])[1] || '';
 
@@ -82,7 +117,7 @@ export function buildFeed(products, { categoryLabels = {}, now = new Date(), sit
     if (!p.image) { skipped.noImage.push(p.slug); continue; }
     const category = categoryLabels[p.category] || p.category || 'Wall Art';
     const optionLabel = `Option ${letterOf(p.slug).toUpperCase()}`;
-    let description = String(p.description || '').replace(/\s+/g, ' ').trim();
+    let description = stripDesignName(String(p.description || '').replace(/\s+/g, ' ').trim());
     if (!description || ARTIST_NAMES.test(description) || ARTIST_NAMES.test(p.title || '')) {
       if (description) skipped.artistText.push(p.slug);
       description = `${characterTitle(p)} in our exclusive ${optionLabel} design. Bold, original pop culture wall art — poster print, standard canvas or gallery canvas. Made to order in the UK by Pixel8 Multimedia.`;
@@ -99,7 +134,8 @@ export function buildFeed(products, { categoryLabels = {}, now = new Date(), sit
           id: itemId(p.slug, format, size),
           groupId: p.slug,
           title: cut(`${characterTitle(p)} — ${optionLabel} — ${formatLabel} (${sizeAttr(p, size)})`, 150),
-          description: cut(description, 4900),
+          description: cut(`${variantLead(p, format, size)} ${description}`, 4900),
+          material: MATERIAL[format],
           link: variantUrl(p.slug, format, size, site),
           image,
           pence,
@@ -128,6 +164,7 @@ export function buildFeed(products, { categoryLabels = {}, now = new Date(), sit
       <g:google_product_category>${GOOGLE_CATEGORY}</g:google_product_category>
       <g:product_type>${xml(i.productType)}</g:product_type>
       <g:size>${xml(i.size)}</g:size>
+      <g:material>${xml(i.material)}</g:material>
       <g:custom_label_0>${xml(i.category)}</g:custom_label_0>
       <g:custom_label_1>${xml(i.formatLabel)}</g:custom_label_1>
       <g:custom_label_2>${xml(i.optionLabel)}</g:custom_label_2>
