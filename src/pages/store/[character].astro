@@ -116,6 +116,11 @@ const variantPayloads = variants
       : '';
     const displayUrl = v.images?.[0]?.asset ? displayAt(v.images[0], 800) : '';
     const displaySet = v.images?.[0]?.asset ? displaySrcset(v.images[0]) : '';
+    // Optional second image (room mockup). Shown via the "In a room" toggle.
+    const room = v.images?.[1]?.asset ? v.images[1] : null;
+    const roomUrl = room ? displayAt(room, 800) : '';
+    const roomSrcset = room ? displaySrcset(room) : '';
+    const roomAlt = room?.alt || '';
     const descText = Array.isArray(v.description)
       ? v.description
           .map((b: any) => b.children?.map((c: any) => c.text).join('') || '')
@@ -136,6 +141,9 @@ const variantPayloads = variants
       displayUrl,
       displaySrcset: displaySet,
       thumbUrl,
+      roomUrl,
+      roomSrcset,
+      roomAlt,
     };
   })
   .sort((a, b) => a.letter.localeCompare(b.letter));
@@ -183,6 +191,12 @@ const jsonLd = {
                 <span class="font-montserrat text-sm uppercase tracking-widest">{characterDisplayName}</span>
               </div>
             )}
+          </div>
+
+          <!-- Artwork / In a room toggle (only when the option has a room mockup) -->
+          <div id="view-toggle" class="mt-3 hidden gap-2" role="group" aria-label="Image view">
+            <button type="button" data-view="art" aria-pressed="true" class="view-btn font-montserrat text-xs font-semibold uppercase tracking-wider px-3 py-1.5 rounded border border-pop-orange text-off-white">Artwork</button>
+            <button type="button" data-view="room" aria-pressed="false" class="view-btn font-montserrat text-xs font-semibold uppercase tracking-wider px-3 py-1.5 rounded border border-edge-line text-mid-grey hover:border-pop-orange">In a room</button>
           </div>
 
           <!-- Style Thumbnail Strip -->
@@ -367,6 +381,9 @@ const jsonLd = {
     displayUrl: string;
     displaySrcset: string;
     thumbUrl: string;
+    roomUrl: string;
+    roomSrcset: string;
+    roomAlt: string;
   };
 
   const dataEl = document.getElementById('variant-data');
@@ -403,6 +420,29 @@ const jsonLd = {
     return variants.find((v) => v.letter === activeLetter);
   }
 
+  function setView(view: 'art' | 'room') {
+    const v = active();
+    const mainImg = document.getElementById('main-image') as HTMLImageElement | null;
+    if (!v || !mainImg) return;
+    const room = view === 'room' && !!v.roomUrl;
+    mainImg.srcset = room ? v.roomSrcset : v.displaySrcset;
+    mainImg.src = room ? v.roomUrl : v.displayUrl;
+    mainImg.alt = room
+      ? v.roomAlt || `${characterName} Option ${v.letter.toUpperCase()} canvas on a wall`
+      : `${characterName} — Option ${v.letter.toUpperCase()}`;
+    document.querySelectorAll<HTMLButtonElement>('#view-toggle .view-btn').forEach((b) => {
+      const on = (b.dataset.view === 'room') === room;
+      b.setAttribute('aria-pressed', String(on));
+      b.classList.toggle('border-pop-orange', on);
+      b.classList.toggle('text-off-white', on);
+      b.classList.toggle('border-edge-line', !on);
+      b.classList.toggle('text-mid-grey', !on);
+    });
+  }
+  document.querySelectorAll<HTMLButtonElement>('#view-toggle .view-btn').forEach((b) =>
+    b.addEventListener('click', () => setView(b.dataset.view === 'room' ? 'room' : 'art')),
+  );
+
   function getPrice(): number {
     const v = active();
     return v?.prices?.[selectedFormat]?.[selectedSize] ?? 9.99;
@@ -418,6 +458,12 @@ const jsonLd = {
       mainImg.srcset = v.displaySrcset;
       mainImg.src = v.displayUrl;
       mainImg.alt = `${characterName} — Option ${v.letter.toUpperCase()}`;
+    }
+    setView('art');
+    const toggle = document.getElementById('view-toggle');
+    if (toggle) {
+      toggle.classList.toggle('hidden', !v.roomUrl);
+      toggle.classList.toggle('flex', !!v.roomUrl);
     }
 
     // Title

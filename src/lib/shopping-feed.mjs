@@ -38,6 +38,7 @@ export const QUERY = `*[_type == "product" && category != "personalised" && defi
   | order(slug.current asc){
   _id, title, "slug": slug.current, category, style, prices, sizes,
   "image": images[0].asset->url,
+  "extraImages": images[1..9].asset->url,
   "description": coalesce(pt::text(description), description)
 }`;
 
@@ -123,6 +124,8 @@ export function buildFeed(products, { categoryLabels = {}, now = new Date(), sit
       description = `${characterTitle(p)} in our exclusive ${optionLabel} design. Bold, original pop culture wall art — poster print, standard canvas or gallery canvas. Made to order in the UK by Pixel8 Multimedia.`;
     }
     const image = `${p.image}?w=1200&h=1200&fit=max&fm=jpg&q=90`;
+    // Room mockups etc. (images[1+]) go to Merchant Center as additional images.
+    const extraImages = (p.extraImages || []).filter(Boolean).map((u) => `${u}?w=1200&h=1200&fit=max&fm=jpg&q=90`);
 
     const missing = [];
     for (const format of FORMAT_KEYS) {
@@ -138,6 +141,7 @@ export function buildFeed(products, { categoryLabels = {}, now = new Date(), sit
           material: MATERIAL[format],
           link: variantUrl(p.slug, format, size, site),
           image,
+          extraImages,
           pence,
           size: sizeAttr(p, size),
           productType: `Wall Art > ${category}`,
@@ -155,7 +159,8 @@ export function buildFeed(products, { categoryLabels = {}, now = new Date(), sit
       <g:title>${xml(i.title)}</g:title>
       <g:description>${xml(i.description)}</g:description>
       <g:link>${xml(i.link)}</g:link>
-      <g:image_link>${xml(i.image)}</g:image_link>
+      <g:image_link>${xml(i.image)}</g:image_link>${(i.extraImages || []).map((u) => `
+      <g:additional_image_link>${xml(u)}</g:additional_image_link>`).join('')}
       <g:availability>in_stock</g:availability>
       <g:price>${gbp(i.pence)}</g:price>
       <g:brand>${xml(BRAND)}</g:brand>
