@@ -350,6 +350,7 @@ export const productsByCharacterQuery = `
     style,
     description,
     images[] {
+      _key,
       asset-> { _id, url },
       alt,
       "lqip": asset->metadata.lqip
