@@ -1,0 +1,10 @@
+---
+/* 8-bit snow for the seasonal homepage hero (src/lib/snow.ts). Rendered by HomeHero only
+   when the campaign has snow on, and started only while the season is showing. */
+---
+
+<script>
+  import { startSnow } from '../lib/snow';
+  const hero = document.querySelector<HTMLElement>('section[data-snow]');
+  if (hero && hero.dataset.showing === 'on') startSnow(hero);
+</script>
