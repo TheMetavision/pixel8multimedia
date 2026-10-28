@@ -1,0 +1,16 @@
+---
+import DefaultHero from './DefaultHero.astro';
+import SeasonalHero from './SeasonalHero.astro';
+import type { SeasonalCampaign } from '../lib/seasonal';
+
+/* The homepage hero: DefaultHero unless a seasonal campaign is set up in Sanity. Choosing
+   here rather than in index.astro keeps the page's own markup (and so its HTML) as it was. */
+interface Props {
+  season: SeasonalCampaign | null;
+  seasonOn: boolean;
+}
+
+const { season, seasonOn } = Astro.props;
+---
+
+{season ? <SeasonalHero season={season} seasonOn={seasonOn} /> : <DefaultHero />}

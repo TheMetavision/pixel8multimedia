@@ -1,0 +1,28 @@
+---
+import { localImg, localSrcset, sanityImg, sanitySrcset } from '../lib/sanityImage';
+import { seasonHeadScript, SEASONAL_SIZES, type SeasonalCampaign } from '../lib/seasonal';
+
+/* The homepage hero's <head> tags (index.astro, slot="head"). With a seasonal campaign: the
+   script that decides on the visitor's clock whether the season is on (?season=on / ?season=off
+   to test). The preload matches what the build shows: in season the square seasonal art, at
+   every width; otherwise the normal artwork, which only shows from lg up, so only there. */
+interface Props {
+  season: SeasonalCampaign | null;
+  seasonOn: boolean;
+}
+
+const { season, seasonOn } = Astro.props;
+---
+
+{season && <script is:inline set:html={seasonHeadScript(season)} />}
+{season && seasonOn ? (
+  <link rel="preload" as="image" fetchpriority="high"
+        href={sanityImg(season.imageUrl, 1024)}
+        imagesrcset={sanitySrcset(season.imageUrl, 640)}
+        imagesizes={SEASONAL_SIZES} />
+) : (
+  <link rel="preload" as="image" fetchpriority="high" media="(min-width: 1024px)"
+        href={localImg('/mockups/hero-artwork.png', 800)}
+        imagesrcset={localSrcset('/mockups/hero-artwork.png', 800, 1024)}
+        imagesizes="(min-width: 1280px) 800px, 62vw" />
+)}

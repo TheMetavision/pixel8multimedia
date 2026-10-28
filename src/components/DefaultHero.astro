@@ -1,0 +1,46 @@
+---
+import { localImg, localSrcset } from '../lib/sanityImage';
+
+/* The normal homepage hero: shown whenever there is no seasonal campaign. Kept as literal
+   markup so its HTML stays exactly as it was; SeasonalHero.astro copies its copy and art for
+   the out-of-season state, so keep the two in step. */
+---
+
+<section class="relative min-h-[90vh] flex items-center bg-bg-primary overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary"></div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 grid lg:grid-cols-2 gap-12 items-center">
+    <div class="reveal">
+      <span class="font-mono text-xs text-pop-orange uppercase tracking-widest mb-4 block">UK Made · UK Delivery</span>
+      <h1 class="font-montserrat text-5xl md:text-6xl lg:text-7xl font-bold text-off-white leading-tight mb-6">
+        Where Pop Culture Meets
+        <span class="logo-gradient block">Pixel-Perfect Art</span>
+      </h1>
+      <p class="font-dm text-lg text-mid-grey leading-relaxed mb-8 max-w-xl">
+        Bold pop culture wall art — or upload your own photo and watch it redrawn in our house styles in under a minute. Printed to order in the UK.
+      </p>
+      <div class="flex flex-wrap gap-4">
+        <a href="/store/" class="btn-primary">Shop Wall Art</a>
+        <a href="/store/your-photo/" class="btn-secondary">Use Your Own Photo</a>
+      </div>
+      <div class="flex items-center gap-6 mt-8 text-sm text-mid-grey font-dm">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-pop-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          1000+ Artworks
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-pixel-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          10 Options Per Artwork
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-hot-magenta" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Made In-House in the UK
+        </span>
+      </div>
+    </div>
+    <div class="hidden lg:block reveal stagger-2">
+      <div class="w-full aspect-[3/4] rounded-lg overflow-hidden border border-edge-line">
+        <img src={localImg('/mockups/hero-artwork.png', 800)} srcset={localSrcset('/mockups/hero-artwork.png', 800, 1024)} sizes="(min-width: 1280px) 800px, (min-width: 1024px) 62vw, 1px" width="1024" height="1024" fetchpriority="high" alt="Pikachu Noir style wall art by Pixel8 Multimedia" class="w-full h-full object-cover" />
+      </div>
+    </div>
+  </div>
+</section>

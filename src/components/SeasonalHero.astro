@@ -1,0 +1,133 @@
+---
+import HeroSnow from './HeroSnow.astro';
+import { localImg, localSrcset, sanityImg, sanitySrcset, sanityDims } from '../lib/sanityImage';
+import { SEASONAL_SIZES, type SeasonalCampaign } from '../lib/seasonal';
+
+/* The homepage hero while a seasonal campaign is set up in Sanity (siteSettings.seasonalCampaign).
+   Without one, index.astro renders DefaultHero.astro, untouched. This renders whichever state
+   was on at build time (seasonOn) and keeps the other in a <template>; the inline script below
+   swaps them before paint if the visitor's clock (html[data-season], set in <head> by
+   index.astro) disagrees. Swappable pieces carry data-hero="<name>". Out of season it matches
+   DefaultHero.astro; keep the two in step. */
+interface Props {
+  season: SeasonalCampaign;
+  /* Whether the season was on when this page was built (index.astro preloads to match) */
+  seasonOn: boolean;
+}
+
+const { season, seasonOn } = Astro.props;
+
+const DEFAULT = {
+  eyebrow: 'UK Made · UK Delivery',
+  line1: 'Where Pop Culture Meets',
+  line2: 'Pixel-Perfect Art',
+  body: 'Bold pop culture wall art — or upload your own photo and watch it redrawn in our house styles in under a minute. Printed to order in the UK.',
+  ctaLabel: 'Shop Wall Art',
+  ctaHref: '/store/',
+};
+/* Each field falls back to the normal copy when left empty in Studio */
+const seasonal = {
+  eyebrow: season.eyebrow || DEFAULT.eyebrow,
+  line1: season.line1 || DEFAULT.line1,
+  line2: season.line2 || DEFAULT.line2,
+  body: season.body || DEFAULT.body,
+  ctaLabel: season.ctaLabel || DEFAULT.ctaLabel,
+  ctaHref: season.ctaHref || DEFAULT.ctaHref,
+};
+const copy = seasonOn ? seasonal : DEFAULT;
+const altCopy = seasonOn ? DEFAULT : seasonal;
+
+/* The seasonal art is a 3x3 grid, so it is shown whole: a square card at every width.
+   lg+: the right column (584px at max-w-7xl, 50vw - 56px at 1024). Below lg: under the
+   copy, full width up to 560px (SEASONAL_SIZES). index.astro preloads the same. */
+const art = {
+  src: sanityImg(season.imageUrl, 1024),
+  srcset: sanitySrcset(season.imageUrl, 640),
+  ...sanityDims(season.imageUrl, 1024),
+};
+---
+
+<section class="relative min-h-[90vh] flex items-center bg-bg-primary overflow-hidden" data-showing={seasonOn ? 'on' : 'off'} data-snow={season.snow ? '' : undefined}>
+  <div class="absolute inset-0 bg-gradient-to-br from-bg-primary via-bg-secondary to-bg-primary"></div>
+  <div class="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 grid lg:grid-cols-2 gap-12 items-center">
+    <div class="reveal">
+      <span class="font-mono text-xs text-pop-orange uppercase tracking-widest mb-4 block" data-hero="eyebrow">{copy.eyebrow}</span>
+      <h1 class="font-montserrat text-5xl md:text-6xl lg:text-7xl font-bold text-off-white leading-tight mb-6" data-hero="title">
+        {copy.line1}
+        <span class="logo-gradient block">{copy.line2}</span>
+      </h1>
+      <p class="font-dm text-lg text-mid-grey leading-relaxed mb-8 max-w-xl" data-hero="body">
+        {copy.body}
+      </p>
+      <div class="flex flex-wrap gap-4">
+        <a href={copy.ctaHref} class="btn-primary" data-hero="cta">{copy.ctaLabel}</a>
+        <a href="/store/your-photo/" class="btn-secondary">Use Your Own Photo</a>
+      </div>
+      <div class="flex items-center gap-6 mt-8 text-sm text-mid-grey font-dm">
+        <span class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-pop-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          1000+ Artworks
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-pixel-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          10 Options Per Artwork
+        </span>
+        <span class="flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-hot-magenta" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Made In-House in the UK
+        </span>
+      </div>
+    </div>
+    {seasonOn ? (
+      <div class="w-full max-w-[560px] mx-auto lg:max-w-none reveal stagger-2" data-hero="art">
+        <div class="w-full aspect-square rounded-lg overflow-hidden border border-edge-line bg-bg-secondary">
+          <img src={art.src} srcset={art.srcset} sizes={SEASONAL_SIZES} width={art.width} height={art.height} fetchpriority="high" alt={season.alt} class="w-full h-full object-contain" />
+        </div>
+      </div>
+    ) : (
+      <div class="hidden lg:block reveal stagger-2" data-hero="art">
+        <div class="w-full aspect-[3/4] rounded-lg overflow-hidden border border-edge-line">
+          <img src={localImg('/mockups/hero-artwork.png', 800)} srcset={localSrcset('/mockups/hero-artwork.png', 800, 1024)} sizes="(min-width: 1280px) 800px, (min-width: 1024px) 62vw, 1px" width="1024" height="1024" fetchpriority="high" alt="Pikachu Noir style wall art by Pixel8 Multimedia" class="w-full h-full object-cover" />
+        </div>
+      </div>
+    )}
+  </div>
+  {/* The other state, inert until the swap script needs it (nothing in a template downloads) */}
+  <template data-hero-alt>
+    <span class="font-mono text-xs text-pop-orange uppercase tracking-widest mb-4 block" data-hero="eyebrow">{altCopy.eyebrow}</span>
+    <h1 class="font-montserrat text-5xl md:text-6xl lg:text-7xl font-bold text-off-white leading-tight mb-6" data-hero="title">
+      {altCopy.line1}
+      <span class="logo-gradient block">{altCopy.line2}</span>
+    </h1>
+    <p class="font-dm text-lg text-mid-grey leading-relaxed mb-8 max-w-xl" data-hero="body">
+      {altCopy.body}
+    </p>
+    <a href={altCopy.ctaHref} class="btn-primary" data-hero="cta">{altCopy.ctaLabel}</a>
+    {seasonOn ? (
+      <div class="hidden lg:block reveal stagger-2" data-hero="art">
+        <div class="w-full aspect-[3/4] rounded-lg overflow-hidden border border-edge-line">
+          <img src={localImg('/mockups/hero-artwork.png', 800)} srcset={localSrcset('/mockups/hero-artwork.png', 800, 1024)} sizes="(min-width: 1280px) 800px, (min-width: 1024px) 62vw, 1px" width="1024" height="1024" fetchpriority="high" alt="Pikachu Noir style wall art by Pixel8 Multimedia" class="w-full h-full object-cover" />
+        </div>
+      </div>
+    ) : (
+      <div class="w-full max-w-[560px] mx-auto lg:max-w-none reveal stagger-2" data-hero="art">
+        <div class="w-full aspect-square rounded-lg overflow-hidden border border-edge-line bg-bg-secondary">
+          <img src={art.src} srcset={art.srcset} sizes={SEASONAL_SIZES} width={art.width} height={art.height} fetchpriority="high" alt={season.alt} class="w-full h-full object-contain" />
+        </div>
+      </div>
+    )}
+  </template>
+</section>
+<script is:inline>
+  (function () {
+    var h = document.currentScript.previousElementSibling;
+    var want = document.documentElement.dataset.season === 'on' ? 'on' : 'off';
+    if (!h || h.dataset.showing === want) return;
+    h.dataset.showing = want;
+    h.querySelector('template[data-hero-alt]').content.querySelectorAll('[data-hero]').forEach(function (n) {
+      var old = h.querySelector('[data-hero="' + n.dataset.hero + '"]');
+      if (old) old.replaceWith(n.cloneNode(true));
+    });
+  })();
+</script>
+{season.snow && <HeroSnow />}
