@@ -12,6 +12,7 @@
 // square; this function re-encodes it anyway — max 2048px, EXIF stripped,
 // sRGB — so every downstream step sees one predictable file.
 
+import { sanityWriteToken } from './_shared/site-config.mjs';
 import sharp from 'sharp';
 import {
   LIMITS, CONSENT_VERSION, sanity, images, newPid, docId, blobKey, sha256,
@@ -31,7 +32,7 @@ async function verifyTurnstile(token: string | null): Promise<'ok' | 'failed' | 
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return bad('Method not allowed', 405);
-  if (!process.env.SANITY_TOKEN) return bad('Server misconfigured.', 500);
+  if (!sanityWriteToken('SANITY_TOKEN')) return bad('Server misconfigured.', 500);
 
   let form: FormData;
   try {

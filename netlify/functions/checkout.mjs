@@ -1,3 +1,4 @@
+import { setting, sanityWriteToken } from './_shared/site-config.mjs';
 import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
 import {
@@ -11,9 +12,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 const sanity = createClient({
   projectId: 'bqb4w421',
-  dataset: process.env.SANITY_DATASET || 'production',
+  dataset: setting('SANITY_DATASET'),
   apiVersion: '2026-04-14',
-  token: process.env.SANITY_TOKEN,
+  token: sanityWriteToken('SANITY_TOKEN'),
   useCdn: false,
   // With a token the default perspective also returns drafts; prices must
   // come from the published product only.

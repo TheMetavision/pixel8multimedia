@@ -12,6 +12,7 @@
 // That's the same trust model as an unguessable share link; nothing more
 // sensitive than the customer's own preview is behind it.
 
+import { setting, sanityWriteToken } from './site-config.mjs';
 import { createClient } from '@sanity/client';
 import { getStore } from '@netlify/blobs';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -39,9 +40,9 @@ export const CONSENT_VERSION = process.env.PERSONALISATION_CONSENT_VERSION || '2
 // ── Clients ──────────────────────────────────────────────────────────────────
 export const sanity = createClient({
   projectId: 'bqb4w421',
-  dataset: process.env.SANITY_DATASET || 'production',
+  dataset: setting('SANITY_DATASET'),
   apiVersion: '2026-04-14',
-  token: process.env.SANITY_TOKEN,
+  token: sanityWriteToken('SANITY_TOKEN'),
   useCdn: false,
 });
 

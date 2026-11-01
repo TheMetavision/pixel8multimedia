@@ -3,6 +3,7 @@
 // The real I/O behind _shared/print-job.mjs, for the print-file functions.
 // (The tests build their own fakes instead.)
 
+import { setting, sanityWriteToken } from './site-config.mjs';
 import { getStore } from '@netlify/blobs';
 import { createClient } from '@sanity/client';
 import sharp from 'sharp';
@@ -17,9 +18,9 @@ import { INTERNAL_HEADER, internalKey } from './personalisation.mts';
 // published in Studio, never from an unpublished draft.
 const sanity = createClient({
   projectId: 'bqb4w421',
-  dataset: process.env.SANITY_DATASET || 'production',
+  dataset: setting('SANITY_DATASET'),
   apiVersion: '2024-12-01',
-  token: process.env.SANITY_TOKEN,
+  token: sanityWriteToken('SANITY_TOKEN'),
   useCdn: false,
   perspective: 'published',
 });

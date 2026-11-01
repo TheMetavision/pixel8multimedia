@@ -15,6 +15,8 @@ const NOT_IN_SITEMAP = [
   '/order-confirmation/', '/commission/success/',
   // The newsletter's confirm pages, reached only from its email.
   '/newsletter/confirm/', '/newsletter/confirmed/', '/newsletter/link-expired/',
+  // The returns form (noindex; a redirect to the refund policy until shipping is on).
+  '/returns/',
 ];
 
 // /services/<slug>/ renders on demand, so the sitemap integration can't see it.

@@ -1,6 +1,65 @@
 ﻿import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { schemaTypes } from './schemas'
+import { SHIPPING_UI } from './lib/shipping-flag.mjs'
+import { CreateReturnAction } from './actions/CreateReturnAction'
+
+// One shipping queue: orders and commissions by Sendcloud state, newest first.
+const shippingQueue = (S: any, title: string, filter: string) =>
+  S.listItem().title(title).child(
+    S.documentList()
+      .title(title)
+      .filter(`_type in ["order", "commission"] && (${filter})`)
+      .defaultOrdering([{ field: '_updatedAt', direction: 'desc' }])
+  )
+
+// One returns queue. No "create" here: a return is made by the /returns page
+// or an order's Create return button, at a private dotted id.
+const returnsQueue = (S: any, title: string, filter: string) =>
+  S.listItem().title(title).child(
+    S.documentTypeList('returnRequest')
+      .title(title)
+      .filter(`_type == "returnRequest" && (${filter})`)
+      .defaultOrdering([{ field: 'requestedAt', direction: 'desc' }])
+      .initialValueTemplates([])
+  )
+
+/* Sendcloud dispatch and returns. Only in a Studio built with
+   SANITY_STUDIO_SHIPPING_ENABLED=true (see lib/shipping-flag.mjs). */
+const shippingItems = (S: any) => (SHIPPING_UI ? [
+  S.listItem()
+    .id('shipping')
+    .title('Shipping')
+    .child(
+      S.list().title('Shipping').items([
+        shippingQueue(S, 'Plan needs a decision', 'defined(shipmentResult.planProblem) && !defined(shipmentResult.labelCreatedAt)'),
+        shippingQueue(S, 'Ready to ship (labels being bought)', 'shipment.status == "ready_to_ship" && !defined(shipmentResult.state)'),
+        shippingQueue(S, 'Label created — to drop off', 'shipmentResult.state == "label_created"'),
+        shippingQueue(S, 'In transit', 'shipmentResult.state == "in_transit"'),
+        shippingQueue(S, 'Exceptions', 'shipmentResult.state in ["exception", "returned_to_sender"]'),
+        shippingQueue(S, 'Delivered', 'shipmentResult.state == "delivered"'),
+      ])
+    ),
+  S.listItem()
+    .id('returns')
+    .title('Returns')
+    .child(
+      S.list().title('Returns').items([
+        returnsQueue(S, 'Requested', 'status == "requested"'),
+        returnsQueue(S, 'Approved — label pending', 'status == "approved"'),
+        returnsQueue(S, 'Problems', 'defined(error) && !(status in ["received", "refunded"])'),
+        returnsQueue(S, 'Label sent', 'status == "label_sent"'),
+        returnsQueue(S, 'In transit', 'status == "in_transit"'),
+        returnsQueue(S, 'Ready to collect', 'status == "ready_to_collect"'),
+        returnsQueue(S, 'Received — refund due', 'status == "received"'),
+        S.divider(),
+        returnsQueue(S, 'Refunded', 'status == "refunded"'),
+        returnsQueue(S, 'Rejected', 'status == "rejected"'),
+        returnsQueue(S, 'All returns', 'true'),
+      ])
+    ),
+  S.divider(),
+] : [])
 
 export default defineConfig({
   name: 'default',
@@ -31,6 +90,7 @@ export default defineConfig({
             S.documentTypeListItem('testimonial').title('Testimonials'),
             S.documentTypeListItem('service').title('Services'),
             S.divider(),
+            ...shippingItems(S),
             S.documentTypeListItem('commission').title('Commissions'),
             S.listItem()
               .title('Orders')
@@ -145,5 +205,14 @@ export default defineConfig({
 
   schema: {
     types: schemaTypes,
+    /* Never "new return request" from the create menu: it would get a random,
+       publicly readable id. Returns are made at returnRequest.<ref> by the
+       returns page or the order's Create return button. */
+    templates: (prev) => prev.filter((t) => t.schemaType !== 'returnRequest'),
+  },
+
+  document: {
+    actions: (prev, context) =>
+      SHIPPING_UI && context.schemaType === 'order' ? [...prev, CreateReturnAction] : prev,
   },
 })

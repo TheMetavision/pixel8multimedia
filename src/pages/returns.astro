@@ -1,0 +1,217 @@
+---
+// /returns — change-of-mind returns for ready-made wall art.
+//
+// Three calls to /api/returns (netlify/functions/_shared/returns-api.mjs):
+// look the order up (Turnstile), quote the return postage for what is ticked
+// (shown BEFORE submitting), then submit the request for us to approve.
+//
+// Built only when SHIPPING_ENABLED is "true" at build time; otherwise this URL
+// redirects to the refund policy, so nothing changes until shipping is on.
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const enabled = ['true', '1', 'yes'].includes(String(process.env.SHIPPING_ENABLED || import.meta.env.SHIPPING_ENABLED || '').toLowerCase());
+if (!enabled) return Astro.redirect('/refund-policy/');
+
+const input = 'w-full bg-bg-secondary border-4 border-edge-line text-off-white px-4 py-3 font-dm focus:outline-none focus:border-pop-orange transition-colors placeholder:text-gray-600';
+const label = 'block font-montserrat font-semibold text-off-white text-sm uppercase tracking-wide mb-2';
+---
+<BaseLayout
+  title="Returns"
+  description="Return ready-made Pixel8 wall art within 14 days of delivery. Look up your order, see the return postage, and request a return label."
+  noindex
+>
+  <section class="relative bg-bg-secondary py-16 overflow-hidden">
+    <div class="absolute top-0 left-0 right-0 h-1 bg-pop-orange"></div>
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <nav class="flex items-center gap-2 font-dm text-sm text-gray-500 mb-6">
+        <a href="/" class="hover:text-pop-orange transition-colors">Home</a>
+        <span>/</span>
+        <span class="text-off-white">Returns</span>
+      </nav>
+      <h1 class="font-montserrat font-bold text-5xl md:text-6xl text-off-white tracking-wide mb-4" style="text-shadow: 4px 4px 0 rgba(0,0,0,0.5);">
+        RETURN <span class="text-pop-orange">AN ITEM</span>
+      </h1>
+      <p class="font-dm text-gray-300 text-lg">
+        Changed your mind about ready-made wall art? You have 14 days from delivery to tell us. Personalised items, "Your Photo, Your Style" designs and commissions are made to your specification and can't be returned for a change of mind.
+      </p>
+      <p class="font-dm text-gray-400 mt-3">
+        Faulty, damaged or not what you ordered? Please <a href="/contact/" class="text-pop-orange underline">contact us</a> with photos instead — we'll put it right and cover the return. See our <a href="/refund-policy/" class="text-pop-orange underline">Refund Policy</a>.
+      </p>
+    </div>
+  </section>
+
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <!-- Step 1 -->
+    <form id="ret-lookup" class="space-y-6" novalidate>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div>
+          <label for="ret-ref" class={label}>Order reference</label>
+          <input id="ret-ref" name="orderRef" required class={input} placeholder="P8-Ab12Cd34 or pi_…" autocomplete="off" />
+          <p class="font-dm text-gray-500 text-xs mt-2">In your order emails. Older orders: use the Payment ID (starts pi_).</p>
+        </div>
+        <div>
+          <label for="ret-email" class={label}>Email used to order</label>
+          <input id="ret-email" name="email" type="email" required class={input} placeholder="your@email.com" />
+        </div>
+      </div>
+      {/* Honeypot: off-screen, aria-hidden, no autofill meaning. */}
+      <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+        <label for="p8_ret_extra">Extra</label>
+        <input id="p8_ret_extra" name="p8_ret_extra" tabindex="-1" autocomplete="off" />
+      </div>
+      <div id="ret-turnstile"></div>
+      <button id="ret-lookup-btn" type="submit" class="btn-primary text-lg" disabled>FIND MY ORDER</button>
+    </form>
+
+    <!-- Step 2 -->
+    <form id="ret-pick" class="hidden space-y-6 mt-10" novalidate>
+      <h2 class="font-montserrat font-bold text-2xl text-off-white">Order <span id="ret-order" class="text-pop-orange"></span></h2>
+      <p id="ret-window" class="font-dm text-gray-300"></p>
+      <div id="ret-lines" class="space-y-3"></div>
+      <div>
+        <label for="ret-reason" class={label}>Reason</label>
+        <select id="ret-reason" class={input}></select>
+      </div>
+      <div>
+        <label for="ret-notes" class={label}>Anything else? (optional)</label>
+        <textarea id="ret-notes" rows="3" maxlength="1000" class={`${input} resize-none`}></textarea>
+      </div>
+      <div id="ret-postage" class="bg-bg-secondary border-4 border-pop-orange p-4 font-dm text-gray-200" aria-live="polite">
+        Choose the item(s) you'd like to return.
+      </div>
+      <button id="ret-submit" type="submit" class="btn-primary text-lg" disabled>REQUEST RETURN</button>
+    </form>
+
+    <div id="ret-message" class="hidden mt-8 bg-bg-secondary border-4 p-4 font-dm" role="status"></div>
+  </div>
+
+  <script>
+    import { mountTurnstile, TURNSTILE_WAIT_MESSAGE } from '../lib/turnstile';
+
+    const $ = (id: string) => document.getElementById(id) as any;
+    const lookupForm = $('ret-lookup') as HTMLFormElement;
+    const pickForm = $('ret-pick') as HTMLFormElement;
+    const msg = $('ret-message') as HTMLDivElement;
+    const postageBox = $('ret-postage') as HTMLDivElement;
+    const submitBtn = $('ret-submit') as HTMLButtonElement;
+    const turnstile = mountTurnstile($('ret-turnstile'), { size: 'flexible' });
+    const loadedAt = Date.now();
+    let session = '';
+    let shownPostage: number | null = null;
+    let quoteSeq = 0;
+
+    const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+    function show(text: string, ok = false) {
+      msg.textContent = text;
+      msg.className = `mt-8 bg-bg-secondary border-4 p-4 font-dm ${ok ? 'border-pop-orange text-gray-200' : 'border-red-500 text-red-300'}`;
+    }
+    const hideMsg = () => msg.classList.add('hidden');
+
+    async function call(body: object) {
+      const res = await fetch('/api/returns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, data };
+    }
+
+    function picked() {
+      return [...pickForm.querySelectorAll<HTMLInputElement>('input[data-line]')]
+        .map((i) => ({ lineKey: i.dataset.line as string, quantity: Number(i.value) || 0 }))
+        .filter((l) => l.quantity > 0);
+    }
+
+    // The postage, from the shipping service's live quote, before submitting.
+    async function refreshQuote() {
+      const lines = picked();
+      submitBtn.disabled = lines.length === 0;
+      shownPostage = null;
+      if (!lines.length) { postageBox.textContent = "Choose the item(s) you'd like to return."; return; }
+      const seq = ++quoteSeq;
+      postageBox.textContent = 'Working out the return postage…';
+      const { data } = await call({ action: 'quote', session, lines });
+      if (seq !== quoteSeq) return;
+      if (typeof data.postage === 'number') {
+        shownPostage = data.postage;
+        postageBox.innerHTML = `We'll email you a prepaid return label. <strong>£${data.postage.toFixed(2)}</strong> return postage will be deducted from your refund.`;
+      } else {
+        postageBox.textContent = "We'll email you a prepaid return label. The cost of the label will be deducted from your refund; we'll confirm the exact amount in that email.";
+      }
+    }
+
+    lookupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideMsg();
+      const fd = new FormData(lookupForm);
+      const body: Record<string, unknown> = {
+        action: 'lookup',
+        orderRef: String(fd.get('orderRef') || '').trim(),
+        email: String(fd.get('email') || '').trim(),
+        p8_ret_extra: String(fd.get('p8_ret_extra') || ''),
+        p8_ret_ts_load: loadedAt,
+        p8_ret_ts_submit: Date.now(),
+        turnstile: '',
+      };
+      if (!body.orderRef || !body.email) { show('Please enter your order reference and email.'); return; }
+      if (turnstile.enabled) {
+        body.turnstile = await turnstile.waitForToken(4000);
+        if (!body.turnstile) { show(TURNSTILE_WAIT_MESSAGE); return; }
+      }
+      const btn = $('ret-lookup-btn') as HTMLButtonElement;
+      btn.disabled = true;
+      try {
+        const { ok, data } = await call(body);
+        if (!ok) { show(data.error || 'Something went wrong. Please try again.'); return; }
+        if (!data.eligible) { show(data.reason || 'Nothing on this order can be returned for a change of mind.'); return; }
+        session = data.session;
+        $('ret-order').textContent = data.orderNumber || '';
+        $('ret-window').textContent = data.windowEndsOn
+          ? `You can request a return until ${data.windowEndsOn}.`
+          : 'Choose what you would like to send back.';
+        $('ret-lines').innerHTML = data.lines.map((l: any) => `
+          <div class="flex items-center justify-between gap-4 bg-bg-secondary border-4 border-edge-line p-4">
+            <div>
+              <p class="font-montserrat font-semibold text-off-white">${esc(l.productTitle)}</p>
+              <p class="font-dm text-sm text-gray-400">${esc([l.format, l.size].filter(Boolean).join(' · '))}</p>
+              ${l.returnable ? '' : `<p class="font-dm text-sm text-gray-500 mt-1">${esc(l.why || '')}</p>`}
+            </div>
+            ${l.returnable ? `<label class="font-dm text-sm text-gray-300 whitespace-nowrap">Return
+              <input data-line="${esc(l.lineKey)}" type="number" min="0" max="${l.returnable}" value="0"
+                class="ml-2 w-16 bg-bg-primary border-2 border-edge-line text-off-white px-2 py-1" /></label>` : ''}
+          </div>`).join('');
+        $('ret-reason').innerHTML = Object.entries(data.reasons || {}).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('');
+        pickForm.querySelectorAll('input[data-line]').forEach((i) => i.addEventListener('change', refreshQuote));
+        lookupForm.classList.add('hidden');
+        pickForm.classList.remove('hidden');
+      } catch {
+        show('Something went wrong. Please try again, or contact us.');
+      } finally {
+        btn.disabled = false;
+        turnstile.reset();
+      }
+    });
+
+    pickForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideMsg();
+      const lines = picked();
+      if (!lines.length) { show('Choose at least one item to return.'); return; }
+      submitBtn.disabled = true;
+      try {
+        const { ok, data } = await call({
+          action: 'submit', session, lines,
+          reason: ($('ret-reason') as HTMLSelectElement).value,
+          notes: ($('ret-notes') as HTMLTextAreaElement).value,
+          shownPostage,
+          p8_ret_extra: '', p8_ret_ts_load: loadedAt, p8_ret_ts_submit: Date.now(),
+        });
+        if (!ok) { show(data.error || 'Something went wrong. Please try again.'); submitBtn.disabled = false; return; }
+        pickForm.classList.add('hidden');
+        show(`Thanks — your return request${data.returnNumber ? ` ${data.returnNumber}` : ''} has been sent. We'll check it and email your return label, usually within 2 working days.`, true);
+      } catch {
+        show('Something went wrong. Please try again, or contact us.');
+        submitBtn.disabled = false;
+      }
+    });
+
+    ($('ret-lookup-btn') as HTMLButtonElement).disabled = false;
+  </script>
+</BaseLayout>

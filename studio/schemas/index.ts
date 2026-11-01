@@ -12,6 +12,7 @@ import newsletterSubscriber from './newsletterSubscriber'
 import grouponVoucher from './grouponVoucher'
 import personalisationStyle from './personalisationStyle'
 import pendingPersonalisation from './pendingPersonalisation'
+import returnRequest from './returnRequest'
 
 export const schemaTypes = [
   product,
@@ -28,4 +29,5 @@ export const schemaTypes = [
   grouponVoucher,
   personalisationStyle,
   pendingPersonalisation,
+  returnRequest,
 ]

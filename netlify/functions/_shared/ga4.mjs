@@ -13,6 +13,8 @@
  * never throws: a GA problem must not fail or slow the webhook beyond its
  * timeout.
  */
+import { setting } from './site-config.mjs';
+
 
 /** GA client ids look like "<random>.<timestamp>". */
 export const GA_CLIENT_ID_RE = /^\d{1,20}\.\d{1,20}$/;
@@ -120,7 +122,7 @@ export function purchasePayload(session, items, value) {
  * @param {{ value?: number, timeoutMs?: number, fetchImpl?: typeof fetch }} [options]
  */
 export async function sendPurchase(session, items, { value, timeoutMs = 2000, fetchImpl = fetch } = {}) {
-  const measurementId = process.env.GA4_MEASUREMENT_ID;
+  const measurementId = setting('GA4_MEASUREMENT_ID');
   const apiSecret = process.env.GA4_API_SECRET;
   if (!measurementId || !apiSecret) return;
   if (!validClientId(session?.metadata?.ga_client_id)) return;

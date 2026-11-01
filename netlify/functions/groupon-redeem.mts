@@ -17,6 +17,7 @@
 //   unchecked  — the code is newer than our last import. We record the deal the
 //                customer says they bought and flag the order for confirmation.
 
+import { sanityWriteToken } from './_shared/site-config.mjs';
 import type { Context } from '@netlify/functions';
 import { createClient } from '@sanity/client';
 import {
@@ -42,7 +43,7 @@ const sanity = createClient({
   projectId: 'bqb4w421',
   dataset: 'production',
   apiVersion: '2024-12-01',
-  token: process.env.SANITY_TOKEN,
+  token: sanityWriteToken('SANITY_TOKEN'),
   useCdn: false,
 });
 

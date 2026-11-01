@@ -1,3 +1,4 @@
+import { setting, sanityWriteToken } from './_shared/site-config.mjs';
 import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
@@ -6,6 +7,9 @@ import { FORMAT_LABELS, SIZE_LABELS } from './_shared/pricing.mjs';
 import {
   itemsFromLineItems, itemsFromCartItemsBlob, orderLineFromItem, personalisedLinesByPid,
 } from './_shared/order-lines.mjs';
+import { orderRefFromSession } from './_shared/order-ref.mjs';
+import { shippingEnabled } from './_shared/shipping-client.mjs';
+import { proposeParcelPlan } from './_shared/parcel-bands.mjs';
 import { triggerInternal, TRIGGER_BUDGETS } from './_shared/origin.mjs';
 import { getStore } from '@netlify/blobs';
 import { flagMissingPrintFiles, teamSubject, missingBlockHtml } from './_shared/print-alerts.mjs';
@@ -18,10 +22,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 const sanity = createClient({
-  projectId: process.env.SANITY_PROJECT_ID || 'bqb4w421',
-  dataset: process.env.SANITY_DATASET || 'production',
+  projectId: setting('SANITY_PROJECT_ID'),
+  dataset: setting('SANITY_DATASET'),
   apiVersion: '2026-04-14',
-  token: process.env.SANITY_WRITE_TOKEN,
+  token: sanityWriteToken('SANITY_WRITE_TOKEN'),
   useCdn: false,
 });
 
@@ -103,6 +107,7 @@ export default async (req, context) => {
       // times out or errors, and a retry must not create a second order or
       // resend the emails.
       const orderId = `order.${session.id}`;
+      const orderRef = orderRefFromSession(session.id);
       // Orders created before this change have random ids; match those by
       // stripeSessionId so a late retry of one is still recognised.
       const existingOrderId = await sanity.fetch(
@@ -148,6 +153,17 @@ export default async (req, context) => {
       if (printCheck.skipped) console.warn(`webhook: print-source check skipped (${printCheck.skipped}) — no lines flagged`);
       if (printCheck.missing.length) console.warn(`webhook: PRINT FILE MISSING on ${printCheck.missing.length} line(s) of ${orderId}`);
 
+      // Sendcloud: the parcel plan this order starts with (one parcel per item),
+      // for Alan to combine or correct in the Studio before Ready to ship. A
+      // line with no band is flagged, never guessed. Behind the switch: unset,
+      // the order is created exactly as before.
+      const shippingPlan = {};
+      if (shippingEnabled()) {
+        const { plan, problems } = proposeParcelPlan(lineItems);
+        if (plan.length) shippingPlan.parcelPlan = plan;
+        if (problems.length) shippingPlan.shipmentResult = { planProblem: problems.join('\n') };
+      }
+
       // Create order in Sanity. `create` with a fixed _id rather than
       // createIfNotExists: both refuse to overwrite, but createIfNotExists
       // fails silently, whereas `create` returns 409 if a concurrent retry
@@ -158,6 +174,9 @@ export default async (req, context) => {
           _id: orderId,
           _type: 'order',
           stripeSessionId: session.id,
+          // The customer-facing reference (labels, emails, /returns): P8- + the
+          // session id's last 8 characters. See _shared/order-ref.mjs.
+          orderNumber: orderRef,
           stripePaymentId: session.payment_intent,
           customerName,
           customerEmail,
@@ -179,6 +198,7 @@ export default async (req, context) => {
             }
             : {}),
           totalAmount,
+          ...shippingPlan,
           status: 'received',
           createdAt: new Date().toISOString(),
         });
@@ -293,7 +313,7 @@ export default async (req, context) => {
       // Customer confirmation email
       try {
         await resend.emails.send({
-          from: process.env.EMAIL_FROM || 'Pixel8 Multimedia <orders@pixel8multimedia.co.uk>',
+          from: setting('EMAIL_FROM'),
           to: [customerEmail],
           subject: `Order Confirmed — Pixel8 Multimedia`,
           html: `
@@ -314,6 +334,7 @@ export default async (req, context) => {
                   We'll send you another email when your order has been dispatched with tracking details.
                 </p>
                 <p style="color: #666; margin-top: 32px; font-size: 12px; font-family: monospace;">
+                  ${orderRef ? `Order reference: <strong style="color: #F5F5F0;">${orderRef}</strong><br/>` : ''}
                   Payment ID: ${session.payment_intent}<br/>
                   Order placed: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
@@ -331,10 +352,10 @@ export default async (req, context) => {
       }
 
       // Team notification email
-      const teamEmail = process.env.TEAM_EMAIL || process.env.EMAIL_FROM || 'orders@pixel8multimedia.co.uk';
+      const teamEmail = setting('TEAM_EMAIL');
       try {
         await resend.emails.send({
-          from: process.env.EMAIL_FROM || 'Pixel8 Multimedia <orders@pixel8multimedia.co.uk>',
+          from: setting('EMAIL_FROM'),
           to: [teamEmail],
           subject: `${discountWarning ? '⚠ GROUPON CODE — ' : ''}${repeatWelcomeCode ? '⚠ REPEAT WELCOME CODE — ' : ''}${teamSubject({ total: totalAmount, customerName, missingCount: printCheck.missing.length })}`,
           html: `
@@ -362,6 +383,7 @@ export default async (req, context) => {
                   4. Add tracking number and update to "Dispatched" when shipped
                 </div>
                 <p style="color: #999; margin-top: 20px; font-size: 12px;">
+                  ${orderRef ? `Order reference: ${orderRef}<br/>` : ''}
                   Stripe Session: ${session.id}<br/>
                   Payment Intent: ${session.payment_intent}
                 </p>

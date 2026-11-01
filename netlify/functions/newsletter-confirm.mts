@@ -23,6 +23,7 @@
 // Speed: the Blobs write has a 2.5s budget and the MailerLite call a 4s limit
 // (_shared/timing.mjs). Each request logs one "[newsletter-confirm] timing" line.
 
+import { setting, sanityWriteToken } from './_shared/site-config.mjs';
 import type { Context, Config } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { createClient } from '@sanity/client';
@@ -56,7 +57,7 @@ async function logToSanity(email: string, source: string) {
     projectId: 'bqb4w421',
     dataset: 'production',
     apiVersion: '2024-12-01',
-    token: process.env.SANITY_API_TOKEN,
+    token: sanityWriteToken('SANITY_API_TOKEN'),
     useCdn: false,
   });
   // Sanity doc IDs can't contain "@" or "." so the email is sanitised; the same
@@ -86,7 +87,7 @@ export default async (req: Request, _context: Context) => {
 
   const secret = process.env.NEWSLETTER_CONFIRM_SECRET;
   const apiKey = process.env.MAILERLITE_API_KEY;
-  const groupId = process.env.MAILERLITE_GROUP_ID;
+  const groupId = setting('MAILERLITE_GROUP_ID');
   if (!secret || !apiKey || !groupId) {
     console.error('newsletter-confirm misconfigured: missing NEWSLETTER_CONFIRM_SECRET, MAILERLITE_API_KEY or MAILERLITE_GROUP_ID');
     return problem(req, 'error');

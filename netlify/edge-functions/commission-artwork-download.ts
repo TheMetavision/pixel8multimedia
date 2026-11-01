@@ -38,8 +38,10 @@ const text = (body: string, status: number) =>
 
 /** The commission the link was signed for (published doc; old links carry its legacyId). */
 async function fetchCommission(id: string) {
-  const token = Netlify.env.get('SANITY_TOKEN');
-  if (!token) throw new Error('SANITY_TOKEN not set');
+  // Read-only. SANITY_TOKEN first, as before; the others once it is retired
+  // (see sanityWriteToken in netlify/functions/_shared/site-config.mjs).
+  const token = Netlify.env.get('SANITY_TOKEN') || Netlify.env.get('SANITY_WRITE_TOKEN') || Netlify.env.get('SANITY_READ_TOKEN');
+  if (!token) throw new Error('No Sanity token set');
   const q = '*[_type == "commission" && !(_id in path("drafts.**")) && (_id == $id || legacyId == $id)][0]{ status, orderRef, "uploads": finishedArtwork[].uploadId }';
   const url = `${SANITY_QUERY_URL}?query=${encodeURIComponent(q)}&%24id=${encodeURIComponent(JSON.stringify(id))}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });

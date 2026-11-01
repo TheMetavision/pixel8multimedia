@@ -6,7 +6,10 @@
 //   3. Emails the customer a branded order confirmation
 //   4. Emails the Pixel8 team a branded "new commission" notification
 
+import { setting, sanityWriteToken } from './_shared/site-config.mjs';
 import type { Context } from '@netlify/functions';
+import { addressFromStripe } from './_shared/commission-address.mjs';
+import { shippingEnabled } from './_shared/shipping-client.mjs';
 import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
@@ -21,7 +24,7 @@ const sanity = createClient({
   projectId: 'bqb4w421',
   dataset: 'production',
   apiVersion: '2024-12-01',
-  token: process.env.SANITY_TOKEN!,
+  token: sanityWriteToken('SANITY_TOKEN')!,
   useCdn: false,
 });
 
@@ -30,7 +33,7 @@ const resend = new Resend(process.env.RESEND_API_KEY!);
 const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
 const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 const FROM_EMAIL = 'Pixel8 Multimedia <hello@pixel8multimedia.co.uk>';
-const TEAM_EMAIL = process.env.TEAM_EMAIL || 'hello@pixel8multimedia.co.uk';
+const TEAM_EMAIL = setting('TEAM_EMAIL');
 
 // ── Format a Stripe address object into a single readable block ──────────────
 function formatShippingAddress(
@@ -339,6 +342,13 @@ export default async function handler(req: Request, _context: Context) {
     // shippingAddress on the commission schema is a TEXT field — write a string.
     if (shippingAddressText) {
       patch.shippingAddress = shippingAddressText;
+    }
+    // Sendcloud labels need the address in fields, not text. Behind the
+    // switch: unset, the commission is written exactly as before. Older
+    // commissions are read from Stripe at dispatch (_shared/commission-address.mjs).
+    if (shippingEnabled()) {
+      const fields = addressFromStripe(shippingDetails);
+      if (fields) patch.shippingAddressFields = fields;
     }
     const phone = session.customer_details?.phone;
     if (phone) {

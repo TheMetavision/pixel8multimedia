@@ -1,11 +1,16 @@
 import { defineType, defineField } from 'sanity';
 import { PrintFiles } from '../components/PrintFiles';
+import { shippingFields } from './shippingFields';
+import { CARRIER_OPTIONS } from '../../netlify/functions/_shared/parcel-bands.mjs';
 
 export default defineType({
   name: 'order',
   title: 'Order',
   type: 'document',
   fields: [
+    // P8- + the last 8 characters of the Stripe session id (_shared/order-ref.mjs).
+    // On labels, emails and /returns. Older orders get it when first shipped.
+    defineField({ name: 'orderNumber', title: 'Order reference', type: 'string', readOnly: true }),
     defineField({ name: 'stripeSessionId', title: 'Stripe Session ID', type: 'string', readOnly: true }),
     defineField({ name: 'stripePaymentId', title: 'Stripe Payment ID', type: 'string', readOnly: true }),
     defineField({ name: 'customerName', title: 'Customer Name', type: 'string' }),
@@ -127,20 +132,38 @@ export default defineType({
         layout: 'radio',
       },
       initialValue: 'received',
+      description: 'Set Dispatched with a tracking number (and carrier) and publish: the customer is emailed once, with tracking.',
     }),
     defineField({ name: 'trackingNumber', title: 'Tracking Number', type: 'string' }),
+    defineField({
+      name: 'carrier',
+      title: 'Carrier',
+      type: 'string',
+      options: { list: CARRIER_OPTIONS, layout: 'dropdown' },
+      description: 'For an order dispatched by hand: the dispatch email links to this carrier’s tracking page. Set from Sendcloud for a Sendcloud shipment.',
+    }),
+    defineField({ name: 'carrierOther', title: 'Carrier name (Other)', type: 'string', hidden: ({ document }) => document?.carrier !== 'other' }),
+    defineField({
+      name: 'dispatchEmailSentAt',
+      title: 'Dispatch email sent',
+      type: 'datetime',
+      readOnly: true,
+      description: 'Stamped when the customer’s dispatch email goes. Its presence stops a second one.',
+    }),
+    defineField({ name: 'dispatchEmailClaimedAt', title: 'Dispatch email claimed', type: 'datetime', readOnly: true, hidden: true }),
+    ...shippingFields(),
     defineField({ name: 'notes', title: 'Internal Notes', type: 'text', rows: 3 }),
     defineField({ name: 'createdAt', title: 'Created At', type: 'datetime', readOnly: true }),
     // Pre-migration _id, set by tools/migrate-private-ids.mjs.
     defineField({ name: 'legacyId', title: 'Legacy ID', type: 'string', readOnly: true, hidden: true }),
   ],
   preview: {
-    select: { title: 'customerName', status: 'status', total: 'totalAmount', createdAt: 'createdAt' },
-    prepare({ title, status, total, createdAt }) {
+    select: { title: 'customerName', status: 'status', total: 'totalAmount', createdAt: 'createdAt', ref: 'orderNumber' },
+    prepare({ title, status, total, createdAt, ref }) {
       const emoji: Record<string, string> = { received: '📥', 'in-production': '🖨️', dispatched: '📦', delivered: '✅', refunded: '↩️' };
       return {
         title: `${emoji[status] || ''} ${title || 'Unknown'}`,
-        subtitle: `£${(total || 0).toFixed(2)} — ${status} — ${createdAt ? new Date(createdAt).toLocaleDateString('en-GB') : ''}`,
+        subtitle: `${ref ? `${ref} — ` : ''}£${(total || 0).toFixed(2)} — ${status} — ${createdAt ? new Date(createdAt).toLocaleDateString('en-GB') : ''}`,
       };
     },
   },

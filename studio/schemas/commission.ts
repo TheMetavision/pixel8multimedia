@@ -1,6 +1,8 @@
 import { defineType, defineField } from 'sanity';
 import { CommissionPhotos } from '../components/CommissionPhotos';
 import { CommissionArtwork } from '../components/CommissionArtwork';
+import { shippingFields } from './shippingFields';
+import { CARRIER_OPTIONS } from '../../netlify/functions/_shared/parcel-bands.mjs';
 
 export default defineType({
   name: 'commission',
@@ -220,6 +222,50 @@ export default defineType({
       hidden: ({ document }) =>
         document?.deliveryType !== 'print' && document?.deliveryType !== 'both',
     }),
+    // The same address in fields, for a Sendcloud label. Written by
+    // stripe-webhook-commission while shipping is on; older commissions are
+    // read from Stripe at dispatch instead. Never backfilled.
+    defineField({
+      name: 'shippingAddressFields',
+      title: 'Shipping address (for labels)',
+      type: 'object',
+      group: 'brief',
+      readOnly: true,
+      hidden: ({ value }) => !value,
+      fields: [
+        { name: 'name', title: 'Name', type: 'string' },
+        { name: 'line1', title: 'Line 1', type: 'string' },
+        { name: 'line2', title: 'Line 2', type: 'string' },
+        { name: 'city', title: 'City', type: 'string' },
+        { name: 'county', title: 'County/State', type: 'string' },
+        { name: 'postcode', title: 'Postcode', type: 'string' },
+        { name: 'country', title: 'Country', type: 'string' },
+      ],
+    }),
+    // What was ordered in print, as commission-checkout writes it. Was
+    // written but not declared (so Studio showed it as an unknown field).
+    // The parcel bands are read from these.
+    defineField({
+      name: 'prints',
+      title: 'Prints ordered',
+      type: 'array',
+      group: 'brief',
+      readOnly: true,
+      hidden: ({ value }) => !(value as unknown[] | undefined)?.length,
+      of: [{
+        type: 'object',
+        name: 'commissionPrint',
+        fields: [
+          { name: 'format', title: 'Format', type: 'string' },
+          { name: 'size', title: 'Size', type: 'string' },
+          { name: 'styleKey', title: 'Style', type: 'string' },
+        ],
+        preview: {
+          select: { format: 'format', size: 'size', style: 'styleKey' },
+          prepare: ({ format, size, style }: any) => ({ title: `${format || '?'} — ${size || '?'}`, subtitle: style || '' }),
+        },
+      }],
+    }),
     // Customer photos, in the private Blobs store "commission-uploads".
     // Written by commission-checkout; shown as links to /admin/commission-photo/….
     defineField({
@@ -296,15 +342,8 @@ export default defineType({
       title: 'Carrier',
       type: 'string',
       group: 'delivery',
-      options: {
-        list: [
-          { title: 'Royal Mail', value: 'royalmail' },
-          { title: 'Evri', value: 'evri' },
-          { title: 'DPD', value: 'dpd' },
-          { title: 'UPS', value: 'ups' },
-        ],
-        layout: 'dropdown',
-      },
+      // Royal Mail, Evri, InPost, DPD, UPS, Other — shared with orders.
+      options: { list: CARRIER_OPTIONS, layout: 'dropdown' },
       description: 'Courier for the physical print. Set this and the tracking number, then change status to "Shipped" to email the customer.',
       hidden: ({ document }) => document?.deliveryType === 'digital',
     }),
@@ -323,6 +362,9 @@ export default defineType({
       readOnly: true,
       description: 'Stamped automatically when the dispatch email is sent. Its presence prevents duplicate dispatch emails.',
     }),
+    defineField({ name: 'dispatchEmailClaimedAt', title: 'Dispatch email claimed', type: 'datetime', group: 'delivery', readOnly: true, hidden: true }),
+    // Sendcloud (hidden unless the Studio is built with shipping on).
+    ...shippingFields('delivery'),
     defineField({
       name: 'internalNotes',
       title: 'Internal Notes',

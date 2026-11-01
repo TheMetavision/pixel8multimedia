@@ -3,6 +3,7 @@
 // The real I/O behind _shared/commission-artwork.mjs. (The tests build their
 // own fakes instead.)
 
+import { sanityWriteToken } from './site-config.mjs';
 import { getStore } from '@netlify/blobs';
 import { createClient } from '@sanity/client';
 import { ARTWORK_STORE } from './artwork-keys.mjs';
@@ -15,7 +16,7 @@ const sanity = createClient({
   projectId: 'bqb4w421',
   dataset: 'production',
   apiVersion: '2024-12-01',
-  token: process.env.SANITY_TOKEN,
+  token: sanityWriteToken('SANITY_TOKEN'),
   useCdn: false,
   perspective: 'raw',
 });

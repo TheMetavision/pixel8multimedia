@@ -5,6 +5,7 @@
 // response is capped at 20 MB streamed). Artwork uploaded to Blobs is served
 // by the commission-artwork-download edge function at /download/artwork.
 
+import { sanityWriteToken } from './_shared/site-config.mjs';
 import type { Context } from '@netlify/functions';
 import { createClient } from '@sanity/client';
 import crypto from 'crypto';
@@ -13,7 +14,7 @@ const sanity = createClient({
   projectId: 'bqb4w421',
   dataset: 'production',
   apiVersion: '2024-12-01',
-  token: process.env.SANITY_TOKEN!,
+  token: sanityWriteToken('SANITY_TOKEN')!,
   useCdn: false,
 });
 

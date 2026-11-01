@@ -12,6 +12,7 @@
 // The honeypot was called `website` until Oct 2026; either name, if filled,
 // is treated as a bot (see honeypotValue) so cached pages keep the trap.
 
+import { setting, sanityWriteToken } from './_shared/site-config.mjs';
 import type { Context, Config } from '@netlify/functions';
 import { createClient } from '@sanity/client';
 import { Resend } from 'resend';
@@ -23,14 +24,14 @@ const sanity = createClient({
   projectId: 'bqb4w421',
   dataset: 'production',
   apiVersion: '2024-12-01',
-  token: process.env.SANITY_API_TOKEN,
+  token: sanityWriteToken('SANITY_API_TOKEN'),
   useCdn: false,
 });
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
-const TEAM_EMAIL = process.env.TEAM_EMAIL || 'hello@pixel8multimedia.co.uk';
-const FROM_EMAIL = process.env.EMAIL_FROM || 'Pixel8 Multimedia <hello@pixel8multimedia.co.uk>';
+const TEAM_EMAIL = setting('TEAM_EMAIL');
+const FROM_EMAIL = setting('EMAIL_FROM');
 const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
 const LOGO_URL = process.env.EMAIL_LOGO_URL || 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 

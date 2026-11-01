@@ -13,6 +13,7 @@
 // The approve token is 128-bit random and single-use: approving clears it, so
 // a forwarded email can't re-approve or change anything.
 
+import { setting } from './_shared/site-config.mjs';
 import { Resend } from 'resend';
 import sharp from 'sharp';
 import { randomBytes } from 'node:crypto';
@@ -23,7 +24,7 @@ import {
 import { STYLE_META } from './_shared/styles.mjs';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.EMAIL_FROM || 'Pixel8 Multimedia <orders@pixel8multimedia.co.uk>';
+const FROM = setting('EMAIL_FROM');
 
 import { SIZE_LABELS as SPEC_SIZE_LABELS, FORMAT_LABELS as SPEC_FORMAT_LABELS } from './_shared/print-spec.mjs';
 

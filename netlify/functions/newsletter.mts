@@ -45,6 +45,7 @@
 // RESEND_API_KEY, NEWSLETTER_CONFIRM_SECRET; EMAIL_FROM (sender) and
 // EMAIL_LOGO_URL as for the contact emails.
 
+import { setting } from './_shared/site-config.mjs';
 import type { Context, Config } from '@netlify/functions';
 import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
 import { hashKey, takeSlot, releaseSlot } from './_shared/rate-limit.mjs';
@@ -201,10 +202,10 @@ export default async (req: Request, context: Context) => {
 
   // Everything the rest needs, checked before the request counts against anyone.
   const key = process.env.MAILERLITE_API_KEY;
-  const groupId = process.env.MAILERLITE_GROUP_ID;
+  const groupId = setting('MAILERLITE_GROUP_ID');
   const resendKey = process.env.RESEND_API_KEY;
   const confirmSecret = process.env.NEWSLETTER_CONFIRM_SECRET;
-  const from = process.env.EMAIL_FROM || DEFAULT_FROM;
+  const from = setting('EMAIL_FROM') || DEFAULT_FROM;
   const site = (process.env.SITE_URL || process.env.URL || new URL(req.url).origin).replace(/\/$/, '');
   if (!key || !groupId || !resendKey || !confirmSecret) {
     console.error(

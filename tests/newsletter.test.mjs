@@ -298,8 +298,8 @@ test('Resend refusing: a generic 502 with no provider detail', async () => {
   assert.deepEqual(r.body, { error: 'Could not complete signup. Please try again.' });
 });
 
-test('no NEWSLETTER_CONFIRM_SECRET, Resend key or group: closed with a 503, nothing looked up or sent', async () => {
-  for (const missing of ['NEWSLETTER_CONFIRM_SECRET', 'RESEND_API_KEY', 'MAILERLITE_GROUP_ID']) {
+test('no NEWSLETTER_CONFIRM_SECRET or Resend key: closed with a 503, nothing looked up or sent', async () => {
+  for (const missing of ['NEWSLETTER_CONFIRM_SECRET', 'RESEND_API_KEY']) {
     calls = [];
     Object.assign(process.env, ENV);
     delete process.env[missing];
