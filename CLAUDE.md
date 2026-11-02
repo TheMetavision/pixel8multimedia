@@ -61,6 +61,11 @@ print + digital: whichever is first) `_shared/post-delivery.mjs` claims
 (`MAILERLITE_CUSTOMERS_GROUP_ID` in site-config). Pixel8 writes only `name`
 and its own `p8_` fields; never CSC's unprefixed shared fields. Buyers who
 tick "Don't send me offers or referral emails" (cart drawer, commission
-wizard incl. Groupon, CommissionForm) get `marketingConsent: 'refused'` and
+wizard incl. Groupon) get `marketingConsent: 'refused'` and
 none of it. A PIX- code used at checkout earns the referrer a THANKS- code
 (`_shared/referral-reward.mjs`, both payment webhooks).
+
+Every commission service goes through `CommissionWorkflow.jsx` (the old
+`CommissionForm.jsx` is gone). A service with no briefing fields gets the
+built-in name, email and photos fields from `src/lib/commission-wizard.mjs`;
+only `commissionEnabled: false` shows "Commissions paused".

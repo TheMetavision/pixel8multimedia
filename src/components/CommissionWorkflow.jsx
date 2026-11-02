@@ -41,6 +41,7 @@ import {
   FREE_SHIPPING_THRESHOLD_GBP,
   STANDARD_SHIPPING_PENCE,
 } from '../../netlify/functions/_shared/commission-totals.mjs';
+import { briefFieldsFor, hasBriefQuestions, validateBrief, checkoutPayload } from '../lib/commission-wizard.mjs';
 
 // ─── Bot check ──────────────────────────────────────────────────────────────
 // One Cloudflare Turnstile check per visit. The first photo upload spends a
@@ -818,27 +819,15 @@ export default function CommissionWorkflow({ service }) {
 
   const briefingFields = service.briefingFields || [];
 
-  // ─── Filter briefing fields by orderType using showFor ────────────────────
-  const filteredBriefingFields = useMemo(() => {
-    return briefingFields
-      .filter((f) => {
-        // Style picker hidden for ALL digital paths (digital includes everything)
-        // and singlePrint (where style is chosen per-print in the prints step)
-        if (f.fieldType === 'styleSwatch' && (
-          orderType === 'digital' ||
-          orderType === 'digital-secondary' ||
-          orderType === 'digital-both' ||
-          orderType === 'singlePrint'
-        )) {
-          return false;
-        }
-        // Honour showFor — if set, only show when orderType matches
-        if (Array.isArray(f.showFor) && f.showFor.length > 0) {
-          return f.showFor.includes(orderType);
-        }
-        return true;
-      });
-  }, [briefingFields, orderType]);
+  // ─── Brief fields for this order type ───────────────────────────────────
+  // showFor filtering, plus the built-in name/email fields when the service's
+  // brief doesn't ask for them (or it has no brief at all): see
+  // src/lib/commission-wizard.mjs.
+  const filteredBriefingFields = useMemo(
+    () => briefFieldsFor(briefingFields, orderType, { hasFileUpload: service.hasFileUpload }),
+    [briefingFields, orderType, service.hasFileUpload],
+  );
+  const asksBriefQuestions = hasBriefQuestions(filteredBriefingFields);
 
   // Whether the print configuration step is needed
   const orderInvolvesPrints =
@@ -1062,27 +1051,7 @@ export default function CommissionWorkflow({ service }) {
 
   // ─── Validation ────────────────────────────────────────────────────────────
   function validateBriefStep() {
-    for (const f of filteredBriefingFields) {
-      if (!f.required) continue;
-      if (f.fieldType === 'photo') {
-        if ((briefFiles[f.key] || []).length === 0) return `Please upload "${f.label}".`;
-      } else if (f.fieldType === 'photos') {
-        const arr = briefFiles[f.key] || [];
-        const min = f.minPhotos || 1;
-        if (arr.length < min) return `Please upload at least ${min} photo${min > 1 ? 's' : ''} for "${f.label}".`;
-      } else if (f.fieldType === 'file') {
-        if ((briefFiles[f.key] || []).length === 0) return `Please upload a file for "${f.label}".`;
-      } else if (f.fieldType === 'checkbox') {
-        if (briefValues[f.key] !== true) return `Please confirm: "${f.label}"`;
-      } else {
-        const v = (briefValues[f.key] || '').trim();
-        if (!v) return `Please fill in "${f.label}".`;
-        if (f.fieldType === 'email' && !/^\S+@\S+\.\S+$/.test(v)) {
-          return `"${f.label}" needs to be a valid email address.`;
-        }
-      }
-    }
-    return null;
+    return validateBrief(filteredBriefingFields, briefValues, briefFiles);
   }
 
   function validatePrintsStep() {
@@ -1163,64 +1132,13 @@ export default function CommissionWorkflow({ service }) {
     setSubmitting(true);
     try {
       // Photos are already in the private Blobs store (PhotoDropzone uploaded
-      // them). Send just their keys — never filenames — for the checkout
-      // function to check and record on the commission doc.
-      const uploadedAssets = [];
-      Object.entries(briefFiles).forEach(([fieldKey, arr]) => {
-        (arr || []).forEach((meta) => {
-          if (meta?.uploadKey) uploadedAssets.push({ fieldKey, uploadKey: meta.uploadKey });
-        });
+      // them); the payload carries just their keys. See commission-wizard.mjs.
+      const payload = checkoutPayload({
+        service, orderType, fields: filteredBriefingFields, briefValues, briefFiles,
+        prints, orderInvolvesPrints, includePrintsWithAnimation, bundleCollection,
+        includesDigital, digitalConsent, digitalConsentVersion: DIGITAL_CONSENT_VERSION,
+        marketingOptOut, grouponClaim,
       });
-
-      const name = briefValues.customerName || '';
-      const email = briefValues.customerEmail || '';
-      const phone = briefValues.customerPhone || '';
-
-      const briefSummary = filteredBriefingFields
-        .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
-        .filter((f) => !['customerName', 'customerEmail', 'customerPhone'].includes(f.key))
-        .map((f) => {
-          const raw = briefValues[f.key];
-          let display;
-          if (f.fieldType === 'checkbox') {
-            display = raw === true ? 'Yes' : 'No';
-          } else {
-            display = raw || '(not provided)';
-          }
-          return `${f.label}: ${display}`;
-        })
-        .join('\n');
-
-      const briefData = filteredBriefingFields
-        .filter((f) => !['photo', 'photos', 'file'].includes(f.fieldType))
-        .map((f) => {
-          const raw = briefValues[f.key];
-          let v;
-          if (f.fieldType === 'checkbox') v = raw === true ? 'Yes' : 'No';
-          else v = raw || '';
-          return { key: f.key, label: f.label, value: v };
-        });
-
-      const validPrints = orderInvolvesPrints
-        ? (orderType === 'singlePrint' ? prints.slice(0, 1) : prints)
-            .filter((p) => p.format && p.size)
-        : [];
-
-      const payload = {
-        serviceSlug: service.slug,
-        serviceTitle: service.title,
-        orderType,
-        includePrintsWithAnimation: !!includePrintsWithAnimation,
-        bundleCollection,
-        name, email, phone,
-        brief: briefSummary,
-        briefData,
-        prints: validPrints,
-        uploadedAssets,
-        ...(grouponClaim ? { grouponClaimToken: grouponClaim.token } : {}),
-        ...(includesDigital ? { digitalSupplyConsent: digitalConsent === true, digitalConsentVersion: DIGITAL_CONSENT_VERSION } : {}),
-        marketingOptOut: marketingOptOut === true,
-      };
 
       // With analytics consent, the GA client and session ids ride to Stripe
       // so the webhook can report the purchase (netlify/functions/_shared/ga4.mjs).
@@ -1455,7 +1373,11 @@ export default function CommissionWorkflow({ service }) {
       {/* STEP 1 — Brief */}
       {step === 1 && (
         <section className="cw__section">
-          <p className="cw__step-intro">Tell us about your commission. The more detail, the better we can match what you've imagined.</p>
+          <p className="cw__step-intro">
+            {asksBriefQuestions
+              ? "Tell us about your commission. The more detail, the better we can match what you've imagined."
+              : "Just your details and your photos, and we'll take it from there."}
+          </p>
           {filteredBriefingFields.map((field) => (
             <BriefField key={field._key || field.key} field={field}
               value={briefValues[field.key]}
@@ -1464,9 +1386,6 @@ export default function CommissionWorkflow({ service }) {
               onFilesChange={(k, arr) => setBriefFiles((p) => ({ ...p, [k]: arr }))}
               styleOptions={styleOptions} />
           ))}
-          {filteredBriefingFields.length === 0 && (
-            <p className="cw__empty">This service doesn't have a briefing form configured yet. Please contact us directly.</p>
-          )}
         </section>
       )}
 

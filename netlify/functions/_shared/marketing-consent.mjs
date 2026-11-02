@@ -10,8 +10,8 @@
  *   shop (cart drawer, which Your Photo uses too)
  *     CartPanel sends `marketingOptOut`, checkout.mjs stamps it on the Stripe
  *     session as metadata.marketing_opt_out, webhook.mjs records it.
- *   commissions (CommissionWorkflow, including Groupon voucher checkouts, and
- *   the older CommissionForm)
+ *   commissions (CommissionWorkflow, every service, Groupon voucher
+ *   checkouts included)
  *     commission-checkout writes it straight onto the commission when it is
  *     created, and stamps the same metadata for the record.
  *

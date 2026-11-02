@@ -18,7 +18,8 @@ import { sendDispatchEmail, afterDispatchEmail } from '../netlify/functions/_sha
 import { readDiscount, isWelcomeCode } from '../netlify/functions/_shared/discount.mjs';
 import { SITE_CONFIG } from '../netlify/functions/_shared/site-config.mjs';
 
-const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+// Line endings normalised: with core.autocrlf the working copy may be CRLF.
+const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 // Source with comments removed, so a check can't be satisfied by a comment.
 const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/^\s*\/\/.*$/gm, '');
 
@@ -440,16 +441,13 @@ test('checkouts: opt-out stamped / recorded; never consent_collection', () => {
   for (const src of [shop, comm]) assert.equal(/consent_collection\s*:/.test(src), false);
 });
 
-test('commission wizard (Groupon voucher checkouts included) and the older form both have the box', () => {
+test('commission wizard (every service, Groupon voucher checkouts included) has the box and sends it', () => {
   const wiz = code(read('../src/components/CommissionWorkflow.jsx'));
-  assert.match(wiz, /useState\(false\);\s*$/m);
   assert.match(wiz, /const \[marketingOptOut, setMarketingOptOut\] = useState\(false\)/);
-  assert.match(wiz, /marketingOptOut: marketingOptOut === true/);
+  assert.match(wiz, /checkoutPayload\(\{[\s\S]*?marketingOptOut, grouponClaim,/);
   assert.match(wiz, /\{step === 3 && \(\s*<label className="cw__checkbox-row">\s*<input\s+id="marketing-opt-out"/, 'shown on the last step for every delivery type');
   assert.match(wiz, />Don't send me offers or referral emails</);
-  const form = code(read('../src/components/CommissionForm.jsx'));
-  assert.match(form, /id="marketing-opt-out"/);
-  assert.match(form, /fd\.append\('marketingOptOut'/);
+  assert.match(code(read('../src/lib/commission-wizard.mjs')), /marketingOptOut: marketingOptOut === true/);
 });
 
 test('webhooks record consent and reward referrers; the download email starts the sequence', () => {

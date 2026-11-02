@@ -1,7 +1,7 @@
 ---
 // src/pages/services/[slug].astro
 // Dynamic service page — fetches from Sanity, renders hero, gallery, steps,
-// and the commission wizard (Phase 2 — replaces legacy single-form CommissionForm).
+// and the commission wizard (every service; one without briefing fields gets name, email and photos).
 export const prerender = false;
 
 import { sanityClient } from '../../lib/sanity';
@@ -334,13 +334,10 @@ function categoriseImages(images = [], primaryKeys = [], secondaryKeys = [], col
   return { mode: 'standard', original: null, rest: valid };
 }
 
-// Should the commission wizard be shown?
-//  - Must be enabled in Sanity (commissionEnabled !== false)
-//  - Must have at least one briefing field configured
-const showCommissionWorkflow =
-  service.commissionEnabled !== false &&
-  Array.isArray(service.briefingFields) &&
-  service.briefingFields.length > 0;
+// Should the commission wizard be shown? Whenever commissions are enabled in
+// Sanity. A service with no briefing fields still goes through the wizard: it
+// asks for name, email and photos (src/lib/commission-wizard.mjs).
+const showCommissionWorkflow = service.commissionEnabled !== false;
 
 // Shape the service object passed to the React island — only fields the
 // component actually needs, to keep the serialised props tight.
@@ -363,6 +360,9 @@ const serviceForWizard = {
   styleOptionsSecondary: service.styleOptionsSecondary,
   printUpcharges: service.printUpcharges,
   briefingFields: service.briefingFields,
+  // Used only when briefingFields is empty: offer the built-in photo upload
+  // unless "Show Upload Files Button" is off (src/lib/commission-wizard.mjs).
+  hasFileUpload: service.hasFileUpload,
 };
 
 // Display images: sized src, srcset up to 2x the rendered width, and the
