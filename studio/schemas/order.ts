@@ -1,6 +1,7 @@
 import { defineType, defineField } from 'sanity';
 import { PrintFiles } from '../components/PrintFiles';
 import { shippingFields } from './shippingFields';
+import { marketingFields } from './marketingFields';
 import { CARRIER_OPTIONS } from '../../netlify/functions/_shared/parcel-bands.mjs';
 
 export default defineType({
@@ -152,6 +153,7 @@ export default defineType({
     }),
     defineField({ name: 'dispatchEmailClaimedAt', title: 'Dispatch email claimed', type: 'datetime', readOnly: true, hidden: true }),
     ...shippingFields(),
+    ...marketingFields(),
     defineField({ name: 'notes', title: 'Internal Notes', type: 'text', rows: 3 }),
     defineField({ name: 'createdAt', title: 'Created At', type: 'datetime', readOnly: true }),
     // Pre-migration _id, set by tools/migrate-private-ids.mjs.

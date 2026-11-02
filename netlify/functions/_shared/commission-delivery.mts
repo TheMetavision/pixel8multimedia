@@ -10,6 +10,7 @@
 
 import crypto from 'crypto';
 import { fileRefFor } from './artwork-keys.mjs';
+import { startPostDelivery } from './post-delivery.mjs';
 
 const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
 const FROM_EMAIL = 'Pixel8 Multimedia <hello@pixel8multimedia.co.uk>';
@@ -121,6 +122,7 @@ export async function deliverCommission(
     `*[_type == "commission" && _id == $id][0]{
       _id, orderRef, customerName, customerEmail,
       deliveryType, status, deliveredAt, awaitingVoucherCheck,
+      paidAt, marketingConsent,
       "serviceTitle": service->title,
       "fileRef": finishedFile.asset._ref,
       "artwork": finishedArtwork[defined(uploadId)]{ uploadId, filename }
@@ -200,6 +202,12 @@ export async function deliverCommission(
     .commit();
 
   console.log(`Commission ${commissionId} (${commission.orderRef}) download email sent — ${downloads.length} link(s), ${artwork.length ? 'Blobs' : 'Sanity file'}`);
+
+  // The post-delivery sequence (referral code + MailerLite). For a digital
+  // commission this email is the delivery; for print + digital it may come
+  // before or after the dispatch email, and whichever is first starts it
+  // (its own once-only claim). Never throws.
+  await startPostDelivery('commission', commission, { sanity, log: console });
   return new Response('Delivered', { status: 200 });
 }
 

@@ -20,16 +20,17 @@
  * a commission (so commissions emailed before this change are never emailed
  * again). Both are server fields, written to the draft too (server-patch.mjs).
  *
- * AFTER THE EMAIL. Nothing hangs off "dispatch email sent" at Pixel8 today:
- * there is no customers group in MailerLite, and photo retention counts from
- * printing (personalisation.mts paidRetentionDays), not dispatch. Anything
- * added later goes in afterDispatchEmail(), which runs once, after the send
- * is marked, on every path above -- so Sendcloud-shipped orders get it too.
+ * AFTER THE EMAIL. afterDispatchEmail() runs once, after the send is marked,
+ * on every path above -- so Sendcloud-shipped orders get it too. It starts the
+ * post-delivery sequence (_shared/post-delivery.mjs: the buyer's PIX- referral
+ * code and MailerLite "P8 - Customers"). Photo retention still counts from
+ * printing (personalisation.mts paidRetentionDays), not dispatch.
  */
 import { readDecideWrite, serverPatch } from './server-patch.mjs';
 import { carrierName, trackingUrlFor } from './parcel-bands.mjs';
 import { orderRefFor } from './order-ref.mjs';
 import { setting } from './site-config.mjs';
+import { startPostDelivery } from './post-delivery.mjs';
 
 export const CLAIM_TTL_MS = 10 * 60 * 1000;
 
@@ -204,12 +205,15 @@ export function commissionNotDue(c) {
 /* ------------------------------------------------------------------ sending */
 
 /**
- * Hook for anything that must follow the dispatch email (a customers group, a
- * review request, a retention clock). Runs once per document, after the send
- * is marked, on every dispatch path. Never throws. Empty today -- see the top.
+ * Hook for anything that must follow the dispatch email. Runs once per
+ * document, after the send is marked, on every dispatch path. Never throws.
+ * Today: the post-delivery sequence (referral code + MailerLite), which has
+ * its own once-only claim, since a print + digital commission may already
+ * have started it from its download email.
  */
-export async function afterDispatchEmail(_kind, _doc, { log = console } = {}) {
-  void log;
+export async function afterDispatchEmail(kind, doc, { log = console, sanity, postDelivery = startPostDelivery } = {}) {
+  if (!sanity) return;
+  await postDelivery(kind, doc, { sanity, log });
 }
 
 /**
@@ -278,6 +282,6 @@ export async function sendDispatchEmail({ kind, id, sanity, getResend, now = () 
     await sanity.patch(id).set(set).commit().catch(() => {});
   }
   log.log(`dispatch-email: ${kind} ${name} emailed`);
-  try { await after(kind, { ...doc, ...set }, { log }); } catch (err) { log.error(`dispatch-email: ${name}: after-send step failed:`, err?.message || err); }
+  try { await after(kind, { ...doc, ...set }, { log, sanity }); } catch (err) { log.error(`dispatch-email: ${name}: after-send step failed:`, err?.message || err); }
   return { sent: true, status: 200, reason: 'OK' };
 }

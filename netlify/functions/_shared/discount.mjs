@@ -19,6 +19,8 @@
  *
  *   welcomeCodes — codes from `codes` that are welcome offers (see
  *             isWelcomeCode), for the webhook's repeat-customer check.
+ *   promos — the expanded Stripe promotion codes, for the referral reward
+ *             (referral.mjs referralsFrom picks out the PIX- codes).
  *   groupon — a Groupon discount that does NOT belong to the voucher this
  *             session claimed (session.metadata.grouponVoucherId). Kept as a
  *             backstop: it means a legacy GRPN code was typed into another
@@ -30,9 +32,11 @@
  * Never throws. The payment is taken whatever this finds, so a failed lookup
  * costs the order its code and keeps the amount, which is on the event itself.
  */
+import { isFriendCode, isRewardCode } from './referral.mjs';
+
 export async function readDiscount(stripe, session) {
   const amountPence = session?.total_details?.amount_discount || 0;
-  const out = { amountPence, codes: [], welcomeCodes: [], groupon: false };
+  const out = { amountPence, codes: [], welcomeCodes: [], promos: [], groupon: false };
   if (!amountPence) return out;
   const claimed = session?.metadata?.grouponVoucherId || null;
 
@@ -65,6 +69,8 @@ export async function readDiscount(stripe, session) {
 
       /* A coupon applied without a customer-facing code still gets named, by
          the coupon's own name. */
+      // The expanded promotion codes, for the referral reward (referralsFrom).
+      if (promo && typeof promo === 'object') out.promos.push(promo);
       const code = promo?.code || coupon?.name || coupon?.id || null;
       if (code && !out.codes.includes(code)) out.codes.push(code);
       if (code && isWelcomeCode(promo) && !out.welcomeCodes.includes(code)) out.welcomeCodes.push(code);
@@ -93,6 +99,8 @@ export const GROUPON_MISUSE =
 export const WELCOME_CODES = ['PIX10'];
 export function isWelcomeCode(promo) {
   if (!promo || typeof promo !== 'object') return false;
+  // Referral codes (PIX-) are first-time-only too, but they are not the welcome offer.
+  if (isFriendCode(promo) || isRewardCode(promo)) return false;
   return promo.restrictions?.first_time_transaction === true
     || WELCOME_CODES.includes(String(promo.code || '').toUpperCase());
 }

@@ -16,6 +16,7 @@ import { Resend } from 'resend';
 import { DIGITAL_CONSENT_CONFIRMATION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 import { chargedExShipping, commissionGaItems, sendPurchase } from './_shared/ga4.mjs';
 import { readDiscount, discountLabel, GROUPON_MISUSE } from './_shared/discount.mjs';
+import { rewardReferrer } from './_shared/referral-reward.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 const endpointSecret = process.env.STRIPE_COMMISSION_WEBHOOK_SECRET!;
@@ -490,6 +491,17 @@ export default async function handler(req: Request, _context: Context) {
       } catch (e) {
         console.error('Failed to record notifyError on commission:', e);
       }
+    }
+
+    // Referral: a PIX- code typed on this checkout belongs to an earlier
+    // buyer. Issue them a single-use THANKS- code and email it. Only a
+    // voucher-less checkout can carry one (promo is null otherwise). A retry
+    // after paidAt is set returned above, so this runs once. Never throws.
+    if (promo) {
+      await rewardReferrer({
+        stripe, sanity, resend: process.env.RESEND_API_KEY ? resend : null,
+        docId: existing._id, ref: existing.orderRef, promos: promo.promos, buyerEmail: existing.customerEmail,
+      });
     }
 
     // GA4 purchase, only if the buyer accepted analytics cookies (the session

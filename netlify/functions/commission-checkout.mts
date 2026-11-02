@@ -36,6 +36,7 @@ import { verifyTurnstile, GENERIC_FAILURE, UNAVAILABLE } from './_shared/turnsti
 import { verifyGrant } from './_shared/commission-grant.mjs';
 import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 import { gaClientIdMetadata } from './_shared/ga4.mjs';
+import { optOutMetadata, consentFromOptOut } from './_shared/marketing-consent.mjs';
 import { customerForEmail } from './_shared/stripe-customer.mjs';
 import { commissionShipping } from './_shared/commission-totals.mjs';
 
@@ -754,6 +755,10 @@ export default async function handler(req: Request, _context: Context) {
       customerEmail: email,
       customerPhone: phone,
       source: voucher ? 'groupon' : 'direct',
+      // The wizard's "Don't send me offers or referral emails" box (Groupon
+      // voucher checkouts included): 'refused' or 'not_asked'. Read when the
+      // commission is delivered (_shared/post-delivery.mjs).
+      marketingConsent: consentFromOptOut(body.marketingOptOut),
       ...(voucher
         ? {
             grouponVoucher: { _type: 'reference', _ref: voucher._id },
@@ -851,6 +856,8 @@ export default async function handler(req: Request, _context: Context) {
         serviceSlug,
         orderType: breakdown.orderType,
         printCount: String(breakdown.prints.length),
+        // For the record; the commission already carries marketingConsent.
+        marketing_opt_out: optOutMetadata(body.marketingOptOut),
         // Sent by the browser only when the buyer accepted analytics cookies;
         // stripe-webhook-commission reports the GA4 purchase against them.
         ...gaClientIdMetadata(body.gaClientId, body.gaSessionId),

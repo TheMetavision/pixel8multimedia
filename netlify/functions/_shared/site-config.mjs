@@ -33,6 +33,9 @@ export const SITE_CONFIG = Object.freeze({
 
   // Newsletter group (newsletter.mts, newsletter-confirm.mts).
   MAILERLITE_GROUP_ID: '185280836058219588',
+  // "P8 - Customers": joining it starts the post-delivery automation
+  // (_shared/mailerlite-customer.mjs).
+  MAILERLITE_CUSTOMERS_GROUP_ID: '200039636809024846',
 
   // GA4 Measurement Protocol. The id is public (it is in every page's gtag);
   // GA4_API_SECRET is the secret half and stays in Netlify.

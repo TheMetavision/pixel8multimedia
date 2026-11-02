@@ -47,3 +47,20 @@ emails go regardless once the webhook points at the router.
   Write tokens: `sanityWriteToken()`; SANITY_TOKEN / SANITY_API_TOKEN are
   being retired in favour of SANITY_WRITE_TOKEN. Check the 4 KB function-env
   budget before adding any variable.
+
+---
+
+## Post-delivery sequence (referral + MailerLite)
+
+Branch `feat/post-delivery-sequence`, mirrors Comic Strip Canvas. At the
+first email telling the customer their order reached them (dispatch email for
+shop / Your Photo / print commissions, download email for digital ones;
+print + digital: whichever is first) `_shared/post-delivery.mjs` claims
+`postDeliveryStartedAt`, creates or reuses the buyer's PIX- code (Stripe,
+`_shared/referral.mjs`) and upserts them into MailerLite "P8 - Customers"
+(`MAILERLITE_CUSTOMERS_GROUP_ID` in site-config). Pixel8 writes only `name`
+and its own `p8_` fields; never CSC's unprefixed shared fields. Buyers who
+tick "Don't send me offers or referral emails" (cart drawer, commission
+wizard incl. Groupon, CommissionForm) get `marketingConsent: 'refused'` and
+none of it. A PIX- code used at checkout earns the referrer a THANKS- code
+(`_shared/referral-reward.mjs`, both payment webhooks).

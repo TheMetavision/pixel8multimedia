@@ -746,6 +746,10 @@ export default function CommissionWorkflow({ service }) {
   const [orderType, setOrderType] = useState(availablePaths[0] || 'digital');
   const [includePrintsWithAnimation, setIncludePrintsWithAnimation] = useState(false);
   const [digitalConsent, setDigitalConsent] = useState(false);
+  // "Don't send me offers or referral emails": unticked by default, every
+  // delivery type, Groupon voucher checkouts too. commission-checkout records
+  // it as the commission's marketingConsent (_shared/marketing-consent.mjs).
+  const [marketingOptOut, setMarketingOptOut] = useState(false);
   // For bundle path: which digital collection is the customer bundling with prints?
   // 'primary' = main collection, 'secondary' = secondary, 'both' = both collections.
   // Only meaningful when hasSecondaryCollection is true.
@@ -1215,6 +1219,7 @@ export default function CommissionWorkflow({ service }) {
         uploadedAssets,
         ...(grouponClaim ? { grouponClaimToken: grouponClaim.token } : {}),
         ...(includesDigital ? { digitalSupplyConsent: digitalConsent === true, digitalConsentVersion: DIGITAL_CONSENT_VERSION } : {}),
+        marketingOptOut: marketingOptOut === true,
       };
 
       // With analytics consent, the GA client and session ids ride to Stripe
@@ -1747,6 +1752,19 @@ export default function CommissionWorkflow({ service }) {
             required
           />
           <span className="cw__checkbox-label">{DIGITAL_CONSENT_LABEL}</span>
+        </label>
+      )}
+
+      {step === 3 && (
+        <label className="cw__checkbox-row">
+          <input
+            id="marketing-opt-out"
+            type="checkbox"
+            className="cw__checkbox"
+            checked={marketingOptOut}
+            onChange={(e) => setMarketingOptOut(e.target.checked)}
+          />
+          <span className="cw__checkbox-label">Don't send me offers or referral emails</span>
         </label>
       )}
 

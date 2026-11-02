@@ -5,6 +5,7 @@ import {
   FORMAT_LABELS, SIZE_LABELS, YOUR_PHOTO_PRODUCT_ID, priceCart, shippingPenceFor,
 } from './_shared/pricing.mjs';
 import { gaClientIdMetadata } from './_shared/ga4.mjs';
+import { optOutMetadata } from './_shared/marketing-consent.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -80,7 +81,7 @@ export default async (req, context) => {
   }
 
   try {
-    const { items, gaClientId, gaSessionId } = await req.json();
+    const { items, gaClientId, gaSessionId, marketingOptOut } = await req.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return new Response(JSON.stringify({ error: 'Cart is empty' }), {
@@ -196,6 +197,11 @@ export default async (req, context) => {
         source: 'shop',
         lines: String(priced.lines.length),
         personalised: hasPersonalised ? 'yes' : 'no',
+        /* marketing_opt_out: the cart's "Don't send me offers or referral
+           emails" box. 'true' only when ticked; webhook.mjs records it as the
+           order's marketingConsent (_shared/marketing-consent.mjs). Never
+           consent_collection: Stripe refuses it for UK accounts. */
+        marketing_opt_out: optOutMetadata(marketingOptOut),
         // Sent by the browser only when the buyer accepted analytics cookies;
         // the webhook reports the GA4 purchase against them (_shared/ga4.mjs).
         ...gaClientIdMetadata(gaClientId, gaSessionId),

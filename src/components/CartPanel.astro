@@ -46,6 +46,15 @@
       <span id="cart-subtotal" class="font-mono text-xl text-pop-orange font-bold">£0.00</span>
     </div>
     <p id="cart-footer-note" class="font-dm text-deep-grey text-xs mb-4">Free UK P&amp;P on orders of £50 and over. Made to order.</p>
+    <!-- Soft opt-in refusal at the point of collection. Unticked by default. -->
+    <div class="flex items-start gap-2 mb-3">
+      <input id="marketing-opt-out" type="checkbox"
+             class="mt-0.5 h-4 w-4 shrink-0 accent-pop-orange cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-pixel-cyan" />
+      <label for="marketing-opt-out" class="font-dm text-xs text-mid-grey leading-snug cursor-pointer select-none">
+        Don't send me offers or referral emails
+      </label>
+    </div>
+
     <button id="checkout-btn" class="btn-primary w-full text-center block mb-3">Checkout</button>
     <p id="checkout-error" class="hidden font-dm text-red-500 text-xs text-center mb-2"></p>
     <div class="flex items-center justify-between gap-3">
@@ -91,7 +100,7 @@
 </div>
 
 <script>
-  import { cartItems, cartOpen, cartTotal, removeFromCart, updateQuantity, clearCart } from '../stores/cart';
+  import { cartItems, cartOpen, cartTotal, removeFromCart, updateQuantity, clearCart, marketingOptOut } from '../stores/cart';
   import { FORMAT_LABELS, SIZE_LABELS } from '../data/products';
   import type { ProductFormat, ProductSize } from '../data/products';
   import { gaCheckoutIds, gaItem, trackThen } from '../lib/analytics';
@@ -255,6 +264,13 @@
     renderShippingProgress(total);
   });
 
+  // Marketing opt-out box: mirrors the cart store (remembered for the session).
+  const optOutBox = document.getElementById('marketing-opt-out') as HTMLInputElement | null;
+  if (optOutBox) {
+    marketingOptOut.subscribe((value) => { optOutBox.checked = value; });
+    optOutBox.addEventListener('change', () => marketingOptOut.set(optOutBox.checked));
+  }
+
   checkoutBtn?.addEventListener('click', async () => {
     const items = cartItems.get();
     if (items.length === 0) return;
@@ -270,7 +286,11 @@
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, ...gaCheckout }),
+        body: JSON.stringify({
+          items,
+          ...gaCheckout,
+          marketingOptOut: optOutBox ? optOutBox.checked : marketingOptOut.get(),
+        }),
       });
 
       const data = await res.json();

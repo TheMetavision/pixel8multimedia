@@ -23,6 +23,8 @@ export default function CommissionForm({ service }) {
   const [dragActive, setDragActive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // "Don't send me offers or referral emails" (_shared/marketing-consent.mjs).
+  const [marketingOptOut, setMarketingOptOut] = useState(false);
   const fileInputRef = useRef(null);
 
   const showPrintFields =
@@ -101,6 +103,7 @@ export default function CommissionForm({ service }) {
       fd.append('email', form.email.trim());
       fd.append('brief', form.brief.trim());
       fd.append('deliveryType', form.deliveryType);
+      fd.append('marketingOptOut', marketingOptOut ? 'true' : 'false');
 
       if (showPrintFields) {
         fd.append('printSize', form.printSize);
@@ -356,6 +359,17 @@ export default function CommissionForm({ service }) {
           </label>
         </div>
       )}
+
+      {/* ── Marketing opt-out (soft opt-in refusal) ── */}
+      <label className="commission-form__checkbox" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', margin: '0 0 1rem' }}>
+        <input
+          id="marketing-opt-out"
+          type="checkbox"
+          checked={marketingOptOut}
+          onChange={(e) => setMarketingOptOut(e.target.checked)}
+        />
+        <span>Don't send me offers or referral emails</span>
+      </label>
 
       {/* ── Error / Submit ────────────────────── */}
       {error && (

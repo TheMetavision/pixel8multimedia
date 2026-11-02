@@ -2,6 +2,7 @@ import { defineType, defineField } from 'sanity';
 import { CommissionPhotos } from '../components/CommissionPhotos';
 import { CommissionArtwork } from '../components/CommissionArtwork';
 import { shippingFields } from './shippingFields';
+import { marketingFields } from './marketingFields';
 import { CARRIER_OPTIONS } from '../../netlify/functions/_shared/parcel-bands.mjs';
 
 export default defineType({
@@ -365,6 +366,7 @@ export default defineType({
     defineField({ name: 'dispatchEmailClaimedAt', title: 'Dispatch email claimed', type: 'datetime', group: 'delivery', readOnly: true, hidden: true }),
     // Sendcloud (hidden unless the Studio is built with shipping on).
     ...shippingFields('delivery'),
+    ...marketingFields('source'),
     defineField({
       name: 'internalNotes',
       title: 'Internal Notes',

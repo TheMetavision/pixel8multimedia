@@ -16,6 +16,8 @@ import { flagMissingPrintFiles, teamSubject, missingBlockHtml } from './_shared/
 import { stockLineKeys } from './_shared/print-job.mjs';
 import { sendPurchase, shopGaItems } from './_shared/ga4.mjs';
 import { readDiscount, discountLabel, GROUPON_MISUSE, repeatWelcomeNote } from './_shared/discount.mjs';
+import { consentFromSession } from './_shared/marketing-consent.mjs';
+import { rewardReferrer } from './_shared/referral-reward.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -180,6 +182,11 @@ export default async (req, context) => {
           stripePaymentId: session.payment_intent,
           customerName,
           customerEmail,
+          /* 'refused' when the cart's "Don't send me offers or referral
+             emails" box was ticked (metadata.marketing_opt_out, stamped by
+             checkout.mjs), else 'not_asked' (UK soft opt-in). Read at
+             dispatch by _shared/post-delivery.mjs. */
+          marketingConsent: consentFromSession(session),
           shippingAddress: {
             line1: shipping.line1 || '',
             line2: shipping.line2 || '',
@@ -395,6 +402,15 @@ export default async (req, context) => {
       } catch (emailErr) {
         console.error('Failed to send team notification:', emailErr);
       }
+
+      // Referral: a PIX- code on this order belongs to an earlier buyer
+      // ("give 10%, get 10%"). Issue them a single-use THANKS- code and email
+      // it. Duplicate deliveries returned above, so this runs once per order.
+      // Never throws (_shared/referral-reward.mjs).
+      await rewardReferrer({
+        stripe, sanity, resend: process.env.RESEND_API_KEY ? resend : null,
+        docId: order._id, ref: orderRef || order._id, promos: discount.promos, buyerEmail: customerEmail,
+      });
 
       // GA4 purchase, only if the buyer accepted analytics cookies (the session
       // then carries ga_client_id). ≤ 2 s and never throws. Duplicate

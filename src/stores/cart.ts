@@ -33,6 +33,25 @@ export const cartItems = persistentAtom<CartItem[]>('pixel8-cart-v1', [], {
 // Drawer open/closed is UI state, not persisted.
 export const cartOpen = atom<boolean>(false);
 
+/**
+ * The cart's "Don't send me offers or referral emails" box. Unticked by
+ * default, and remembered for this browser session only (sessionStorage), so
+ * it survives moving between pages and the Your Photo builder but not a new
+ * visit. Sent with the checkout request; checkout.mjs stamps it on the Stripe
+ * session and the webhook records the order's marketingConsent from that.
+ */
+const OPT_OUT_KEY = 'pixel8-marketing-opt-out';
+function readOptOut(): boolean {
+  try { return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(OPT_OUT_KEY) === '1'; } catch { return false; }
+}
+export const marketingOptOut = atom<boolean>(readOptOut());
+marketingOptOut.listen((value) => {
+  try {
+    if (value) sessionStorage.setItem(OPT_OUT_KEY, '1');
+    else sessionStorage.removeItem(OPT_OUT_KEY);
+  } catch { /* private mode: remembered for this page only */ }
+});
+
 export const cartCount = computed(cartItems, (items) =>
   items.reduce((sum, item) => sum + item.quantity, 0)
 );
