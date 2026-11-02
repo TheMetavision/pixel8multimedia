@@ -38,6 +38,17 @@ export function consentFromSession(session) {
   return session?.metadata?.marketing_opt_out === 'true' ? 'refused' : 'not_asked';
 }
 
+/**
+ * The MailerLite *_marketing_ok value: 'yes' only when the order recorded
+ * 'not_asked' (the buyer saw the opt-out box and left it unticked). An order
+ * with no marketingConsent at all was placed before the box existed, so the
+ * buyer was never offered the refusal the soft opt-in needs: 'no', and the
+ * automation's referral email (gated on it) never goes to them.
+ */
+export function marketingOk(consent) {
+  return consent === 'not_asked' ? 'yes' : 'no';
+}
+
 /** True when this buyer must get no marketing: no PIX- code, not added to MailerLite. */
 export function marketingRefused(consent) {
   return consent === 'refused' || consent === 'opt_out';

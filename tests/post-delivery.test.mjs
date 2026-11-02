@@ -10,7 +10,7 @@ import {
   codeBody, friendCodeFor, issueReward, referralsFrom, ensureCoupon,
   FRIEND_COUPON_ID, REWARD_COUPON_ID, KIND_FRIEND, KIND_REWARD,
 } from '../netlify/functions/_shared/referral.mjs';
-import { optOutMetadata, consentFromOptOut, consentFromSession, marketingRefused } from '../netlify/functions/_shared/marketing-consent.mjs';
+import { marketingOk, optOutMetadata, consentFromOptOut, consentFromSession, marketingRefused } from '../netlify/functions/_shared/marketing-consent.mjs';
 import { customerPayload, addDeliveredCustomer, productTitleFor, deliveryFor } from '../netlify/functions/_shared/mailerlite-customer.mjs';
 import { startPostDelivery, EARLIER_CODE_QUERY } from '../netlify/functions/_shared/post-delivery.mjs';
 import { rewardReferrer, rewardEmail } from '../netlify/functions/_shared/referral-reward.mjs';
@@ -224,7 +224,7 @@ test('MailerLite payload, commissions: service name, PX- ref, paid date; digital
   const f = (over) => customerPayload('commission', commission(over), { referralCode: '', groupId: GROUP }).fields;
   assert.deepEqual(f({ deliveryType: 'digital' }), {
     name: 'Grace', p8_order_id: 'PX-ABCD1234', p8_product: 'Cartoonify Me', p8_last_order_date: '2026-10-20',
-    p8_referral_code: '', p8_delivery: 'digital', p8_marketing_ok: 'yes',
+    p8_referral_code: '', p8_delivery: 'digital', p8_marketing_ok: 'no',
   });
   assert.equal(f({ deliveryType: 'both' }).p8_delivery, 'print', 'print + digital counts as print');
   assert.equal(f({ deliveryType: 'print' }).p8_delivery, 'print');
@@ -476,4 +476,26 @@ test('privacy policy describes the soft opt-in and the box', () => {
   assert.match(p, /once you've ordered from us, offers and referral emails about our products and services/);
   assert.match(p, /tick "Don't send me offers or referral emails" in your cart, or on the commission order form/);
   assert.equal(p.includes("only if you've opted in via our newsletter"), false);
+});
+
+test('p8_marketing_ok: yes only for not_asked; an order from before the box (no consent recorded) is no', () => {
+  assert.equal(marketingOk('not_asked'), 'yes');
+  for (const c of [undefined, null, '', 'refused', 'opt_out', 'yes']) assert.equal(marketingOk(c), 'no', String(c));
+  const cases = [['not_asked', 'yes'], [undefined, 'no'], [null, 'no']];
+  for (const [consent, want] of cases) assert.equal(customerPayload('order', order({ marketingConsent: consent }), { referralCode: '', groupId: GROUP }).fields.p8_marketing_ok, want, `order ${consent}`);
+  for (const [consent, want] of cases) assert.equal(customerPayload('commission', commission({ marketingConsent: consent }), { referralCode: '', groupId: GROUP }).fields.p8_marketing_ok, want, `commission ${consent}`);
+});
+
+test('pre-box order: still gets its code and joins the group, but p8_marketing_ok is no', async () => {
+  const legacy = order({ marketingConsent: undefined });
+  delete legacy.marketingConsent;
+  const sanity = fakeSanity([legacy]);
+  const { d, added } = deps();
+  const r = await startPostDelivery('order', legacy, { sanity, log: quietLog }, d);
+  assert.match(r.referralCode, /^PIX-/);
+  assert.equal(added.length, 1);
+  assert.equal(added[0].doc.marketingConsent, undefined);
+  const calls = [];
+  await addDeliveredCustomer('order', added[0].doc, { referralCode: r.referralCode }, ML_ENV, async (url, init) => { calls.push(JSON.parse(init.body)); return { ok: true, status: 200 }; });
+  assert.equal(calls[0].fields.p8_marketing_ok, 'no');
 });

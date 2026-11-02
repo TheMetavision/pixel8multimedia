@@ -21,7 +21,7 @@ export function marketingFields(group?: string) {
           { title: 'Refused at checkout (no offers or referral emails)', value: 'refused' },
         ],
       },
-      description: 'From the "Don’t send me offers or referral emails" box at checkout. Empty on orders placed before it existed.',
+      description: 'From the "Don’t send me offers or referral emails" box at checkout. Empty on orders placed before it existed: those buyers never get the referral email.',
     }),
     defineField({
       name: 'referralCode',

@@ -17,7 +17,8 @@
  *   p8_last_order_date   YYYY-MM-DD (date field)
  *   p8_referral_code     PIX-XXXXXX, or '' if Stripe was unavailable
  *   p8_delivery          'print' or 'digital' (a print + digital commission is 'print')
- *   p8_marketing_ok      'yes' or 'no'
+ *   p8_marketing_ok      'yes' only if they saw the opt-out box and left it
+ *                        unticked; 'no' for orders from before the box
  *
  * A buyer who ticked "Don't send me offers or referral emails" is never added
  * at all, so the automation never starts for them; p8_marketing_ok stays as a
@@ -33,7 +34,7 @@
  */
 import { fetchWithTimeout } from './timing.mjs';
 import { setting } from './site-config.mjs';
-import { marketingRefused } from './marketing-consent.mjs';
+import { marketingRefused, marketingOk } from './marketing-consent.mjs';
 import { orderRefFor } from './order-ref.mjs';
 
 const ML = 'https://connect.mailerlite.com/api';
@@ -66,9 +67,10 @@ export function customerPayload(kind, doc, { referralCode, groupId }) {
       p8_last_order_date: String((commission ? doc.paidAt : doc.createdAt) || doc._createdAt || '').slice(0, 10),
       p8_referral_code: referralCode || '',
       p8_delivery: deliveryFor(kind, doc),
-      // Not ticking the box ('not_asked') allows the referral email under the
-      // soft opt-in; it carries an unsubscribe link.
-      p8_marketing_ok: marketingRefused(doc.marketingConsent) ? 'no' : 'yes',
+      // 'yes' only for 'not_asked' (saw the box, left it unticked), which
+      // allows the referral email under the soft opt-in. No consent recorded
+      // (ordered before the box existed) is 'no' (marketing-consent.mjs).
+      p8_marketing_ok: marketingOk(doc.marketingConsent),
     },
   };
 }
