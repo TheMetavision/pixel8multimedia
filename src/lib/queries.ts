@@ -328,10 +328,7 @@ export const serviceBySlugQuery = `
       }
     },
     steps[] { text },
-    importantNote,
-    hasDigitalDelivery,
-    hasPrintOrder,
-    hasFileUpload
+    importantNote
   }
 `;
 

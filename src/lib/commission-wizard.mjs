@@ -11,12 +11,13 @@
  *
  * Photos and files come from briefing fields (fieldType photo / photos /
  * file). A service with no briefing fields at all gets the built-in
- * PHOTOS_FIELD instead, unless its "Show Upload Files Button" toggle
- * (hasFileUpload) is off: commission-checkout requires a photo for every
- * service except Your Song Your Story, so the old form's upload box is kept.
- * A service WITH a brief is never given extra upload fields: its own fields
- * (and their showFor) decide, exactly as before.
+ * PHOTOS_FIELD instead, except Your Song Your Story: the same rule
+ * commission-checkout enforces (_shared/commission-photos.mjs). A service
+ * WITH a brief is never given extra upload fields: its own fields (and their
+ * showFor) decide, exactly as before.
  */
+import { photoOptionalService } from '../../netlify/functions/_shared/commission-photos.mjs';
+
 
 export const CONTACT_FIELDS = Object.freeze([
   Object.freeze({ key: 'customerName', label: 'Your name', fieldType: 'text', required: true }),
@@ -36,7 +37,7 @@ const DIGITAL_PATHS = ['digital', 'digital-secondary', 'digital-both'];
  * showFor (style pickers are hidden where the style is chosen elsewhere),
  * with any missing contact field added at the front.
  */
-export function briefFieldsFor(briefingFields, orderType, { hasFileUpload } = {}) {
+export function briefFieldsFor(briefingFields, orderType, { serviceSlug } = {}) {
   const configured = (Array.isArray(briefingFields) ? briefingFields : []).filter((f) => f && f.key);
   const own = configured.filter((f) => {
     // Style picker hidden for all digital paths (digital includes every style)
@@ -47,7 +48,7 @@ export function briefFieldsFor(briefingFields, orderType, { hasFileUpload } = {}
   });
   const have = new Set(own.map((f) => f.key));
   const missing = CONTACT_FIELDS.filter((f) => !have.has(f.key));
-  const uploads = configured.length === 0 && hasFileUpload !== false ? [PHOTOS_FIELD] : [];
+  const uploads = configured.length === 0 && !photoOptionalService(serviceSlug) ? [PHOTOS_FIELD] : [];
   return [...missing, ...own, ...uploads];
 }
 

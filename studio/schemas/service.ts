@@ -470,11 +470,6 @@ export default defineType({
       }],
     }),
 
-    // ── Legacy display toggles (kept for backwards compat) ──────────
-    defineField({ name: 'hasDigitalDelivery', title: 'Show Digital Delivery Order Link', type: 'boolean', group: 'commission', initialValue: true }),
-    defineField({ name: 'hasPrintOrder', title: 'Show Poster/Canvas Order Link', type: 'boolean', group: 'commission', initialValue: true }),
-    defineField({ name: 'hasFileUpload', title: 'Show Upload Files Button', type: 'boolean', group: 'commission', initialValue: true }),
-
     // ── Ordering ────────────────────────────────────────────────────
     defineField({ name: 'sortOrder', title: 'Sort Order', type: 'number', group: 'content', initialValue: 0, description: 'Lower numbers appear first in nav and on services page' }),
   ],

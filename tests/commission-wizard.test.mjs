@@ -10,6 +10,7 @@ import {
   CONTACT_FIELDS, PHOTOS_FIELD,
 } from '../src/lib/commission-wizard.mjs';
 import { DIGITAL_CONSENT_VERSION } from '../netlify/functions/_shared/digital-consent.mjs';
+import { photoRequiredFor } from '../netlify/functions/_shared/commission-photos.mjs';
 
 // Line endings normalised: with core.autocrlf the working copy may be CRLF.
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -20,11 +21,11 @@ const noBrief = { slug: 'new-service', title: 'New Service', briefingFields: [] 
 const photo = (n) => ({ uploadKey: `pending/${n}/photo.jpg`, name: `photo${n}.jpg` });
 
 /** What commission-checkout checks before it creates anything (the rules, not a copy of its code). */
-function serverWouldAccept(body, { photoOptional = false } = {}) {
+function serverWouldAccept(body) {
   if (!body.serviceSlug || !body.name || !body.email) return 'missing service, name or email';
   if (!/^\S+@\S+\.\S+$/.test(body.email)) return 'bad email';
   const hasPrint = (body.prints || []).some((p) => p.format && p.size);
-  if ((!photoOptional || hasPrint) && !(body.uploadedAssets || []).length) return 'no photo';
+  if (photoRequiredFor(body.serviceSlug, hasPrint) && !(body.uploadedAssets || []).length) return 'no photo';
   if (body.orderType !== 'singlePrint' && body.digitalSupplyConsent !== true) return 'no digital consent';
   return null;
 }
@@ -39,9 +40,13 @@ test('no-brief service: the brief step is just name, email and photos', () => {
   assert.equal(PHOTOS_FIELD.required, true);
 });
 
-test('no-brief service with "Show Upload Files Button" off: no upload field', () => {
-  assert.deepEqual(keys(briefFieldsFor([], 'digital', { hasFileUpload: false })), ['customerName', 'customerEmail']);
-  assert.deepEqual(keys(briefFieldsFor([], 'digital', { hasFileUpload: true })), ['customerName', 'customerEmail', 'photos']);
+test('no-brief fallback always asks for photos, except Your Song Your Story (the server’s rule)', () => {
+  assert.deepEqual(keys(briefFieldsFor([], 'digital', { serviceSlug: 'new-service' })), ['customerName', 'customerEmail', 'photos']);
+  assert.deepEqual(keys(briefFieldsFor([], 'digital', { serviceSlug: 'stills-to-reels' })), ['customerName', 'customerEmail', 'photos']);
+  assert.deepEqual(keys(briefFieldsFor([], 'digital', { serviceSlug: 'your-song-your-story' })), ['customerName', 'customerEmail']);
+  assert.equal(photoRequiredFor('new-service', false), true);
+  assert.equal(photoRequiredFor('your-song-your-story', false), false);
+  assert.equal(photoRequiredFor('your-song-your-story', true), true, 'a lyrics print needs a photo again');
 });
 
 test('no-brief service: validation asks for name, email and a photo, then passes', () => {
@@ -148,7 +153,7 @@ test('brief text and briefData as before: contact details out of the summary, in
   assert.deepEqual(body.briefData.map((d) => [d.key, d.value]), [
     ['customerName', 'Ada'], ['customerEmail', 'ada@example.com'], ['songTitle', 'Analytical Engine Blues'], ['gift', 'Yes'],
   ]);
-  assert.equal(serverWouldAccept(body, { photoOptional: true }), null, 'YSYS audio-only needs no photo');
+  assert.equal(serverWouldAccept(body), null, 'YSYS audio-only needs no photo');
 });
 
 /* ------------------------------------------------------------------ the wiring */
@@ -157,7 +162,11 @@ test('every enabled service renders the wizard; the old form is gone', () => {
   const page = code(read('../src/pages/services/[slug].astro'));
   assert.match(page, /const showCommissionWorkflow = service\.commissionEnabled !== false;/);
   assert.equal(/briefingFields\.length > 0/.test(page), false);
-  assert.match(page, /hasFileUpload: service\.hasFileUpload,/);
+  for (const toggle of ['hasFileUpload', 'hasDigitalDelivery', 'hasPrintOrder']) {
+    assert.equal(page.includes(toggle), false, `${toggle} no longer read by the service page`);
+    assert.equal(read('../src/lib/queries.ts').includes(toggle), false, `${toggle} no longer queried`);
+    assert.equal(read('../studio/schemas/service.ts').includes(toggle), false, `${toggle} removed from the schema`);
+  }
   assert.match(page, /<CommissionWorkflow client:load service=\{serviceForWizard\} \/>/);
   assert.equal(existsSync(new URL('../src/components/CommissionForm.jsx', import.meta.url)), false);
   assert.equal(existsSync(new URL('../src/styles/commission-form.css', import.meta.url)), false);
@@ -165,7 +174,7 @@ test('every enabled service renders the wizard; the old form is gone', () => {
 
 test('the wizard uses the shared brief and payload code', () => {
   const wiz = code(read('../src/components/CommissionWorkflow.jsx'));
-  assert.match(wiz, /briefFieldsFor\(briefingFields, orderType, \{ hasFileUpload: service\.hasFileUpload \}\)/);
+  assert.match(wiz, /briefFieldsFor\(briefingFields, orderType, \{ serviceSlug: service\.slug \}\)/);
   assert.match(wiz, /return validateBrief\(filteredBriefingFields, briefValues, briefFiles\);/);
   assert.match(wiz, /const payload = checkoutPayload\(\{/);
   assert.match(wiz, /body: JSON\.stringify\(payload\)/);
@@ -175,6 +184,7 @@ test('the wizard uses the shared brief and payload code', () => {
 test('commission-checkout reads the keys the payload sends, and only JSON', () => {
   const src = code(read('../netlify/functions/commission-checkout.mts'));
   assert.match(src, /body = await req\.json\(\)/);
+  assert.match(src, /const photoRequired = photoRequiredFor\(serviceSlug, orderHasPrint\);/, 'same photo rule as the wizard');
   assert.equal(/req\.formData\(\)/.test(src), false);
   for (const k of ['serviceSlug', 'name', 'email', 'phone', 'brief', 'orderType', 'grouponClaimToken', 'includePrintsWithAnimation', 'bundleCollection', 'prints', 'briefData', 'uploadedAssets', 'digitalSupplyConsent', 'marketingOptOut']) {
     assert.ok(src.includes(`body.${k}`), `server reads body.${k}`);

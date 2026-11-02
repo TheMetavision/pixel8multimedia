@@ -41,9 +41,6 @@ const service = await sanityClient.fetch(
     styleOptionsSecondary[]{ key, label, helperText },
     commissionEnabled,
     briefingFields,
-    hasFileUpload,
-    hasDigitalDelivery,
-    hasPrintOrder,
     "heroImage": heroImage.asset->url + "?w=1400&auto=format&q=80",
     examples[]{
       label,
@@ -360,9 +357,6 @@ const serviceForWizard = {
   styleOptionsSecondary: service.styleOptionsSecondary,
   printUpcharges: service.printUpcharges,
   briefingFields: service.briefingFields,
-  // Used only when briefingFields is empty: offer the built-in photo upload
-  // unless "Show Upload Files Button" is off (src/lib/commission-wizard.mjs).
-  hasFileUpload: service.hasFileUpload,
 };
 
 // Display images: sized src, srcset up to 2x the rendered width, and the

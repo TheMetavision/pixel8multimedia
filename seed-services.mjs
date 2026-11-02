@@ -33,9 +33,6 @@ const services = [
       { text: 'Choose your preferred cartoon style or upgrade to include all styles in one download.' },
       { text: "We'll transform it into a vibrant, high-resolution artwork — delivered as a digital file, with optional print upgrades." },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 1,
   },
   {
@@ -49,9 +46,6 @@ const services = [
       { text: 'We add motion, transitions and optional music for a polished film-style finish.' },
       { text: 'Download your completed 16:9 HD reel securely.' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: false,
-    hasFileUpload: false,
     sortOrder: 2,
   },
   {
@@ -65,9 +59,6 @@ const services = [
       { text: 'We create a natural, emotional composite (with optional subtle cinematic movement).' },
       { text: 'Receive your finished 1080p creation via secure link.' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 3,
   },
   {
@@ -79,9 +70,6 @@ const services = [
       { text: "Tell us if you'd like full colourisation or clean restoration only." },
       { text: "We'll return a revitalised digital version — with optional print or canvas delivery." },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 4,
   },
   {
@@ -94,9 +82,6 @@ const services = [
       { text: 'Our songwriting team crafts custom lyrics, melody, and professional production.' },
       { text: 'Receive your finished song as a digital file (MP3/WAV) — ready to play, share, or gift.' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 5,
   },
   {
@@ -110,9 +95,6 @@ const services = [
       { text: 'Choose your format: Digital Still Collage or Full Animated Story with background music and voiceover.' },
       { text: 'Receive your finished creation via secure download link.' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 6,
   },
   {
@@ -123,9 +105,6 @@ const services = [
       { text: 'Upload one clear photo.' },
       { text: 'Receive multiple era-themed images in one download showing your transformation through time.' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 7,
   },
   {
@@ -141,9 +120,6 @@ const services = [
       { text: 'We seamlessly merge you into the scene with cinematic realism.' },
       { text: 'Receive your image as a high-resolution digital download.' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 8,
   },
   {
@@ -157,9 +133,6 @@ const services = [
       { text: 'We craft a photorealistic edit (and optional short animation) where you steal the scene.' },
       { text: 'Receive your final 1080p cinematic creation via secure download.' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 9,
   },
   {
@@ -174,9 +147,6 @@ const services = [
       { text: 'We place the character into an immersive scene (with optional animated action).' },
       { text: 'Download your finished 16:9 HD creation securely.' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 10,
   },
   {
@@ -190,9 +160,6 @@ const services = [
       { text: 'We design a cinematic poster featuring them as the lead.' },
       { text: 'Receive your artwork as a digital download or Poster / Canvas print.' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 11,
   },
   {
@@ -209,9 +176,6 @@ const services = [
       { text: 'Receive your final 16:9 HD creation via secure download link.' },
       { text: 'Send it... then wait for the reaction 😈' },
     ],
-    hasDigitalDelivery: true,
-    hasPrintOrder: true,
-    hasFileUpload: true,
     sortOrder: 12,
   },
 ];
@@ -238,9 +202,6 @@ async function seed() {
         _key: `step-${i}`,
         text: s.text,
       })),
-      hasDigitalDelivery: svc.hasDigitalDelivery,
-      hasPrintOrder: svc.hasPrintOrder,
-      hasFileUpload: svc.hasFileUpload,
       sortOrder: svc.sortOrder,
     };
 

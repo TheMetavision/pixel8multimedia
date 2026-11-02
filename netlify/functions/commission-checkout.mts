@@ -37,6 +37,7 @@ import { verifyGrant } from './_shared/commission-grant.mjs';
 import { DIGITAL_CONSENT_LABEL, DIGITAL_CONSENT_VERSION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 import { gaClientIdMetadata } from './_shared/ga4.mjs';
 import { optOutMetadata, consentFromOptOut } from './_shared/marketing-consent.mjs';
+import { photoRequiredFor } from './_shared/commission-photos.mjs';
 import { customerForEmail } from './_shared/stripe-customer.mjs';
 import { commissionShipping } from './_shared/commission-totals.mjs';
 
@@ -541,10 +542,10 @@ export default async function handler(req: Request, _context: Context) {
     // C4: a paid commission must never arrive with no source material.
     // Every commission service requires at least one uploaded photo EXCEPT
     // Your Song Your Story's audio-only path — but if that order includes a
-    // print (the lyrics-poster option), a photo is required again.
-    const PHOTO_OPTIONAL_SERVICES = new Set(['your-song-your-story']);
+    // print (the lyrics-poster option), a photo is required again. The rule
+    // is shared with the wizard (_shared/commission-photos.mjs).
     const orderHasPrint = prints.filter((p) => p.format && p.size).length > 0;
-    const photoRequired = !PHOTO_OPTIONAL_SERVICES.has(serviceSlug) || orderHasPrint;
+    const photoRequired = photoRequiredFor(serviceSlug, orderHasPrint);
     if (photoRequired && uploadedAssetsIn.length === 0) {
       return new Response(
         JSON.stringify({ error: 'Please add at least one photo before continuing.' }),

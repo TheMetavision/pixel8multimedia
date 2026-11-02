@@ -824,8 +824,8 @@ export default function CommissionWorkflow({ service }) {
   // brief doesn't ask for them (or it has no brief at all): see
   // src/lib/commission-wizard.mjs.
   const filteredBriefingFields = useMemo(
-    () => briefFieldsFor(briefingFields, orderType, { hasFileUpload: service.hasFileUpload }),
-    [briefingFields, orderType, service.hasFileUpload],
+    () => briefFieldsFor(briefingFields, orderType, { serviceSlug: service.slug }),
+    [briefingFields, orderType, service.slug],
   );
   const asksBriefQuestions = hasBriefQuestions(filteredBriefingFields);
 

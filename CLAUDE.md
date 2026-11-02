@@ -67,5 +67,8 @@ none of it. A PIX- code used at checkout earns the referrer a THANKS- code
 
 Every commission service goes through `CommissionWorkflow.jsx` (the old
 `CommissionForm.jsx` is gone). A service with no briefing fields gets the
-built-in name, email and photos fields from `src/lib/commission-wizard.mjs`;
-only `commissionEnabled: false` shows "Commissions paused".
+built-in name, email and photos fields from `src/lib/commission-wizard.mjs`
+(no photos for Your Song Your Story: `_shared/commission-photos.mjs`, the
+same rule commission-checkout enforces); only `commissionEnabled: false`
+shows "Commissions paused". The old service toggles hasDigitalDelivery,
+hasPrintOrder and hasFileUpload are gone from the schema.
