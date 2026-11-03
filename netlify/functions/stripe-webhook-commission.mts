@@ -16,7 +16,8 @@ import { Resend } from 'resend';
 import { DIGITAL_CONSENT_CONFIRMATION, needsDigitalConsent } from './_shared/digital-consent.mjs';
 import { chargedExShipping, commissionGaItems, sendPurchase } from './_shared/ga4.mjs';
 import { readDiscount, discountLabel, GROUPON_MISUSE } from './_shared/discount.mjs';
-import { rewardReferrer } from './_shared/referral-reward.mjs';
+import { rewardReferrer, checkReferral, referralNote } from './_shared/referral-reward.mjs';
+import { esc } from './_shared/dispatch-email.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 const endpointSecret = process.env.STRIPE_COMMISSION_WEBHOOK_SECRET!;
@@ -153,10 +154,12 @@ function teamEmailHtml(args: {
   discount?: { label: string; amount: number };
   /** Set when another voucher's Groupon discount turned up on this checkout (_shared/discount.mjs). */
   warning?: string;
+  /** Set when a PIX- friend code earned no reward (_shared/referral-reward.mjs referralNote). */
+  referralNote?: string;
 }): string {
   const {
     serviceTitle, orderRef, customerName, customerEmail, customerPhone,
-    total, deliveryType, shippingAddress, commissionId, discount, warning,
+    total, deliveryType, shippingAddress, commissionId, discount, warning, referralNote: refNote,
   } = args;
   const studioUrl = `https://pixel8multimedia.sanity.studio/structure/commission;${commissionId}`;
   return `
@@ -179,6 +182,7 @@ function teamEmailHtml(args: {
             <p style="margin:0 0 16px;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#7c3aed;">New paid commission</p>
             <p style="margin:0 0 4px;font-size:18px;color:#1a1a2e;"><strong>${serviceTitle}</strong></p>
             ${warning ? `<div style="margin:0 0 16px;padding:14px 16px;background:#fdecea;border-left:4px solid #d32f2f;border-radius:4px;color:#b71c1c;font-size:14px;line-height:1.5;"><strong>\u26A0 GROUPON CODE IN THE PROMO BOX</strong><br/>${warning}</div>` : ''}
+            ${refNote ? `<div style="margin:0 0 16px;padding:14px 16px;background:#fff4e5;border-left:4px solid #F07828;border-radius:4px;color:#8a4b00;font-size:14px;line-height:1.5;"><strong>\u26A0 FRIEND CODE, NO REWARD</strong><br/>${esc(refNote)}</div>` : ''}
             <p style="margin:0 0 16px;color:#6b7280;font-size:14px;">Ref: <strong>${orderRef}</strong> \u00B7 \u00A3${total.toFixed(2)} \u00B7 ${deliveryType.toUpperCase()}</p>
             ${discount ? `<p style="margin:-8px 0 16px;color:#16a34a;font-size:14px;">${discount.label} \u2212\u00A3${discount.amount.toFixed(2)} (total above is what was paid)</p>` : ''}
             <p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Customer:</strong> ${customerName}</p>
@@ -450,6 +454,13 @@ export default async function handler(req: Request, _context: Context) {
       emailErrors.push(`customer: ${e?.message || e}`);
     }
 
+    // Referral, new customers only: is a PIX- code on this checkout owed a
+    // thank-you? Decided before the team email so it can say when not
+    // (self-referral, repeat customer, failed check). Never throws.
+    const referral = promo
+      ? await checkReferral({ sanity, promos: promo.promos, buyerEmail: existing.customerEmail, docId: existing._id, sessionId: session.id })
+      : null;
+
     try {
       const { error } = await resend.emails.send({
         from: FROM_EMAIL,
@@ -468,6 +479,7 @@ export default async function handler(req: Request, _context: Context) {
           commissionId: existing._id,
           discount: promoLine,
           warning: promoWarning,
+          referralNote: referralNote(referral),
         }),
       });
       if (error) {
@@ -494,13 +506,15 @@ export default async function handler(req: Request, _context: Context) {
     }
 
     // Referral: a PIX- code typed on this checkout belongs to an earlier
-    // buyer. Issue them a single-use THANKS- code and email it. Only a
+    // buyer. Issue them a single-use THANKS- code and email it, for
+    // genuinely new customers only (the check above). Only a
     // voucher-less checkout can carry one (promo is null otherwise). A retry
     // after paidAt is set returned above, so this runs once. Never throws.
     if (promo) {
       await rewardReferrer({
         stripe, sanity, resend: process.env.RESEND_API_KEY ? resend : null,
         docId: existing._id, ref: existing.orderRef, promos: promo.promos, buyerEmail: existing.customerEmail,
+        sessionId: session.id, check: referral,
       });
     }
 

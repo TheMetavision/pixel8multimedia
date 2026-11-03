@@ -13,7 +13,10 @@ import {
 import { marketingOk, optOutMetadata, consentFromOptOut, consentFromSession, marketingRefused } from '../netlify/functions/_shared/marketing-consent.mjs';
 import { customerPayload, addDeliveredCustomer, productTitleFor, deliveryFor } from '../netlify/functions/_shared/mailerlite-customer.mjs';
 import { startPostDelivery, EARLIER_CODE_QUERY } from '../netlify/functions/_shared/post-delivery.mjs';
-import { rewardReferrer, rewardEmail } from '../netlify/functions/_shared/referral-reward.mjs';
+import {
+  rewardReferrer, rewardEmail, checkReferral, referralNote, normEmail, EARLIER_ORDER_QUERY,
+  SELF_REFERRAL, REPEAT_CUSTOMER, LOOKUP_FAILED,
+} from '../netlify/functions/_shared/referral-reward.mjs';
 import { sendDispatchEmail, afterDispatchEmail } from '../netlify/functions/_shared/dispatch-email.mjs';
 import { readDiscount, isWelcomeCode } from '../netlify/functions/_shared/discount.mjs';
 import { SITE_CONFIG } from '../netlify/functions/_shared/site-config.mjs';
@@ -385,13 +388,14 @@ test('reward: THANKS- code issued, recorded on the order and emailed to the refe
   assert.ok(resend.sent[0].html.includes(r.rewardCode));
 });
 
-test('reward: nothing for no code, PIX10, or your own code; a failed send is recorded, never thrown', async () => {
+test('reward: nothing for no code or PIX10; your own code is refused; a failed send is recorded, never thrown', async () => {
   const sanity = fakeSanity([order({ _id: 'order.friend' })]);
   const resend = fakeResend();
   const own = [{ code: 'PIX-AAAAAA', metadata: { kind: KIND_FRIEND, referrer_email: 'ada@example.com' } }];
-  for (const [promos, buyer] of [[[], 'x@y.co'], [[{ code: 'PIX10', metadata: {} }], 'x@y.co'], [own, 'ada@example.com']]) {
+  for (const [promos, buyer] of [[[], 'x@y.co'], [[{ code: 'PIX10', metadata: {} }], 'x@y.co']]) {
     assert.deepEqual(await rewardReferrer({ stripe: fakeStripe(), sanity, resend, docId: 'order.friend', ref: 'P8-1', promos, buyerEmail: buyer, log: quietLog }), { rewarded: false });
   }
+  assert.deepEqual(await rewardReferrer({ stripe: fakeStripe(), sanity, resend, docId: 'order.friend', ref: 'P8-1', promos: own, buyerEmail: 'ada@example.com', log: quietLog }), { rewarded: false, refused: 'self_referral' });
   assert.equal(resend.sent.length, 0);
 
   const r = await rewardReferrer({ stripe: fakeStripe(), sanity, resend: fakeResend({ fail: true }), docId: 'order.friend', ref: 'P8-1', promos: own, buyerEmail: 'friend@example.com', log: quietLog });
@@ -404,6 +408,120 @@ test('reward email: the code and the site link, no shop button', () => {
   assert.match(subject, /10% thank you/);
   assert.ok(html.includes('THANKS-K7QM2X'));
   assert.equal(/\/store|SHOP NOW|shop now/i.test(html), false);
+});
+
+/* ------------------------------------------------------------------ new customers only */
+
+const pix = (over = {}) => ({ code: 'PIX-AAAAAA', metadata: { kind: KIND_FRIEND, referrer_email: 'contact@themetavision.co.uk', referrer_order: 'P8-AbCdEfGh' }, ...over });
+const FRIEND_ID = 'order.cs_live_friend';
+const FRIEND_SID = 'cs_live_friend';
+
+/** Answers EARLIER_ORDER_QUERY over the fake's store, as Sanity would. */
+function earlierGroq(q, p, client) {
+  assert.equal(q, EARLIER_ORDER_QUERY);
+  return [...client.store.values()]
+    .filter((d) => ['order', 'commission'].includes(d._type) && !d._id.startsWith('drafts.') && d._id !== p.docId && d.stripeSessionId !== p.sid)
+    .filter((d) => String(d.customerEmail || '').toLowerCase() === p.email && (d._type === 'order' || d.paidAt))
+    .filter((d) => !(d.status === 'refunded' && !d.trackingNumber && !d.dispatchedAt && !d.deliveredAt && !d.shipmentResult?.dispatchedAt && !d.shipmentResult?.deliveredAt))
+    .sort((a, b) => String(a.paidAt || a.createdAt).localeCompare(String(b.paidAt || b.createdAt)))
+    .map((d) => ({ _id: d._id, _type: d._type, orderRef: d.orderRef || d.orderNumber }))[0] || null;
+}
+
+async function runPix({ buyerEmail, docs = [], fetch = earlierGroq, promos = [pix()] }) {
+  const sanity = fakeSanity([order({ _id: FRIEND_ID, stripeSessionId: FRIEND_SID, customerEmail: buyerEmail }), ...docs], { fetch });
+  const resend = fakeResend();
+  const stripe = fakeStripe();
+  const check = await checkReferral({ sanity, promos, buyerEmail, docId: FRIEND_ID, sessionId: FRIEND_SID, log: quietLog });
+  const r = await rewardReferrer({ stripe, sanity, resend, docId: FRIEND_ID, ref: 'P8-FRIEND12', promos, buyerEmail, sessionId: FRIEND_SID, check, log: quietLog });
+  return { r, check, note: referralNote(check), sanity, resend, doc: sanity.store.get(FRIEND_ID) };
+}
+
+const paidCommission = (over = {}) => commission({ _id: 'commission.PX-OLD00001', orderRef: 'PX-OLD00001', stripeSessionId: 'cs_live_comm', customerEmail: 'hello@themetavision.co.uk', paidAt: '2026-10-01T10:00:00Z', status: 'complete', ...over });
+const paidOrder = (over = {}) => order({ _id: 'order.cs_live_old', stripeSessionId: 'cs_live_old', orderNumber: 'P8-OLDORDER', customerEmail: 'hello@themetavision.co.uk', createdAt: '2026-09-01T10:00:00Z', status: 'delivered', ...over });
+
+test('new customers only: a new customer on a PIX code -> THANKS code issued and emailed', async () => {
+  const { r, resend, doc, note } = await runPix({ buyerEmail: 'hello@themetavision.co.uk' });
+  assert.equal(r.rewarded, true);
+  assert.deepEqual(resend.sent[0].to, ['contact@themetavision.co.uk']);
+  assert.equal(doc.referredBy.rewardCode, r.rewardCode);
+  assert.equal(doc.referralError, undefined);
+  assert.equal(note, '');
+});
+
+test('new customers only: the code owner on their own code -> no reward, referralError self_referral, team line', async () => {
+  const { r, resend, doc, note } = await runPix({ buyerEmail: 'contact@themetavision.co.uk' });
+  assert.deepEqual(r, { rewarded: false, refused: SELF_REFERRAL });
+  assert.equal(resend.sent.length, 0);
+  assert.equal(doc.referredBy, undefined);
+  assert.equal(doc.referralError, 'self_referral');
+  assert.equal(note, 'Friend code PIX-AAAAAA used by an existing customer (the code\'s own owner) — no reward issued (self-referral).');
+});
+
+test('new customers only: a repeat buyer (earlier shop order OR paid commission) -> no reward, referralError repeat_customer', async () => {
+  for (const [earlier, line] of [[paidOrder(), 'earlier order P8-OLDORDER'], [paidCommission(), 'earlier commission PX-OLD00001']]) {
+    const { r, resend, doc, note } = await runPix({ buyerEmail: 'hello@themetavision.co.uk', docs: [earlier] });
+    assert.deepEqual(r, { rewarded: false, refused: REPEAT_CUSTOMER });
+    assert.equal(resend.sent.length, 0);
+    assert.equal(doc.referralError, 'repeat_customer');
+    assert.equal(note, `Friend code PIX-AAAAAA used by an existing customer (${line}) — no reward issued (repeat customer).`);
+  }
+});
+
+test('new customers only: unpaid commissions, drafts and anything refunded before dispatch are not earlier orders', async () => {
+  const docs = [
+    paidCommission({ paidAt: undefined, status: 'pending' }),
+    paidOrder({ _id: 'drafts.order.cs_live_old' }),
+    paidOrder({ _id: 'order.r', stripeSessionId: 'r', status: 'refunded', trackingNumber: undefined }),
+    paidCommission({ _id: 'commission.PX-REFUND01', stripeSessionId: 'cs_r', status: 'refunded' }),
+  ];
+  assert.equal((await runPix({ buyerEmail: 'hello@themetavision.co.uk', docs })).r.rewarded, true);
+  const shippedThenRefunded = await runPix({ buyerEmail: 'hello@themetavision.co.uk', docs: [paidOrder({ status: 'refunded', trackingNumber: 'RM1' })] });
+  assert.equal(shippedThenRefunded.r.refused, REPEAT_CUSTOMER);
+});
+
+test('new customers only: email case and whitespace are the same email', async () => {
+  assert.equal(normEmail(' Contact@TheMetavision.co.uk '), 'contact@themetavision.co.uk');
+  assert.equal((await runPix({ buyerEmail: ' Contact@TheMetavision.co.uk ' })).r.refused, SELF_REFERRAL);
+  const ownSpaced = [pix({ metadata: { ...pix().metadata, referrer_email: ' CONTACT@TheMetavision.co.uk' } })];
+  assert.equal((await runPix({ buyerEmail: 'contact@themetavision.co.uk', promos: ownSpaced })).r.refused, SELF_REFERRAL);
+  let asked;
+  const repeat = await runPix({
+    buyerEmail: '  HELLO@TheMetavision.co.uk', docs: [paidOrder({ customerEmail: 'Hello@TheMetavision.co.uk' })],
+    fetch: (q, p, c) => { asked = p; return earlierGroq(q, p, c); },
+  });
+  assert.equal(repeat.r.refused, REPEAT_CUSTOMER);
+  assert.equal(asked.email, 'hello@themetavision.co.uk');
+  assert.match(EARLIER_ORDER_QUERY, /lower\(customerEmail\) == \$email/);
+});
+
+test('new customers only: a failed Sanity lookup -> no reward, logged, flagged, never thrown', async () => {
+  const { r, resend, doc, note } = await runPix({ buyerEmail: 'hello@themetavision.co.uk', fetch: async () => { throw new Error('Sanity is down'); } });
+  assert.deepEqual(r, { rewarded: false, refused: LOOKUP_FAILED });
+  assert.equal(resend.sent.length, 0);
+  assert.match(doc.referralError, /^lookup_failed — Sanity is down/);
+  assert.match(note, /PIX-AAAAAA used, but the new-customer check failed \(Sanity is down\) — no reward issued.*contact@themetavision\.co\.uk/);
+});
+
+test('new customers only: rewardReferrer without a precomputed check still refuses the code owner', async () => {
+  const sanity = fakeSanity([order({ _id: FRIEND_ID })], { fetch: earlierGroq });
+  const r = await rewardReferrer({ stripe: fakeStripe(), sanity, resend: fakeResend(), docId: FRIEND_ID, ref: 'P8-1', promos: [pix()], buyerEmail: 'Contact@TheMetavision.co.uk', log: quietLog });
+  assert.deepEqual(r, { rewarded: false, refused: SELF_REFERRAL });
+});
+
+test('webhooks: the new-customer check runs before each team email, which carries the line, and the reward uses it', () => {
+  const shop = code(read('../netlify/functions/webhook.mjs'));
+  const sCheck = shop.indexOf('const referral = await checkReferral({ sanity, promos: discount.promos, buyerEmail: customerEmail, docId: order._id, sessionId: session.id })');
+  const sTeam = shop.indexOf("const teamEmail = setting('TEAM_EMAIL')");
+  assert.ok(sCheck > 0 && sTeam > sCheck, 'shop: check before the team email');
+  assert.match(shop.slice(sTeam), /\$\{referralCheckNote \? `<div[^`]*⚠ FRIEND CODE, NO REWARD/);
+  assert.match(shop, /sessionId: session\.id, check: referral,/);
+  const comm = code(read('../netlify/functions/stripe-webhook-commission.mts'));
+  const cCheck = comm.indexOf('await checkReferral({ sanity, promos: promo.promos, buyerEmail: existing.customerEmail, docId: existing._id, sessionId: session.id })');
+  const cTeam = comm.indexOf('to: TEAM_EMAIL,');
+  assert.ok(cCheck > 0 && cTeam > cCheck, 'commission: check before the team email');
+  assert.match(comm, /referralNote: referralNote\(referral\),/);
+  assert.match(comm, /\$\{refNote \? `<div[^`]*FRIEND CODE, NO REWARD/);
+  assert.match(comm, /sessionId: session\.id, check: referral,/);
 });
 
 /* ------------------------------------------------------------------ the wiring */

@@ -17,7 +17,8 @@ import { stockLineKeys } from './_shared/print-job.mjs';
 import { sendPurchase, shopGaItems } from './_shared/ga4.mjs';
 import { readDiscount, discountLabel, GROUPON_MISUSE, repeatWelcomeNote } from './_shared/discount.mjs';
 import { consentFromSession } from './_shared/marketing-consent.mjs';
-import { rewardReferrer } from './_shared/referral-reward.mjs';
+import { rewardReferrer, checkReferral, referralNote } from './_shared/referral-reward.mjs';
+import { esc } from './_shared/dispatch-email.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -358,6 +359,12 @@ export default async (req, context) => {
         console.error('Failed to send customer email:', emailErr);
       }
 
+      // Referral, new customers only: is a PIX- code on this order owed a
+      // thank-you? Decided before the team email so it can say when not
+      // (self-referral, repeat customer, failed check). Never throws.
+      const referral = await checkReferral({ sanity, promos: discount.promos, buyerEmail: customerEmail, docId: order._id, sessionId: session.id });
+      const referralCheckNote = referralNote(referral);
+
       // Team notification email
       const teamEmail = setting('TEAM_EMAIL');
       try {
@@ -377,6 +384,9 @@ export default async (req, context) => {
                 </div>` : ''}
                 ${repeatWelcomeCode ? `<div style="margin: 0 0 20px; padding: 14px 16px; background: #fff4e5; border-left: 4px solid #F07828; border-radius: 4px; color: #8a4b00;">
                   <strong>⚠ REPEAT WELCOME CODE</strong><br/>${repeatWelcomeCode}
+                </div>` : ''}
+                ${referralCheckNote ? `<div style="margin: 0 0 20px; padding: 14px 16px; background: #fff4e5; border-left: 4px solid #F07828; border-radius: 4px; color: #8a4b00;">
+                  <strong>⚠ FRIEND CODE, NO REWARD</strong><br/>${esc(referralCheckNote)}
                 </div>` : ''}
                 <h2 style="margin: 0 0 4px;">${customerName}</h2>
                 <p style="color: #666; margin: 0 0 20px;">${customerEmail}</p>
@@ -405,11 +415,13 @@ export default async (req, context) => {
 
       // Referral: a PIX- code on this order belongs to an earlier buyer
       // ("give 10%, get 10%"). Issue them a single-use THANKS- code and email
-      // it. Duplicate deliveries returned above, so this runs once per order.
-      // Never throws (_shared/referral-reward.mjs).
+      // it, for genuinely new customers only (the check above; a refusal is
+      // recorded as referralError). Duplicate deliveries returned above, so
+      // this runs once per order. Never throws (_shared/referral-reward.mjs).
       await rewardReferrer({
         stripe, sanity, resend: process.env.RESEND_API_KEY ? resend : null,
         docId: order._id, ref: orderRef || order._id, promos: discount.promos, buyerEmail: customerEmail,
+        sessionId: session.id, check: referral,
       });
 
       // GA4 purchase, only if the buyer accepted analytics cookies (the session

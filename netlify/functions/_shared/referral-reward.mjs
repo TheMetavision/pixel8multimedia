@@ -8,16 +8,89 @@
  *
  * The email is only the promised reward: the code and the footer's site
  * link, no "shop" button, so it is the referral programme keeping its word,
- * not a promotion. Self-referral (own code, same email) is ignored by
- * referralsFrom.
+ * not a promotion.
+ *
+ * New customers only (Alan, 3 Nov 2026). The PIX coupon carries Stripe's
+ * first_time_transaction restriction, but Stripe judges "first time" per
+ * Customer and these checkouts are guests, so it lets anyone through. The
+ * discount is still accepted (an accepted risk); the REWARD is not.
+ * checkReferral decides, before the team email goes, and the reward is
+ * issued only when
+ *   a) the buyer is not the code's owner (emails trimmed, lower-cased), and
+ *   b) there is no earlier paid shop order or paid commission from the
+ *      buyer's email (this document, drafts, unpaid commissions and
+ *      anything refunded before it was dispatched do not count).
+ * Refused: no code, no email, referralError = self_referral /
+ * repeat_customer, and a line on the team email (referralNote). A failed
+ * lookup is logged, skips the reward, records lookup_failed and is flagged
+ * on the team email; it never blocks the order or its emails.
  *
  * Never throws. A failure is logged and written to referralError on the
  * document; the payment, order and other emails are untouched.
  */
-import { referralsFrom, issueReward } from './referral.mjs';
+import { issueReward, isFriendCode } from './referral.mjs';
 import { serverPatch } from './server-patch.mjs';
 import { setting } from './site-config.mjs';
 import { esc } from './dispatch-email.mjs';
+
+export const SELF_REFERRAL = 'self_referral';
+export const REPEAT_CUSTOMER = 'repeat_customer';
+export const LOOKUP_FAILED = 'lookup_failed';
+
+/** An email as the referral checks compare it: trimmed, lower-cased. */
+export const normEmail = (email) => String(email || '').trim().toLowerCase();
+
+/**
+ * The buyer's earliest other paid order or commission. Shop orders are only
+ * written once paid; a commission exists from checkout, so it counts once
+ * paidAt is set. Refunded with no tracking, dispatch or delivery recorded =
+ * refunded before dispatch, which does not count.
+ */
+export const EARLIER_ORDER_QUERY =
+  '*[_type in ["order", "commission"] && !(_id in path("drafts.**")) && _id != $docId && stripeSessionId != $sid' +
+  ' && lower(customerEmail) == $email && (_type == "order" || defined(paidAt))' +
+  ' && !(status == "refunded" && !defined(trackingNumber) && !defined(dispatchedAt) && !defined(deliveredAt)' +
+  ' && !defined(shipmentResult.dispatchedAt) && !defined(shipmentResult.deliveredAt))]' +
+  ' | order(coalesce(paidAt, createdAt, _createdAt) asc)[0]{ _id, _type, "orderRef": coalesce(orderRef, orderNumber) }';
+
+/**
+ * Is the PIX code on this checkout (if any) entitled to a thank-you? Never throws.
+ * @returns {Promise<null | { code, referrerEmail, referrerOrder, eligible: boolean, reason?, earlier?, error? }>}
+ *   null when there is no friend code with a known referrer.
+ */
+export async function checkReferral({ sanity, promos, buyerEmail, docId, sessionId, log = console }) {
+  const p = (promos || []).find((x) => isFriendCode(x) && normEmail(x.metadata?.referrer_email));
+  if (!p) return null;
+  const r = { code: p.code, referrerEmail: normEmail(p.metadata.referrer_email), referrerOrder: p.metadata.referrer_order || '' };
+  const buyer = normEmail(buyerEmail);
+  if (buyer && buyer === r.referrerEmail) return { ...r, eligible: false, reason: SELF_REFERRAL };
+  try {
+    if (!buyer) throw new Error('no buyer email on the checkout');
+    if (!sanity || typeof sanity.fetch !== 'function') throw new Error('no Sanity client');
+    const earlier = await sanity.fetch(EARLIER_ORDER_QUERY, { email: buyer, docId: docId || '', sid: sessionId || '' });
+    if (earlier && earlier._id) return { ...r, eligible: false, reason: REPEAT_CUSTOMER, earlier };
+    return { ...r, eligible: true };
+  } catch (err) {
+    const msg = err?.message || String(err);
+    log.error(`referral: new-customer check for ${r.code} failed, no reward issued:`, msg);
+    return { ...r, eligible: false, reason: LOOKUP_FAILED, error: msg };
+  }
+}
+
+/** The team email's line for a refused or unchecked reward; '' otherwise. */
+export function referralNote(check) {
+  if (!check || check.eligible) return '';
+  if (check.reason === SELF_REFERRAL) {
+    return `Friend code ${check.code} used by an existing customer (the code's own owner) — no reward issued (self-referral).`;
+  }
+  if (check.reason === REPEAT_CUSTOMER) {
+    const e = check.earlier || {};
+    const ref = e.orderRef || e._id || '';
+    return `Friend code ${check.code} used by an existing customer${ref ? ` (earlier ${e._type === 'commission' ? 'commission' : 'order'} ${ref})` : ''} — no reward issued (repeat customer).`;
+  }
+  return `Friend code ${check.code} used, but the new-customer check failed (${check.error || 'unknown error'}) — no reward issued. ` +
+    `If this is a genuinely new customer, issue the referrer (${check.referrerEmail}) a thank-you code by hand.`;
+}
 
 const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 
@@ -81,12 +154,21 @@ export function rewardEmail(rewardCode) {
  * @param {string} p.ref          P8-… or PX-…, for the code's metadata and the logs
  * @param {object[]} p.promos     readDiscount().promos
  * @param {string} p.buyerEmail
- * @returns {Promise<{ rewarded: boolean, rewardCode?: string, referrerEmail?: string, error?: string }>}
+ * @param {string} [p.sessionId]  the Stripe checkout session, so the check skips this document
+ * @param {object|null} [p.check] checkReferral()'s answer, when the caller already has it
+ * @returns {Promise<{ rewarded: boolean, rewardCode?: string, referrerEmail?: string, refused?: string, error?: string }>}
  */
-export async function rewardReferrer({ stripe, sanity, resend, docId, ref, promos, buyerEmail, log = console, issue = issueReward }) {
-  const referrals = referralsFrom(promos, buyerEmail);
-  if (!referrals.length) return { rewarded: false };
-  const r = referrals[0];
+export async function rewardReferrer({ stripe, sanity, resend, docId, ref, promos, buyerEmail, sessionId, check, log = console, issue = issueReward }) {
+  const c = check !== undefined ? check : await checkReferral({ sanity, promos, buyerEmail, docId, sessionId, log });
+  if (!c) return { rewarded: false };
+  if (!c.eligible) {
+    log.warn(`referral: ${ref}: ${c.code} — no reward (${c.reason})`);
+    const why = c.reason === LOOKUP_FAILED ? `${LOOKUP_FAILED} — ${String(c.error || '').slice(0, 300)}` : c.reason;
+    await serverPatch(sanity, docId, { set: { referralError: why } })
+      .catch((e) => log.error(`referral: could not record the refusal on ${ref}:`, e?.message || e));
+    return { rewarded: false, refused: c.reason };
+  }
+  const r = { code: c.code, referrerEmail: c.referrerEmail, referrerOrder: c.referrerOrder };
   try {
     const rewardCode = await issue(stripe, { referrerEmail: r.referrerEmail, referredOrder: ref });
     await serverPatch(sanity, docId, {
