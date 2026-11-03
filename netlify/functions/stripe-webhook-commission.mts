@@ -8,7 +8,7 @@
 
 import { setting, sanityWriteToken } from './_shared/site-config.mjs';
 import type { Context } from '@netlify/functions';
-import { addressFromStripe } from './_shared/commission-address.mjs';
+import { addressFromStripe, shippingDetailsOf } from './_shared/commission-address.mjs';
 import { shippingEnabled } from './_shared/shipping-client.mjs';
 import Stripe from 'stripe';
 import { createClient } from '@sanity/client';
@@ -292,11 +292,9 @@ export default async function handler(req: Request, _context: Context) {
     }
 
     // ── Build patch ──────────────────────────────────────────────────────
-    // Newer Stripe API versions nest shipping under collected_information.
-    // Fall back to the legacy top-level field for older API versions.
-    const shippingDetails =
-      (session as any).collected_information?.shipping_details ||
-      (session as any).shipping_details;
+    // collected_information (API 2025-03-31+), shipping_details (older),
+    // then customer_details — see _shared/commission-address.mjs.
+    const shippingDetails = shippingDetailsOf(session);
 
     const shippingAddressText = formatShippingAddress(
       shippingDetails?.name,

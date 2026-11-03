@@ -27,9 +27,30 @@ export function addressFromStripe(details) {
   return out.line1 || out.postcode ? out : null;
 }
 
-/** Newer Stripe API versions nest shipping under collected_information. */
-export const shippingDetailsOf = (session) =>
-  session?.collected_information?.shipping_details || session?.shipping_details || null;
+const hasAddress = (d) => !!(d?.address && (d.address.line1 || d.address.postal_code));
+
+/**
+ * Where a Checkout Session's delivery address lives depends on the API
+ * version of whatever produced the object: Stripe API 2025-03-31 (basil) and
+ * later nest it under collected_information.shipping_details, older versions
+ * put it at shipping_details, and a session without shipping collection only
+ * has the billing address in customer_details. A webhook payload follows the
+ * *endpoint's* API version, not the SDK's apiVersion, so read all three.
+ *
+ * Returns { name, address } from the first location with a usable address
+ * (line1 or postcode), or null. The name falls back to customer_details.name.
+ */
+export function shippingDetailsOf(session) {
+  const fallbackName = session?.customer_details?.name || '';
+  for (const d of [
+    session?.collected_information?.shipping_details,
+    session?.shipping_details,
+    session?.customer_details,
+  ]) {
+    if (hasAddress(d)) return { name: d.name || fallbackName, address: d.address };
+  }
+  return null;
+}
 
 /**
  * The commission's address: the stored copy, else from its Stripe session.

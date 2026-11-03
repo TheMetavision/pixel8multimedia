@@ -19,6 +19,8 @@ import { readDiscount, discountLabel, GROUPON_MISUSE, repeatWelcomeNote } from '
 import { consentFromSession } from './_shared/marketing-consent.mjs';
 import { rewardReferrer, checkReferral, referralNote } from './_shared/referral-reward.mjs';
 import { esc } from './_shared/dispatch-email.mjs';
+import { shippingDetailsOf } from './_shared/commission-address.mjs';
+import { shipToHtml } from './_shared/ship-to.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -90,8 +92,12 @@ export default async (req, context) => {
     }
 
     try {
-      const shipping = session.shipping_details?.address || {};
-      const customerName = session.shipping_details?.name || session.customer_details?.name || 'Customer';
+      // collected_information (API 2025-03-31+), shipping_details (older),
+      // then customer_details — see _shared/commission-address.mjs.
+      const shipTo = shippingDetailsOf(session);
+      const shipping = shipTo?.address || {};
+      const customerName = shipTo?.name || session.customer_details?.name || 'Customer';
+      if (!shipTo) console.error(`webhook: NO DELIVERY ADDRESS on session ${session.id} — checked collected_information, shipping_details and customer_details`);
       const customerEmail = session.customer_details?.email || '';
       const totalAmount = (session.amount_total || 0) / 100;
       // P&P as charged, and any promotion code (goods only — never P&P).
@@ -314,11 +320,7 @@ export default async (req, context) => {
       const shippingBlock = `
         <div style="background: #1A1A1E; padding: 16px; border-radius: 4px; margin: 16px 0; border-left: 3px solid #F07828;">
           <strong style="color: #F5F5F0;">Ship to:</strong><br/>
-          <span style="color: #999;">${customerName}<br/>
-          ${shipping.line1 || ''}${shipping.line2 ? '<br/>' + shipping.line2 : ''}<br/>
-          ${shipping.city || ''}${shipping.state ? ', ' + shipping.state : ''}<br/>
-          ${shipping.postal_code || ''}<br/>
-          ${shipping.country || ''}</span>
+          <span style="color: #999;">${shipToHtml(customerName, shipping)}</span>
         </div>`;
 
       // Customer confirmation email
