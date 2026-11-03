@@ -20,7 +20,7 @@
  * an order's orderNumber), through server-patch.mjs.
  */
 import { readDecideWrite, serverPatch } from './server-patch.mjs';
-import { quotedPounds } from './shipping-client.mjs';
+import { quotedPounds, testOrderFlag } from './shipping-client.mjs';
 import {
   proposeParcelPlan, validateParcelPlan, parcelItems, recipientFor, commissionLines,
 } from './parcel-bands.mjs';
@@ -114,7 +114,7 @@ export async function dispatchShipment(id, deps) {
 
   const resend = getResend();
   const subject = await shipmentSubject(doc, deps);
-  const who = { ref: subject.ref, id: doc._id, type: doc._type, name: subject.name, email: subject.email, address: subject.address };
+  const who = { ref: subject.ref, id: doc._id, type: doc._type, name: subject.name, email: subject.email, address: subject.address, test: doc.test === true };
 
   const fail = async (reason, extra = {}) => {
     await serverPatch(sanity, id, {
@@ -158,6 +158,8 @@ export async function dispatchShipment(id, deps) {
         band: planned.band,
         recipient: recipientFor(subject.name, subject.address),
         items: parcelItems(planned, subject.lines),
+        // A Stripe test-mode order or commission: the free void label (shipping-client.mjs).
+        ...testOrderFlag(doc),
       });
       made.push(parcelRecord(planned, res));
     } catch (err) {

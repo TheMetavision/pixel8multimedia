@@ -13,6 +13,11 @@ export default defineType({
     // On labels, emails and /returns. Older orders get it when first shipped.
     defineField({ name: 'orderNumber', title: 'Order reference', type: 'string', readOnly: true }),
     defineField({ name: 'stripeSessionId', title: 'Stripe Session ID', type: 'string', readOnly: true }),
+    defineField({
+      name: 'test', title: 'Test order (Stripe test mode)', type: 'boolean', readOnly: true,
+      description: 'Paid with Stripe test keys on a preview. Nobody was charged; its labels are free void test labels.',
+      hidden: ({ value }) => !value,
+    }),
     defineField({ name: 'stripePaymentId', title: 'Stripe Payment ID', type: 'string', readOnly: true }),
     defineField({ name: 'customerName', title: 'Customer Name', type: 'string' }),
     defineField({ name: 'customerEmail', title: 'Customer Email', type: 'string' }),

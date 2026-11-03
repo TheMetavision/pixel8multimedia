@@ -181,6 +181,9 @@ export default async (req, context) => {
           // session id's last 8 characters. See _shared/order-ref.mjs.
           orderNumber: orderRef,
           stripePaymentId: session.payment_intent,
+          // Paid with Stripe test keys (a preview): no charge. Its labels are
+          // free void test labels (_shared/shipping-client.mjs testOrderFlag).
+          ...(session.livemode === false ? { test: true } : {}),
           customerName,
           customerEmail,
           /* 'refused' when the cart's "Don't send me offers or referral
@@ -371,7 +374,7 @@ export default async (req, context) => {
         await resend.emails.send({
           from: setting('EMAIL_FROM'),
           to: [teamEmail],
-          subject: `${discountWarning ? '⚠ GROUPON CODE — ' : ''}${repeatWelcomeCode ? '⚠ REPEAT WELCOME CODE — ' : ''}${teamSubject({ total: totalAmount, customerName, missingCount: printCheck.missing.length })}`,
+          subject: `${session.livemode === false ? '[TEST] ' : ''}${discountWarning ? '⚠ GROUPON CODE — ' : ''}${repeatWelcomeCode ? '⚠ REPEAT WELCOME CODE — ' : ''}${teamSubject({ total: totalAmount, customerName, missingCount: printCheck.missing.length })}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1a1a1a;">
               <div style="background: #F07828; padding: 16px; text-align: center;">

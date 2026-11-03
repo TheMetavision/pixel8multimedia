@@ -399,6 +399,11 @@ export default defineType({
       description: 'Used to look up the order if a webhook fires before payment confirmation arrives.',
     }),
     defineField({
+      name: 'test', title: 'Test order (Stripe test mode)', type: 'boolean', readOnly: true, group: 'payment',
+      description: 'Paid with Stripe test keys on a preview. Nobody was charged; its labels are free void test labels.',
+      hidden: ({ value }) => !value,
+    }),
+    defineField({
       name: 'amount',
       title: 'Amount Paid (£)',
       type: 'number',

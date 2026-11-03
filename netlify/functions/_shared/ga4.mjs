@@ -122,6 +122,9 @@ export function purchasePayload(session, items, value) {
  * @param {{ value?: number, timeoutMs?: number, fetchImpl?: typeof fetch }} [options]
  */
 export async function sendPurchase(session, items, { value, timeoutMs = 2000, fetchImpl = fetch } = {}) {
+  // A Stripe test-mode checkout (a preview) is not a sale: never reported, as
+  // the IP brands and CSC. Only an explicitly live session counts.
+  if (session?.livemode !== true) return;
   const measurementId = setting('GA4_MEASUREMENT_ID');
   const apiSecret = process.env.GA4_API_SECRET;
   if (!measurementId || !apiSecret) return;

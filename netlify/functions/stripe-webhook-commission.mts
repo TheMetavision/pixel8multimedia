@@ -313,6 +313,9 @@ export default async function handler(req: Request, _context: Context) {
       paidAt: new Date().toISOString(),
       amount: amountPaid,
     };
+    // Paid with Stripe test keys (a preview): no charge. Its labels are free
+    // void test labels (_shared/shipping-client.mjs testOrderFlag).
+    if (session.livemode === false) patch.test = true;
     // Null on a £0 (fully voucher-covered) session. Record the session id
     // either way — for those orders it is the ONLY trace in the Stripe
     // dashboard, and checkout's own attempt to store it is best-effort.
@@ -466,7 +469,7 @@ export default async function handler(req: Request, _context: Context) {
         from: FROM_EMAIL,
         to: TEAM_EMAIL,
         replyTo: existing.customerEmail,
-        subject: `${promoWarning ? '\u26a0 GROUPON CODE \u2014 ' : ''}NEW PAID COMMISSION \u2014 ${serviceTitle} \u2014 ${existing.orderRef}`,
+        subject: `${session.livemode === false ? '[TEST] ' : ''}${promoWarning ? '\u26a0 GROUPON CODE \u2014 ' : ''}NEW PAID COMMISSION \u2014 ${serviceTitle} \u2014 ${existing.orderRef}`,
         html: teamEmailHtml({
           serviceTitle,
           orderRef: existing.orderRef,
