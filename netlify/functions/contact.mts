@@ -71,7 +71,7 @@ export function buildTeamEmail(opts: {
   <div style="background: #fff; padding: 28px;">
     <h2 style="margin: 0 0 4px; font-size: 18px;">${escapeHtml(opts.name)}</h2>
     <p style="margin: 0 0 16px; color: #666; font-size: 14px;">
-      <a href="mailto:${escapeHtml(opts.email)}" style="color: #F07828; text-decoration: none;">${escapeHtml(opts.email)}</a>
+      <a href="mailto:${escapeHtml(opts.email)}" style="color: #A84A0C; text-decoration: none;">${escapeHtml(opts.email)}</a>
     </p>
     <p style="margin: 0 0 4px;"><strong>Subject:</strong> ${escapeHtml(subjectLabel)}</p>
     <div style="margin-top: 16px; padding: 16px; background: #f5f5f5; border-radius: 6px; white-space: pre-wrap; line-height: 1.5; font-size: 14px;">
@@ -80,7 +80,7 @@ export function buildTeamEmail(opts: {
     <div style="margin-top: 24px; padding: 14px; background: #FFF8E1; border-left: 4px solid #F07828; border-radius: 4px; font-size: 13px; line-height: 1.5;">
       <strong>Next steps:</strong><br/>
       Reply directly to this email — it'll go to the customer.<br/>
-      View / update the submission in <a href="https://pixel8multimedia.sanity.studio" style="color: #F07828;">Sanity Studio</a>.
+      View / update the submission in <a href="https://pixel8multimedia.sanity.studio" style="color: #A84A0C;">Sanity Studio</a>.
     </div>
   </div>
 </div>`;
@@ -101,13 +101,13 @@ export function buildAckEmail(opts: { name: string; refCode: string }): string {
     <p style="margin: 0 0 16px; font-size: 14px; color: #666;">
       For your reference, your message ID is <strong>${opts.refCode}</strong>.
     </p>
-    <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #eaeaea; font-size: 13px; color: #888;">
+    <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #eaeaea; font-size: 13px; color: #6b7280;">
       <p style="margin: 0 0 4px;">In the meantime, you might find what you're looking for in our FAQs:</p>
-      <a href="${SITE_URL}/faqs" style="color: #F07828; text-decoration: none; font-weight: 600;">Read the FAQs →</a>
+      <a href="${SITE_URL}/faqs" style="color: #A84A0C; text-decoration: none; font-weight: 600;">Read the FAQs →</a>
     </div>
   </div>
-  <div style="background: #f9fafb; padding: 16px 32px; text-align: center; font-size: 12px; color: #888;">
-    Pixel8 Multimedia · <a href="${SITE_URL}" style="color: #F07828; text-decoration: none;">pixel8multimedia.co.uk</a>
+  <div style="background: #f9fafb; padding: 16px 32px; text-align: center; font-size: 12px; color: #6b7280;">
+    Pixel8 Multimedia · <a href="${SITE_URL}" style="color: #A84A0C; text-decoration: none;">pixel8multimedia.co.uk</a>
   </div>
 </div>`;
 }

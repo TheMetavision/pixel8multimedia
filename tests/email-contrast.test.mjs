@@ -4,21 +4,17 @@
 //     text colour in each clears WCAG AA (4.5:1) on its background.
 //  2. The customer card's small print is #6b7280 (not the pale #9ca3af), and the
 //     "POP. ART. MOTION." line is gone: the logo already carries it.
-// Stripe, Sanity and Resend are stubbed: nothing is sent.
+//  3. EVERY email Pixel8 can send (tests/helpers/pixel8-emails.mjs, full sample
+//     data, every warning block) passes the shared contrast checker
+//     (tests/_email-contrast.mjs): 4.5:1 for text, 3:1 for large text.
+// Stripe, Sanity, Resend and Netlify Blobs are stubbed: nothing is sent.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { registerHooks } from 'node:module';
+import { installStubs, renderAllEmails } from './helpers/pixel8-emails.mjs';
+import { contrastIssues, assertReadable } from './_email-contrast.mjs';
 
-const STUBS = {
-  stripe: 'export default class Stripe { constructor() {} }',
-  '@sanity/client': 'export function createClient() { return {}; }',
-  resend: 'export class Resend { constructor() { this.emails = { send: async () => ({ data: {}, error: null }) }; } }',
-};
-registerHooks({
-  resolve(spec, ctx, next) { return spec in STUBS ? { url: `stub:${spec}`, shortCircuit: true } : next(spec, ctx); },
-  load(url, ctx, next) { return url.startsWith('stub:') ? { format: 'module', source: STUBS[url.slice(5)], shortCircuit: true } : next(url, ctx); },
-});
+installStubs();
 
 const se = await import('../netlify/functions/_shared/shipping-emails.mjs');
 const { buildOrderDispatchEmail, buildCommissionDispatchEmail } = await import('../netlify/functions/_shared/dispatch-email.mjs');
@@ -95,3 +91,37 @@ test('no Pixel8 email repeats the tagline under the logo or uses the pale #9ca3a
     assert.ok(html.includes('email-logo-400.png'), `${name}: logo present`);
   }
 });
+
+/* ------------------------------------------------------------------ 3. every email */
+
+test('the checker flags a known-bad sample (and passes a good one)', () => {
+  const bad = '<div style="background:#ffffff"><p style="color:#999999;font-size:13px">pale grey on white</p><a href="#" style="color:#F07828">orange link</a></div>';
+  const issues = contrastIssues(bad);
+  assert.equal(issues.length, 2, JSON.stringify(issues));
+  assert.throws(() => assertReadable(bad, 'bad sample'));
+  assert.doesNotThrow(() => assertReadable('<div style="background:#0D0D0D"><p style="color:#F5F5F0">fine</p></div>', 'good sample'));
+});
+
+const all = await renderAllEmails();
+
+test('every Pixel8 email is rendered, with full sample data', () => {
+  assert.equal(all.length, 25);
+  assert.equal(new Set(all.map((e) => e.title)).size, all.length, 'titles unique');
+  for (const { title, mail } of all) {
+    assert.ok(mail.html && mail.html.length > 500, `${title}: has HTML`);
+    assert.doesNotMatch(mail.html, /\bundefined\b|>null<|NaN/, `${title}: a blank field leaked into the email`);
+  }
+  const by = Object.fromEntries(all.map((e) => [e.title, e.mail.html]));
+  const alert = by['Shop new-order alert (every warning block)'];
+  for (const s of ['PRINT FILE MISSING', 'GROUPON CODE USED ON A SHOP ORDER', 'REPEAT WELCOME CODE', 'FRIEND CODE, NO REWARD', 'personalised item', 'Discount (', 'Order reference: P8-']) {
+    assert.ok(alert.includes(s), `team alert carries "${s}"`);
+  }
+  const conf = by['Shop order confirmation (discount, personalised item)'];
+  assert.ok(conf.includes("We'll email you a proof") && conf.includes('Discount (') && conf.includes('Order reference:'));
+  const plain = by['Shop new-order alert'];
+  assert.ok(!plain.includes('PRINT FILE MISSING') && !plain.includes('GROUPON'), 'plain alert has no warning blocks');
+});
+
+for (const { group, title, mail } of all) {
+  test(`readable: ${group.toLowerCase()} — ${title}`, () => assertReadable(mail.html, title));
+}

@@ -22,7 +22,7 @@ import {
   toArrayBuffer, siteUrl,
 } from './_shared/personalisation.mts';
 import { STYLE_META } from './_shared/styles.mjs';
-import { proofEmailHtml } from './_shared/proof-email.mjs';
+import { proofEmailHtml, proofDetailsHtml } from './_shared/proof-email.mjs';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = setting('EMAIL_FROM');
@@ -66,16 +66,11 @@ export default async function handler(req: Request): Promise<Response> {
   const token = doc.proofToken || randomBytes(16).toString('base64url');
   const approveUrl = `${siteUrl()}/api/personalisation/approve?pid=${pid}&token=${token}`;
 
-  const details = [
+  const details = proofDetailsHtml([
     ['Style', `Option ${meta?.letter || ''} — ${label}`],
     ['Format', FORMAT_LABELS[doc.format] || doc.format || '—'],
     ['Size', SIZE_LABELS[doc.size] || doc.size || '—'],
-  ]
-    .map(([k, v]) => `<tr>
-      <td style="padding:6px 0;color:#999;font-size:14px;">${k}</td>
-      <td style="padding:6px 0;color:#F5F5F0;font-size:14px;text-align:right;">${v}</td>
-    </tr>`)
-    .join('');
+  ]);
 
   const html = proofEmailHtml({ approveUrl, details });
 

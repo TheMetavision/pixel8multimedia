@@ -354,13 +354,13 @@ export default async (req, context) => {
                 <p style="color: #999; line-height: 1.6; margin: 24px 0 0;">
                   We'll send you another email when your order has been dispatched with tracking details.
                 </p>
-                <p style="color: #666; margin-top: 32px; font-size: 12px; font-family: monospace;">
+                <p style="color: #8A8A8A; margin-top: 32px; font-size: 12px; font-family: monospace;">
                   ${orderRef ? `Order reference: <strong style="color: #F5F5F0;">${orderRef}</strong><br/>` : ''}
                   Payment ID: ${session.payment_intent}<br/>
                   Order placed: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
               </div>
-              <div style="background: #1A1A1E; padding: 16px; text-align: center; font-size: 11px; color: #666;">
+              <div style="background: #1A1A1E; padding: 16px; text-align: center; font-size: 11px; color: #8A8A8A;">
                 <p style="margin: 0;">&copy; 2026 Pixel8 Multimedia. All rights reserved.</p>
                 <p style="margin: 4px 0 0;"><a href="https://pixel8multimedia.co.uk" style="color: #F07828;">pixel8multimedia.co.uk</a></p>
               </div>

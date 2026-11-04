@@ -6,6 +6,19 @@
 import { emailLogoImg } from './email-logo.mjs';
 
 /**
+ * The style / format / size rows of the proof email's details table.
+ * @param {Array<[string, string]>} pairs
+ */
+export function proofDetailsHtml(pairs) {
+  return pairs
+    .map(([k, v]) => `<tr>
+      <td style="padding:6px 0;color:#999;font-size:14px;">${k}</td>
+      <td style="padding:6px 0;color:#F5F5F0;font-size:14px;text-align:right;">${v}</td>
+    </tr>`)
+    .join('');
+}
+
+/**
  * @param {{ approveUrl: string, details: string }} args details: the <tr> rows for the style/format/size table
  */
 export function proofEmailHtml({ approveUrl, details }) {
@@ -33,7 +46,7 @@ export function proofEmailHtml({ approveUrl, details }) {
             Approve &amp; print this
           </a>
         </div>
-        <p style="color:#666;font-size:13px;line-height:1.6;text-align:center;margin:12px 0 0;">
+        <p style="color:#8A8A8A;font-size:13px;line-height:1.6;text-align:center;margin:12px 0 0;">
           Once approved we'll print and dispatch within 3–6 working days.
         </p>
 
@@ -44,7 +57,7 @@ export function proofEmailHtml({ approveUrl, details }) {
         </p>
       </div>
     </div>
-    <p style="color:#555;font-size:12px;text-align:center;margin:20px auto 0;max-width:600px;">
+    <p style="color:#8A8A8A;font-size:12px;text-align:center;margin:20px auto 0;max-width:600px;">
       Pixel8 Multimedia · Made in the UK
     </p>
   </div>`;

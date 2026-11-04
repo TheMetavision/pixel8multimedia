@@ -75,7 +75,7 @@ export function labelReadyEmail(who, parcels) {
   const rows = `<tr style="background:#f3f3f3"><th>Parcel</th><th>Band</th><th>Carrier / option</th><th>Quoted</th><th>Tracking</th><th>Label</th></tr>`
     + parcels.map((p) => `<tr>
       <td>${esc(p.parcelRef)}</td><td>${esc(p.band)}</td>
-      <td>${esc(carrierName(p.carrier))}<br><span style="color:#777">${esc(p.option || '')}</span></td>
+      <td>${esc(carrierName(p.carrier))}<br><span style="color:#6b7280">${esc(p.option || '')}</span></td>
       <td>${p.quotedPrice != null ? money(p.quotedPrice) : '—'}</td>
       <td>${esc(p.trackingNumber || '—')}</td>
       <td><a href="${esc(labelLink(p.labelId))}"><strong>Print label</strong></a></td></tr>`).join('');

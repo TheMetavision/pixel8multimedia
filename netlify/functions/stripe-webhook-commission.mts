@@ -102,7 +102,7 @@ export function customerEmailHtml(args: {
                 <p style="margin:0 0 6px;color:#6b7280;font-size:13px;">Order reference</p>
                 <p style="margin:0 0 14px;color:#1a1a2e;font-size:16px;font-weight:700;">${orderRef}</p>
                 ${discount ? `<p style="margin:0 0 6px;color:#6b7280;font-size:13px;">${discount.label}</p>
-                <p style="margin:0 0 14px;color:#16a34a;font-size:16px;font-weight:700;">−£${discount.amount.toFixed(2)}</p>` : ''}
+                <p style="margin:0 0 14px;color:#15803d;font-size:16px;font-weight:700;">−£${discount.amount.toFixed(2)}</p>` : ''}
                 <p style="margin:0 0 6px;color:#6b7280;font-size:13px;">Total paid</p>
                 <p style="margin:0;color:#1a1a2e;font-size:16px;font-weight:700;">\u00A3${total.toFixed(2)}</p>
               </td></tr>
@@ -182,7 +182,7 @@ export function teamEmailHtml(args: {
             ${warning ? `<div style="margin:0 0 16px;padding:14px 16px;background:#fdecea;border-left:4px solid #d32f2f;border-radius:4px;color:#b71c1c;font-size:14px;line-height:1.5;"><strong>\u26A0 GROUPON CODE IN THE PROMO BOX</strong><br/>${warning}</div>` : ''}
             ${refNote ? `<div style="margin:0 0 16px;padding:14px 16px;background:#fff4e5;border-left:4px solid #F07828;border-radius:4px;color:#8a4b00;font-size:14px;line-height:1.5;"><strong>\u26A0 FRIEND CODE, NO REWARD</strong><br/>${esc(refNote)}</div>` : ''}
             <p style="margin:0 0 16px;color:#6b7280;font-size:14px;">Ref: <strong>${orderRef}</strong> \u00B7 \u00A3${total.toFixed(2)} \u00B7 ${deliveryType.toUpperCase()}</p>
-            ${discount ? `<p style="margin:-8px 0 16px;color:#16a34a;font-size:14px;">${discount.label} \u2212\u00A3${discount.amount.toFixed(2)} (total above is what was paid)</p>` : ''}
+            ${discount ? `<p style="margin:-8px 0 16px;color:#15803d;font-size:14px;">${discount.label} \u2212\u00A3${discount.amount.toFixed(2)} (total above is what was paid)</p>` : ''}
             <p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Customer:</strong> ${customerName}</p>
             <p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Email:</strong> ${customerEmail}</p>
             ${customerPhone ? `<p style="margin:0 0 4px;color:#1a1a2e;font-size:14px;"><strong>Phone:</strong> ${customerPhone}</p>` : ''}

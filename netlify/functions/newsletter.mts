@@ -75,7 +75,7 @@ const ACCEPTED = {
 const FAILED = 'Could not complete signup. Please try again.';
 const UNAVAILABLE = 'Sign-up is temporarily unavailable. Please try again later.';
 
-const COPY = {
+export const COPY = {
   subject: 'Confirm your subscription — Pixel8 Multimedia',
   preheader: 'One click and you’re in the gallery. Didn’t sign up? Ignore this and nothing happens.',
   heading: 'Confirm your subscription',
@@ -86,7 +86,7 @@ const COPY = {
 };
 
 /** The contact emails' look: the Pixel8 logo on black, pop-orange accent. */
-const brand = () => ({
+export const brand = () => ({
   name: 'Pixel8 Multimedia',
   logoUrl: emailLogoUrl(),
   headerBg: '#000000',
