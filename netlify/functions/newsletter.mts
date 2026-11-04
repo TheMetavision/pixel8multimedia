@@ -43,9 +43,11 @@
 //
 // Env vars: MAILERLITE_API_KEY, MAILERLITE_GROUP_ID, TURNSTILE_SECRET_KEY,
 // RESEND_API_KEY, NEWSLETTER_CONFIRM_SECRET; EMAIL_FROM (sender) and
-// EMAIL_LOGO_URL as for the contact emails.
+// the logo from _shared/email-logo.mjs (EMAIL_LOGO_URL in site-config, env
+// override allowed), as for every other email.
 
 import { setting } from './_shared/site-config.mjs';
+import { emailLogoUrl } from './_shared/email-logo.mjs';
 import type { Context, Config } from '@netlify/functions';
 import { verifyTurnstile, GENERIC_FAILURE } from './_shared/turnstile.mjs';
 import { hashKey, takeSlot, releaseSlot } from './_shared/rate-limit.mjs';
@@ -86,7 +88,7 @@ const COPY = {
 /** The contact emails' look: the Pixel8 logo on black, pop-orange accent. */
 const brand = () => ({
   name: 'Pixel8 Multimedia',
-  logoUrl: process.env.EMAIL_LOGO_URL || 'https://pixel8multimedia.co.uk/Pixel8_Logo.png',
+  logoUrl: emailLogoUrl(),
   headerBg: '#000000',
   accent: '#F07828',
   siteUrl: 'https://pixel8multimedia.co.uk',

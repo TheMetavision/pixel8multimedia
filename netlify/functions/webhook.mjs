@@ -21,6 +21,7 @@ import { rewardReferrer, checkReferral, referralNote } from './_shared/referral-
 import { esc } from './_shared/dispatch-email.mjs';
 import { shippingDetailsOf } from './_shared/commission-address.mjs';
 import { shipToHtml } from './_shared/ship-to.mjs';
+import { emailLogoImg } from './_shared/email-logo.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-12-18.acacia',
@@ -332,8 +333,7 @@ export default async (req, context) => {
           html: `
             <div style="font-family: 'DM Sans', Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #F5F5F0; background: #0D0D0D;">
               <div style="background: #0D0D0D; padding: 24px; text-align: center; border-bottom: 2px solid #F07828;">
-                <h1 style="color: #F5F5F0; margin: 0; font-size: 24px; font-family: 'Montserrat', Arial, sans-serif; letter-spacing: 0.05em;">PIXEL<span style="background: linear-gradient(135deg, #E91E7B, #6C63FF, #00BCD4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">8</span></h1>
-                <p style="color: #666; margin: 4px 0 0; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;">Pop. Art. Motion.</p>
+                ${emailLogoImg()}
               </div>
               <div style="padding: 32px 24px; background: #0D0D0D;">
                 <h2 style="margin: 0 0 8px; font-size: 22px; color: #F5F5F0; font-family: 'Montserrat', Arial, sans-serif;">Thanks for your order, ${customerName}!</h2>
@@ -379,6 +379,9 @@ export default async (req, context) => {
           subject: `${session.livemode === false ? '[TEST] ' : ''}${discountWarning ? '⚠ GROUPON CODE — ' : ''}${repeatWelcomeCode ? '⚠ REPEAT WELCOME CODE — ' : ''}${teamSubject({ total: totalAmount, customerName, missingCount: printCheck.missing.length })}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1a1a1a;">
+              <div style="background: #0D0D0D; padding: 20px 16px; text-align: center;">
+                ${emailLogoImg()}
+              </div>
               <div style="background: #F07828; padding: 16px; text-align: center;">
                 <h1 style="color: #000; margin: 0; font-size: 22px;">NEW ORDER RECEIVED</h1>
               </div>

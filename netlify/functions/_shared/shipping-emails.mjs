@@ -12,10 +12,10 @@
 import { carrierName } from './parcel-bands.mjs';
 import { setting } from './site-config.mjs';
 import { esc } from './dispatch-email.mjs';
+import { emailLogoImg } from './email-logo.mjs';
 
 export { esc };
 
-const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 
 export const studioLink = (id, type) => `${setting('STUDIO_URL')}/intent/edit/id=${encodeURIComponent(id)};type=${type}`;
 
@@ -42,7 +42,8 @@ export async function sendEmail(resend, message) {
   }
 }
 
-const plainWrap = (inner) => `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #222; max-width: 680px;">${inner}</div>`;
+/** Team emails: plain, with the logo at the top. */
+const plainWrap = (inner) => `<div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #222; max-width: 680px;"><div style="margin:0 0 16px;">${emailLogoImg({ style: 'margin:0;' })}</div>${inner}</div>`;
 const table = (rows) => `<table cellpadding="6" cellspacing="0" border="1" style="border-collapse: collapse; border-color: #ddd; font-size: 13px; margin: 12px 0;">${rows}</table>`;
 
 /** Customer emails: the same card as the dispatch and commission emails. */
@@ -53,7 +54,7 @@ const card = (title, inner) => `
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:40px 20px;"><tr><td align="center">
     <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
       <tr><td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
-        <img src="${LOGO_URL}" width="180" alt="Pixel8 Multimedia" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;">
+        ${emailLogoImg()}
         <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
       </td></tr>
       <tr><td style="padding:40px;color:#374151;font-size:15px;line-height:1.6;">

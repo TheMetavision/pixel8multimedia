@@ -31,10 +31,10 @@ import { carrierName, trackingUrlFor } from './parcel-bands.mjs';
 import { orderRefFor } from './order-ref.mjs';
 import { setting } from './site-config.mjs';
 import { startPostDelivery } from './post-delivery.mjs';
+import { emailLogoImg } from './email-logo.mjs';
 
 export const CLAIM_TTL_MS = 10 * 60 * 1000;
 
-const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = (n) => `£${(Number(n) || 0).toFixed(2)}`;
@@ -80,7 +80,7 @@ export function dispatchEmailHtml({ customerName, introHtml, parcels, itemsHtml 
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
-            <img src="${LOGO_URL}" width="180" alt="Pixel8 Multimedia" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;">
+            ${emailLogoImg()}
             <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>

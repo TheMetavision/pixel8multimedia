@@ -11,10 +11,10 @@
 import crypto from 'crypto';
 import { fileRefFor } from './artwork-keys.mjs';
 import { startPostDelivery } from './post-delivery.mjs';
+import { emailLogoImg } from './email-logo.mjs';
 
 const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
 const FROM_EMAIL = 'Pixel8 Multimedia <hello@pixel8multimedia.co.uk>';
-const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 const DOWNLOAD_EXPIRY_DAYS = 30;
 
 // ── Generate signed download URL (delivery) ──
@@ -44,7 +44,7 @@ function generateSignedUrl(commissionId: string, fileRef: string, path: string =
 
 
 // ── Branded delivery email (digital download) ──
-function buildDeliveryEmailHtml(
+export function buildDeliveryEmailHtml(
   customerName: string,
   serviceTitle: string,
   orderRef: string,
@@ -73,7 +73,7 @@ function buildDeliveryEmailHtml(
         <!-- Header (dark block + logo + tagline) -->
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
-            <img src="${LOGO_URL}" width="180" alt="Pixel8 Multimedia" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;">
+            ${emailLogoImg()}
             <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>

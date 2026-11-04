@@ -32,6 +32,7 @@ import { issueReward, isFriendCode } from './referral.mjs';
 import { serverPatch } from './server-patch.mjs';
 import { setting } from './site-config.mjs';
 import { esc } from './dispatch-email.mjs';
+import { emailLogoImg } from './email-logo.mjs';
 
 export const SELF_REFERRAL = 'self_referral';
 export const REPEAT_CUSTOMER = 'repeat_customer';
@@ -92,7 +93,6 @@ export function referralNote(check) {
     `If this is a genuinely new customer, issue the referrer (${check.referrerEmail}) a thank-you code by hand.`;
 }
 
-const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 
 /** @returns {{ subject: string, html: string }} */
 export function rewardEmail(rewardCode) {
@@ -109,7 +109,7 @@ export function rewardEmail(rewardCode) {
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
-            <img src="${LOGO_URL}" width="180" alt="Pixel8 Multimedia" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;">
+            ${emailLogoImg()}
             <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>

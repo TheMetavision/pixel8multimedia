@@ -18,6 +18,7 @@ import { chargedExShipping, commissionGaItems, sendPurchase } from './_shared/ga
 import { readDiscount, discountLabel, GROUPON_MISUSE } from './_shared/discount.mjs';
 import { rewardReferrer, checkReferral, referralNote } from './_shared/referral-reward.mjs';
 import { esc } from './_shared/dispatch-email.mjs';
+import { emailLogoImg } from './_shared/email-logo.mjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-12-18.acacia' });
 const endpointSecret = process.env.STRIPE_COMMISSION_WEBHOOK_SECRET!;
@@ -33,7 +34,6 @@ const sanity = createClient({
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 const SITE_URL = process.env.URL || 'https://pixel8multimedia.co.uk';
-const LOGO_URL = 'https://pixel8multimedia.co.uk/Pixel8_Logo.png';
 const FROM_EMAIL = 'Pixel8 Multimedia <hello@pixel8multimedia.co.uk>';
 const TEAM_EMAIL = setting('TEAM_EMAIL');
 
@@ -56,7 +56,7 @@ function formatShippingAddress(
 }
 
 // ── Customer confirmation email ──────────────────────────────────────────────
-function customerEmailHtml(args: {
+export function customerEmailHtml(args: {
   customerName: string;
   serviceTitle: string;
   orderRef: string;
@@ -87,7 +87,7 @@ function customerEmailHtml(args: {
         <!-- Header (dark block + logo + tagline) -->
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
-            <img src="${LOGO_URL}" width="180" alt="Pixel8 Multimedia" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;">
+            ${emailLogoImg()}
             <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>
@@ -141,7 +141,7 @@ function customerEmailHtml(args: {
 }
 
 // ── Team notification email (branded) ────────────────────────────────────────
-function teamEmailHtml(args: {
+export function teamEmailHtml(args: {
   serviceTitle: string;
   orderRef: string;
   customerName: string;
@@ -173,7 +173,7 @@ function teamEmailHtml(args: {
         <!-- Header (dark block + logo + tagline) -->
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
-            <img src="${LOGO_URL}" width="180" alt="Pixel8 Multimedia" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;">
+            ${emailLogoImg()}
             <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>

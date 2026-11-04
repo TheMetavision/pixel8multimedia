@@ -26,6 +26,11 @@ export const SITE_CONFIG = Object.freeze({
   SANITY_DATASET: 'production',
   STUDIO_URL: 'https://pixel8multimedia.sanity.studio',
 
+  // The logo in every email, through _shared/email-logo.mjs: public/
+  // email-logo-400.png, a real 400x233 PNG (the logo on black). Not
+  // Pixel8_Logo.png, which is a 1024x1024 JPEG with a .png name.
+  EMAIL_LOGO_URL: 'https://pixel8multimedia.co.uk/email-logo-400.png',
+
   // Customer emails come from here (the value Netlify held, 2026-11-01).
   EMAIL_FROM: 'Pixel8 Multimedia <hello@pixel8multimedia.co.uk>',
   // Order, shipping, returns and alert emails to the team.

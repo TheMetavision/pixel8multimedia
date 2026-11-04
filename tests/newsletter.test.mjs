@@ -195,7 +195,8 @@ test('a new address gets one branded confirmation email via Resend, and nothing 
   assert.equal(mail.subject, 'Confirm your subscription — Pixel8 Multimedia');
   assert.match(mail.html, /^<!DOCTYPE html>/);
   // The contact emails' look: the Pixel8 logo on black, pop-orange accent.
-  assert.match(mail.html, /<img src="https:\/\/pixel8multimedia\.co\.uk\/Pixel8_Logo\.png" alt="Pixel8 Multimedia"/);
+  assert.match(mail.html, /<img src="https:\/\/pixel8multimedia\.co\.uk\/email-logo-400\.png" alt="Pixel8 Multimedia"/);
+  assert.ok(!mail.html.includes('Pixel8_Logo.png'), 'not the old JPEG logo');
   assert.match(mail.html, /bgcolor="#000000"/, 'header on black');
   assert.match(mail.html, /bgcolor="#F07828"/, 'pop-orange accent rule and button');
   assert.equal(globalThis.__sanity.writes.length, 0, 'nothing logged to Sanity before confirmation');
