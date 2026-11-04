@@ -110,7 +110,6 @@ export function rewardEmail(rewardCode) {
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
             ${emailLogoImg()}
-            <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>
         <tr>
@@ -124,14 +123,14 @@ export function rewardEmail(rewardCode) {
                 <p style="margin:0;color:#7c3aed;font-size:24px;font-weight:700;letter-spacing:2px;">${esc(rewardCode)}</p>
               </td></tr>
             </table>
-            <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.6;">
+            <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">
               Enter it in the promo code box at checkout. It works once, on anything in the shop or on a commission.
             </p>
           </td>
         </tr>
         <tr>
           <td style="background:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+            <p style="margin:0;color:#6b7280;font-size:12px;text-align:center;">
               Pixel8 Multimedia · hello@pixel8multimedia.co.uk<br>
               <a href="${site}" style="color:#7c3aed;text-decoration:none;">pixel8multimedia.co.uk</a>
             </p>

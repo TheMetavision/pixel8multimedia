@@ -278,50 +278,58 @@ export default async (req, context) => {
            </p>`
         : '';
 
-      // Build email content
-      const itemRows = cartItems
+      // Build email content. The order table and ship-to block appear in two
+      // emails with opposite backgrounds: the customer confirmation is dark
+      // (#0D0D0D) and the team alert is white. Each gets its own palette, so
+      // every piece of text keeps at least 4.5:1 contrast on its background.
+      const TABLE_DARK = {
+        border: '#2A2A2E', head: '#1A1A1E', headText: '#F07828', title: '#F5F5F0', muted: '#999',
+        price: '#F07828', discount: '#76FF03', label: '#F5F5F0', boxBg: '#1A1A1E', boxStrong: '#F5F5F0', boxText: '#999',
+      };
+      const TABLE_LIGHT = {
+        border: '#E5E5E5', head: '#1A1A1E', headText: '#F07828', title: '#1A1A1A', muted: '#555555',
+        price: '#A84A0C', discount: '#2E7D32', label: '#1A1A1A', boxBg: '#F5F5F5', boxStrong: '#1A1A1A', boxText: '#444444',
+      };
+      const itemRows = (t) => cartItems
         .map((item) =>
           `<tr>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #2A2A2E; color: #F5F5F0;">${item.title}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #2A2A2E; color: #999;">${FORMAT_LABELS[item.format] || item.format}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #2A2A2E; color: #999;">${SIZE_LABELS[item.size] || item.size}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #2A2A2E; color: #999; text-align: center;">${item.quantity}</td>
-            <td style="padding: 8px 12px; border-bottom: 1px solid #2A2A2E; text-align: right; color: #F07828; font-family: monospace;">£${(item.unitPrice * item.quantity).toFixed(2)}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid ${t.border}; color: ${t.title};">${item.title}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid ${t.border}; color: ${t.muted};">${FORMAT_LABELS[item.format] || item.format}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid ${t.border}; color: ${t.muted};">${SIZE_LABELS[item.size] || item.size}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid ${t.border}; color: ${t.muted}; text-align: center;">${item.quantity}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid ${t.border}; text-align: right; color: ${t.price}; font-family: monospace;">£${(item.unitPrice * item.quantity).toFixed(2)}</td>
           </tr>`
         ).join('');
 
-      const orderTable = `
+      const th = (t, align, label) => `<th style="padding: 10px 12px; text-align: ${align}; color: ${t.headText}; font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">${label}</th>`;
+      const orderTable = (t) => `
         <table style="width: 100%; border-collapse: collapse; font-family: 'DM Sans', Arial, sans-serif; font-size: 14px;">
           <thead>
-            <tr style="background: #1A1A1E;">
-              <th style="padding: 10px 12px; text-align: left; color: #F07828; font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Product</th>
-              <th style="padding: 10px 12px; text-align: left; color: #F07828; font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Format</th>
-              <th style="padding: 10px 12px; text-align: left; color: #F07828; font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Size</th>
-              <th style="padding: 10px 12px; text-align: center; color: #F07828; font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Qty</th>
-              <th style="padding: 10px 12px; text-align: right; color: #F07828; font-family: 'Montserrat', Arial, sans-serif; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Price</th>
+            <tr style="background: ${t.head};">
+              ${th(t, 'left', 'Product')}${th(t, 'left', 'Format')}${th(t, 'left', 'Size')}${th(t, 'center', 'Qty')}${th(t, 'right', 'Price')}
             </tr>
           </thead>
-          <tbody>${itemRows}</tbody>
+          <tbody>${itemRows(t)}</tbody>
           <tfoot>
             ${discountAmount ? `<tr>
-              <td colspan="4" style="padding: 10px 12px; text-align: right; color: #F5F5F0;">${discountLabel(discount.codes)}:</td>
-              <td style="padding: 10px 12px; text-align: right; color: #76FF03; font-family: monospace;">&minus;£${discountAmount.toFixed(2)}</td>
+              <td colspan="4" style="padding: 10px 12px; text-align: right; color: ${t.label};">${discountLabel(discount.codes)}:</td>
+              <td style="padding: 10px 12px; text-align: right; color: ${t.discount}; font-family: monospace;">&minus;£${discountAmount.toFixed(2)}</td>
             </tr>` : ''}
             <tr>
-              <td colspan="4" style="padding: 10px 12px; text-align: right; color: #F5F5F0;">P&amp;P:</td>
-              <td style="padding: 10px 12px; text-align: right; color: #999; font-family: monospace;">${shippingPence ? `£${(shippingPence / 100).toFixed(2)}` : 'FREE'}</td>
+              <td colspan="4" style="padding: 10px 12px; text-align: right; color: ${t.label};">P&amp;P:</td>
+              <td style="padding: 10px 12px; text-align: right; color: ${t.muted}; font-family: monospace;">${shippingPence ? `£${(shippingPence / 100).toFixed(2)}` : 'FREE'}</td>
             </tr>
             <tr>
-              <td colspan="4" style="padding: 10px 12px; text-align: right; font-weight: bold; color: #F5F5F0;">Total:</td>
-              <td style="padding: 10px 12px; text-align: right; font-weight: bold; color: #F07828; font-family: monospace; font-size: 16px;">£${totalAmount.toFixed(2)}</td>
+              <td colspan="4" style="padding: 10px 12px; text-align: right; font-weight: bold; color: ${t.label};">Total:</td>
+              <td style="padding: 10px 12px; text-align: right; font-weight: bold; color: ${t.price}; font-family: monospace; font-size: 16px;">£${totalAmount.toFixed(2)}</td>
             </tr>
           </tfoot>
         </table>`;
 
-      const shippingBlock = `
-        <div style="background: #1A1A1E; padding: 16px; border-radius: 4px; margin: 16px 0; border-left: 3px solid #F07828;">
-          <strong style="color: #F5F5F0;">Ship to:</strong><br/>
-          <span style="color: #999;">${shipToHtml(customerName, shipping)}</span>
+      const shippingBlock = (t) => `
+        <div style="background: ${t.boxBg}; padding: 16px; border-radius: 4px; margin: 16px 0; border-left: 3px solid #F07828;">
+          <strong style="color: ${t.boxStrong};">Ship to:</strong><br/>
+          <span style="color: ${t.boxText};">${shipToHtml(customerName, shipping)}</span>
         </div>`;
 
       // Customer confirmation email
@@ -341,8 +349,8 @@ export default async (req, context) => {
                   Your order has been received and is being prepared. All our products are made to order in our UK studio — please allow 3-6 working days for dispatch.
                 </p>
                 ${proofNote}
-                ${orderTable}
-                ${shippingBlock}
+                ${orderTable(TABLE_DARK)}
+                ${shippingBlock(TABLE_DARK)}
                 <p style="color: #999; line-height: 1.6; margin: 24px 0 0;">
                   We'll send you another email when your order has been dispatched with tracking details.
                 </p>
@@ -396,18 +404,18 @@ export default async (req, context) => {
                 ${referralCheckNote ? `<div style="margin: 0 0 20px; padding: 14px 16px; background: #fff4e5; border-left: 4px solid #F07828; border-radius: 4px; color: #8a4b00;">
                   <strong>⚠ FRIEND CODE, NO REWARD</strong><br/>${esc(referralCheckNote)}
                 </div>` : ''}
-                <h2 style="margin: 0 0 4px;">${customerName}</h2>
-                <p style="color: #666; margin: 0 0 20px;">${customerEmail}</p>
-                ${orderTable}
-                ${shippingBlock}
-                <div style="margin-top: 20px; padding: 16px; background: #FFF9E6; border-left: 4px solid #F07828; border-radius: 4px;">
+                <h2 style="margin: 0 0 4px; color: #1a1a1a;">${customerName}</h2>
+                <p style="color: #555; margin: 0 0 20px;">${customerEmail}</p>
+                ${orderTable(TABLE_LIGHT)}
+                ${shippingBlock(TABLE_LIGHT)}
+                <div style="margin-top: 20px; padding: 16px; background: #FFF9E6; border-left: 4px solid #F07828; border-radius: 4px; color: #1a1a1a;">
                   <strong>Next steps:</strong><br/>
-                  1. Open <a href="https://pixel8multimedia.sanity.studio" style="color: #E91E7B;">Sanity Studio</a> to view/manage this order<br/>
+                  1. Open <a href="https://pixel8multimedia.sanity.studio" style="color: #C2185B;">Sanity Studio</a> to view/manage this order<br/>
                   2. Prepare artwork for printing${personalised.length ? ' — <strong>personalised item: wait for proof approval (Personalisation → Ready to print)</strong>' : ''}<br/>
                   3. Update order status to "In Production" when started<br/>
                   4. Add tracking number and update to "Dispatched" when shipped
                 </div>
-                <p style="color: #999; margin-top: 20px; font-size: 12px;">
+                <p style="color: #555; margin-top: 20px; font-size: 12px;">
                   ${orderRef ? `Order reference: ${orderRef}<br/>` : ''}
                   Stripe Session: ${session.id}<br/>
                   Payment Intent: ${session.payment_intent}

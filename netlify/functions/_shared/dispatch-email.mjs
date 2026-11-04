@@ -81,7 +81,6 @@ export function dispatchEmailHtml({ customerName, introHtml, parcels, itemsHtml 
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
             ${emailLogoImg()}
-            <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>
         <tr>
@@ -93,15 +92,15 @@ export function dispatchEmailHtml({ customerName, introHtml, parcels, itemsHtml 
             </p>
             ${blocks}
             ${itemsHtml}
-            <p style="margin:0;color:#9ca3af;font-size:13px;">
+            <p style="margin:0;color:#6b7280;font-size:13px;">
               Tracking can take a few hours to update after dispatch. Any questions, just reply to this email — we’re happy to help.
             </p>
-            ${ref ? `<p style="margin:16px 0 0;color:#9ca3af;font-size:12px;">Order reference: <strong style="color:#1a1a2e;">${esc(ref)}</strong></p>` : ''}
+            ${ref ? `<p style="margin:16px 0 0;color:#6b7280;font-size:12px;">Order reference: <strong style="color:#1a1a2e;">${esc(ref)}</strong></p>` : ''}
           </td>
         </tr>
         <tr>
           <td style="background:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+            <p style="margin:0;color:#6b7280;font-size:12px;text-align:center;">
               Pixel8 Multimedia · hello@pixel8multimedia.co.uk<br>
               <a href="${site}" style="color:#7c3aed;text-decoration:none;">pixel8multimedia.co.uk</a>
             </p>
@@ -137,7 +136,7 @@ export function buildOrderDispatchEmail(order) {
   const carriers = joinNames(parcels.map((p) => p.carrierName));
   const known = carriers && carriers !== 'Courier';
   const rows = (order.lineItems || []).map((l) => `<tr>
-    <td style="padding:6px 0;color:#1a1a2e;font-size:14px;">${esc(l.productTitle)}<br><span style="color:#9ca3af;font-size:12px;">${esc([l.format, l.size].filter(Boolean).join(' · '))}</span></td>
+    <td style="padding:6px 0;color:#1a1a2e;font-size:14px;">${esc(l.productTitle)}<br><span style="color:#6b7280;font-size:12px;">${esc([l.format, l.size].filter(Boolean).join(' · '))}</span></td>
     <td style="padding:6px 0;color:#6b7280;font-size:14px;text-align:right;white-space:nowrap;">× ${esc(l.quantity || 1)}</td></tr>`).join('');
   const itemsHtml = rows ? `
             <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;">

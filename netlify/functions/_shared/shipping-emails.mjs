@@ -55,14 +55,13 @@ const card = (title, inner) => `
     <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
       <tr><td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
         ${emailLogoImg()}
-        <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
       </td></tr>
       <tr><td style="padding:40px;color:#374151;font-size:15px;line-height:1.6;">
         <h2 style="margin:0 0 12px;font-size:20px;color:#1a1a2e;">${title}</h2>
         ${inner}
       </td></tr>
       <tr><td style="background:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;">
-        <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">Pixel8 Multimedia · hello@pixel8multimedia.co.uk<br>
+        <p style="margin:0;color:#6b7280;font-size:12px;text-align:center;">Pixel8 Multimedia · hello@pixel8multimedia.co.uk<br>
         <a href="${setting('SITE_URL')}" style="color:#7c3aed;text-decoration:none;">pixel8multimedia.co.uk</a></p>
       </td></tr>
     </table>
@@ -228,7 +227,7 @@ export function returnLabelEmail(ret, { pdf, instructions, postage }) {
         ? p("This label is free: you don't pay anything to send it back.")
         : p('Please return the item unused and in its original packaging. We refund within 14 days of receiving it back.')}
       ${p('Any questions, just reply to this email.')}
-      <p style="color: #9ca3af; margin-top: 24px; font-size: 12px;">Return reference: <strong style="color:#1a1a2e;">${esc(ret.returnNumber)}</strong></p>`),
+      <p style="color: #6b7280; margin-top: 24px; font-size: 12px;">Return reference: <strong style="color:#1a1a2e;">${esc(ret.returnNumber)}</strong></p>`),
   };
 }
 
@@ -242,6 +241,6 @@ export function returnDeclinedEmail(ret) {
       <div style="white-space: pre-wrap; background: #f9fafb; padding: 14px 16px; border-radius: 8px; margin: 0 0 14px;">${esc(ret.rejectionReason || '')}</div>
       ${p("If your item arrived faulty, damaged or not as described, your rights are not affected — just reply to this email with your order reference and some photos, and we'll put it right.")}
       ${p("If you have any other questions, reply to this email and we'll be happy to help.")}
-      <p style="color: #9ca3af; margin-top: 24px; font-size: 12px;">Return reference: ${esc(ret.returnNumber)}</p>`),
+      <p style="color: #6b7280; margin-top: 24px; font-size: 12px;">Return reference: ${esc(ret.returnNumber)}</p>`),
   };
 }

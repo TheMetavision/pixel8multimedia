@@ -88,7 +88,6 @@ export function customerEmailHtml(args: {
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
             ${emailLogoImg()}
-            <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>
         <tr>
@@ -120,14 +119,14 @@ export function customerEmailHtml(args: {
                 ? `<p style="margin:0 0 24px;color:#6b7280;font-size:13px;line-height:1.6;"><strong style="color:#1a1a2e;">Your right to cancel:</strong> ${digitalConsent}</p>`
                 : ''
             }
-            <p style="margin:0;color:#9ca3af;font-size:13px;">
+            <p style="margin:0;color:#6b7280;font-size:13px;">
               Questions? Just reply to this email \u2014 we\u2019re happy to help.
             </p>
           </td>
         </tr>
         <tr>
           <td style="background:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+            <p style="margin:0;color:#6b7280;font-size:12px;text-align:center;">
               Pixel8 Multimedia \u00B7 hello@pixel8multimedia.co.uk<br>
               <a href="${SITE_URL}" style="color:#7c3aed;text-decoration:none;">pixel8multimedia.co.uk</a>
             </p>
@@ -174,7 +173,6 @@ export function teamEmailHtml(args: {
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
             ${emailLogoImg()}
-            <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>
         <tr>
@@ -193,7 +191,7 @@ export function teamEmailHtml(args: {
                 ? `<div style="margin:16px 0;padding:14px 16px;background:#f9fafb;border-radius:6px;color:#1a1a2e;font-size:14px;">
                      <strong>Ship to:</strong><br/>${shippingAddress.replace(/\n/g, '<br/>')}
                    </div>`
-                : `<p style="margin:16px 0;color:#9ca3af;font-size:14px;">No shipping address (digital-only order).</p>`
+                : `<p style="margin:16px 0;color:#6b7280;font-size:14px;">No shipping address (digital-only order).</p>`
             }
             <div style="margin-top:20px;padding:16px;background:#f3e8ff;border-left:4px solid #7c3aed;border-radius:4px;color:#1a1a2e;font-size:14px;line-height:1.6;">
               <strong>Next steps:</strong><br/>
@@ -205,7 +203,7 @@ export function teamEmailHtml(args: {
         </tr>
         <tr>
           <td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">Pixel8 Multimedia \u2014 internal notification</p>
+            <p style="margin:0;color:#6b7280;font-size:12px;text-align:center;">Pixel8 Multimedia \u2014 internal notification</p>
           </td>
         </tr>
       </table>

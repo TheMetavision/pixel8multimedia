@@ -74,7 +74,6 @@ export function buildDeliveryEmailHtml(
         <tr>
           <td style="background:#0e0e14;padding:32px 40px 24px;text-align:center;">
             ${emailLogoImg()}
-            <p style="margin:18px 0 0;color:rgba(255,255,255,0.55);font-size:12px;letter-spacing:2px;text-transform:uppercase;">POP. ART. MOTION.</p>
           </td>
         </tr>
 
@@ -88,10 +87,10 @@ export function buildDeliveryEmailHtml(
             </p>
 
             <!-- Download Button -->${buttons}
-            <p style="margin:0 0 4px;color:#9ca3af;font-size:13px;">
+            <p style="margin:0 0 4px;color:#6b7280;font-size:13px;">
               ⏱ ${downloads.length === 1 ? 'This link stays' : 'These links stay'} active for ${DOWNLOAD_EXPIRY_DAYS} days.
             </p>
-            <p style="margin:0;color:#9ca3af;font-size:13px;">
+            <p style="margin:0;color:#6b7280;font-size:13px;">
               If you have any questions, reply to this email and we'll be happy to help.
             </p>
           </td>
@@ -100,7 +99,7 @@ export function buildDeliveryEmailHtml(
         <!-- Footer -->
         <tr>
           <td style="background:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
+            <p style="margin:0;color:#6b7280;font-size:12px;text-align:center;">
               Pixel8 Multimedia · hello@pixel8multimedia.co.uk<br>
               <a href="${SITE_URL}" style="color:#7c3aed;text-decoration:none;">pixel8multimedia.co.uk</a>
             </p>
